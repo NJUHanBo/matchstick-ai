@@ -5,7 +5,7 @@ const GameState = {
         spirit: 50,
         sawdust: 100,
         flame: 100,
-        ash: 100,
+        ash: 500,
         totalDays: 1,
         burningDays: 0,
     },
