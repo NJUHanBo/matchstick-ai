@@ -37,7 +37,7 @@ body {
     --r8-color-surface-2: var(--bg-panel);
     --r8-color-surface-3: #111118;
     --r8-color-border: var(--border);
-    --r8-color-text: var(--text-main);
+    --r8-color-text: var(--text-bright);
     --r8-color-primary: var(--fire-glow);
     --r8-color-primary-text: #000;
     --r8-shadow-sm: 2px 2px 0 0 #0a0a0a;
@@ -1422,6 +1422,7 @@ body {
 .bazi-input {
     width: 100%;
     max-width: 280px;
+    color: #fff;
 }
 
 .bazi-gender-btns {
@@ -1708,6 +1709,7 @@ body {
 .auth-input {
     width: 100%;
     text-align: center;
+    color: #fff;
 }
 
 .auth-btn {
