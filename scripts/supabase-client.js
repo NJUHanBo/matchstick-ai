@@ -4,7 +4,7 @@
  */
 var SupabaseClient = (function () {
     const SUPABASE_URL = 'https://ccepjmfhlanlwgowwxqu.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_QM1StZTZ078lD5DEne44kw_6mFd1S-B';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZXBqbWZobGFubHdnb3d3eHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDc5NzksImV4cCI6MjA5NzE4Mzk3OX0.3X5JVXwqGJDDkDuQvc9rnM2CVP6x9O6PYMTTUnu9aXo';
 
     let client = null;
     let userId = null;
