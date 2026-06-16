@@ -154,6 +154,7 @@ function sendMessage() {
 
     // 对话走 DeepSeek AI（纯聊天）
     showTypingIndicator();
+    if (window.Analytics) Analytics.trackChat(text.substring(0, 50));
     AIChat.send(text).then(result => {
         removeTypingIndicator();
         if (!result || !result.text) {
@@ -621,6 +622,8 @@ function submitRating(rating) {
     if (result.isBlackDog) msg += ` [黑狗征服者 x${result.combo}]`;
     addMessage('god', msg);
 
+    if (window.Analytics) Analytics.trackTaskComplete(task.name, actualMinutes, rating, r);
+
     activeTimerTask = null;
     updateResources();
     saveGame();
@@ -828,6 +831,8 @@ function confirmEndDay() {
     renderTasks();
     document.getElementById('display-day').textContent = `第${s.totalDays}天`;
 
+    if (window.Analytics) Analytics.trackEndDay(s.totalDays, s.flame, s.ash, s.burningDays);
+
     // 抑郁里程碑提示
     if (result.depressionResult.changed) {
         setTimeout(() => {
@@ -1014,12 +1019,31 @@ function confirmReset() {
 // ============ Init ============
 
 window.addEventListener('DOMContentLoaded', () => {
-    // 初始化 Supabase（种子社交）
+    // 初始化 Supabase
     if (window.SupabaseClient) SupabaseClient.init();
+
+    // 显示同意条幅（如果首次）
+    if (window.ConsentManager) ConsentManager.init();
+
+    // 初始化 Analytics
+    if (window.Analytics) Analytics.init();
+
+    // 启动 Auth 流程（Auth 完成后会调用 startGameAfterAuth）
+    if (window.AuthUI) {
+        AuthUI.init();
+    } else {
+        startGameAfterAuth();
+    }
+});
+
+function startGameAfterAuth() {
+    if (window.Analytics && SupabaseClient.isLoggedIn()) {
+        Analytics.trackLogin('email');
+    }
 
     if (loadGame() && GameState.character) {
         enterMainScreen();
     } else {
         Opening.start();
     }
-});
+}

@@ -159,6 +159,7 @@ var GardenUI = (function () {
 
         if (result.success) {
             if (ratingEl) ratingEl.innerHTML = `<span class="seed-rated">已评 ${stars}★</span>`;
+            if (window.Analytics) Analytics.trackSeedRate(seedId, stars);
         } else {
             if (ratingEl) {
                 const msg = document.createElement('span');
@@ -209,6 +210,7 @@ var GardenUI = (function () {
             document.getElementById('seed-char-count').textContent = '0';
             updatePlantRemain();
             randomSeedsCache = null;
+            if (window.Analytics) Analytics.trackSeedPlant(visibility);
         } else {
             showMsg(msgEl, result.reason, 'error');
         }

@@ -11,6 +11,42 @@
     <link rel="stylesheet" href="styles/app.css">
 </head>
 <body class="r8-theme--dark">
+    <!-- 数据收集同意条幅 -->
+    <div id="consent-banner" class="consent-banner hidden">
+        <div class="consent-content">
+            <p class="consent-text">为改善游戏体验，我们会收集使用行为数据（如操作频率、功能使用情况）。不会收集密码等敏感信息。</p>
+            <div class="consent-actions">
+                <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="ConsentManager.accept()">同意</button>
+                <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="ConsentManager.decline()">拒绝</button>
+            </div>
+            <p class="consent-note">拒绝后仍可正常使用，随时可在设置中更改。</p>
+        </div>
+    </div>
+
+    <!-- 登录屏幕 -->
+    <div id="screen-auth" class="screen hidden">
+        <div class="auth-container">
+            <div class="auth-box">
+                <h2 class="auth-title">火柴人的时光管理</h2>
+                <p class="auth-subtitle">输入邮箱登录或注册，数据将跨设备同步</p>
+
+                <div id="auth-email-step" class="auth-step">
+                    <input type="email" id="auth-email" class="r8-input auth-input" placeholder="your@email.com">
+                    <button class="r8-btn r8-btn--primary auth-btn" onclick="AuthUI.sendMagicLink()">发送验证邮件</button>
+                    <button class="r8-btn r8-btn--secondary auth-btn" onclick="AuthUI.skipLogin()">跳过，匿名体验</button>
+                </div>
+
+                <div id="auth-waiting-step" class="auth-step hidden">
+                    <p class="auth-waiting-text">验证邮件已发送，请查收邮箱并点击链接。</p>
+                    <p class="auth-waiting-hint">点击邮件中的链接后会自动跳转回来。</p>
+                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="AuthUI.backToEmail()">重新输入邮箱</button>
+                </div>
+
+                <div id="auth-error" class="auth-error hidden"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="app">
         <!-- Screen 1: 开幕 · 萤火虫森林 -->
         <div id="screen-opening" class="screen active">
@@ -335,6 +371,8 @@
     <script src="scripts/ai-chat.js"></script>
     <script src="scripts/bazi.js"></script>
     <script src="scripts/supabase-client.js"></script>
+    <script src="scripts/auth-ui.js"></script>
+    <script src="scripts/analytics.js"></script>
     <script src="scripts/seed-social.js"></script>
     <script src="scripts/garden-ui.js"></script>
     <script src="scripts/opening.js"></script>

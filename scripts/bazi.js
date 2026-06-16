@@ -396,6 +396,7 @@ ${focusMap[focus] || focusMap.general}
         // 显示 loading
         document.getElementById('bazi-form').classList.add('hidden');
         document.getElementById('bazi-loading').classList.remove('hidden');
+        if (window.Analytics) Analytics.trackBazi(focus);
 
         // 排盘
         const bazi = calcBazi(year, month, day, hourIdx);

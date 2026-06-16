@@ -1613,6 +1613,129 @@ body {
     50% { opacity: 1; }
 }
 
+/* ========== 同意条幅 + Auth 登录 ========== */
+
+.consent-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+}
+
+.consent-content {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.consent-text {
+    font-size: 12px;
+    color: var(--text-main);
+    margin: 0 0 10px;
+    line-height: 1.6;
+}
+
+.consent-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 6px;
+}
+
+.consent-note {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin: 0;
+}
+
+/* Auth screen */
+#screen-auth {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: var(--bg-void);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#screen-auth.hidden {
+    display: none;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 380px;
+    padding: 20px;
+}
+
+.auth-box {
+    border: 1px solid var(--border);
+    padding: 32px 24px;
+    text-align: center;
+}
+
+.auth-title {
+    font-size: 16px;
+    color: var(--fire-glow);
+    margin: 0 0 8px;
+}
+
+.auth-subtitle {
+    font-size: 12px;
+    color: var(--text-main);
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.auth-step {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-step.hidden {
+    display: none;
+}
+
+.auth-input {
+    width: 100%;
+    text-align: center;
+}
+
+.auth-btn {
+    width: 100%;
+}
+
+.auth-waiting-text {
+    font-size: 13px;
+    color: var(--text-bright);
+    margin: 0;
+}
+
+.auth-waiting-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 4px 0 12px;
+}
+
+.auth-error {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--fire-glow);
+}
+
+.auth-error.hidden {
+    display: none;
+}
+
 /* ========== 种子花园 · Garden Social ========== */
 
 .garden-container {

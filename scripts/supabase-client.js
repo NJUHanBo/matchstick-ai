@@ -1,14 +1,14 @@
 /**
- * Supabase 客户端初始化 + 匿名身份管理
- * 使用 CDN 引入的 supabase-js
+ * Supabase 客户端初始化 + 用户身份管理
+ * 支持 Auth 登录用户和匿名回退
  */
 var SupabaseClient = (function () {
-    // TODO: 创建 Supabase 项目后填入真实值
     const SUPABASE_URL = 'https://ccepjmfhlanlwgowwxqu.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_QM1StZTZ078lD5DEne44kw_6mFd1S-B';
 
     let client = null;
     let userId = null;
+    let authUser = null;
 
     function init() {
         if (!window.supabase) {
@@ -17,11 +17,25 @@ var SupabaseClient = (function () {
         }
 
         client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        userId = getOrCreateUserId();
+
+        // 先用匿名 ID 兜底
+        userId = getOrCreateAnonId();
+
+        // 监听 Auth 状态变化
+        client.auth.onAuthStateChange((event, session) => {
+            if (session && session.user) {
+                authUser = session.user;
+                userId = session.user.id;
+            } else if (event === 'SIGNED_OUT') {
+                authUser = null;
+                userId = getOrCreateAnonId();
+            }
+        });
+
         return true;
     }
 
-    function getOrCreateUserId() {
+    function getOrCreateAnonId() {
         let uid = localStorage.getItem('matchstick_uid');
         if (!uid) {
             uid = crypto.randomUUID ? crypto.randomUUID() : generateUUID();
@@ -38,6 +52,13 @@ var SupabaseClient = (function () {
         });
     }
 
+    function setAuthUser(user) {
+        authUser = user;
+        if (user && user.id) {
+            userId = user.id;
+        }
+    }
+
     function getClient() {
         return client;
     }
@@ -46,15 +67,36 @@ var SupabaseClient = (function () {
         return userId;
     }
 
+    function getAuthUser() {
+        return authUser;
+    }
+
+    function isLoggedIn() {
+        return authUser !== null;
+    }
+
     function isReady() {
         return client !== null && userId !== null;
+    }
+
+    async function signOut() {
+        if (client) {
+            await client.auth.signOut();
+        }
+        authUser = null;
+        userId = getOrCreateAnonId();
+        localStorage.removeItem('matchstick_auth_skip');
     }
 
     return {
         init,
         getClient,
         getUserId,
+        getAuthUser,
+        setAuthUser,
+        isLoggedIn,
         isReady,
+        signOut,
     };
 })();
 

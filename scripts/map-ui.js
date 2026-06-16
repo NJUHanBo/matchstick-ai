@@ -17,6 +17,7 @@ var MapUI = {
     open(id) {
         if (!this.titles[id]) return;
         this.current = id;
+        if (window.Analytics) Analytics.trackLocationEnter(id);
         const root = document.getElementById('loc-overlay-root');
         root.classList.remove('hidden');
         document.querySelectorAll('.loc-panel').forEach(p => p.classList.add('hidden'));
