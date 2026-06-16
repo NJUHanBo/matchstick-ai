@@ -199,7 +199,124 @@ var TaskSystem = (function () {
 
         var ms = project.milestones[project.currentMilestone];
         if (!ms) return;
-        showCompleteOverlay(project, 'milestone');
+
+        showMilestoneProgressOverlay(project, ms);
+    }
+
+    function showMilestoneProgressOverlay(project, ms) {
+        var currentProgress = ms.progress || 0;
+        var overlay = document.createElement('div');
+        overlay.id = 'milestone-progress-overlay';
+        overlay.className = 'timer-overlay';
+        overlay.innerHTML =
+            '<div class="timer-content">' +
+            '<h2 class="timer-task-name">' + project.name + '</h2>' +
+            '<p style="color:var(--text-bright);margin:8px 0;">里程碑：' + ms.name + '</p>' +
+            '<p style="color:var(--text-main);font-size:12px;">当前进度：' + currentProgress + '%</p>' +
+            '<div class="quick-complete-form">' +
+            '<div class="qc-field"><label>更新进度到（%）</label>' +
+            '<div class="qc-duration-btns">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsProgress(25)">25%</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsProgress(50)">50%</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsProgress(75)">75%</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsProgress(100)">100%</button>' +
+            '</div>' +
+            '<input type="number" id="ms-progress-input" class="r8-input" style="margin-top:8px;width:120px;" min="' + currentProgress + '" max="100" value="' + Math.min(currentProgress + 25, 100) + '" placeholder="0-100">' +
+            '</div>' +
+            '<div class="qc-field"><label>今天花了多少分钟</label>' +
+            '<div class="qc-duration-btns">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsMinutes(15)">15</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm qc-selected" onclick="TaskSystem._setMsMinutes(30)">30</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsMinutes(60)">60</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsMinutes(120)">120</button>' +
+            '</div></div>' +
+            '</div>' +
+            '<div class="timer-buttons">' +
+            '<button class="r8-btn r8-btn--secondary" onclick="TaskSystem._cancelMsProgress()">取消</button>' +
+            '<button class="r8-btn r8-btn--primary" onclick="TaskSystem._confirmMsProgress()">提交进度</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+        window._msState = { project: project, ms: ms, minutes: 30 };
+    }
+
+    function _setMsProgress(val) {
+        var input = document.getElementById('ms-progress-input');
+        if (input) input.value = val;
+    }
+
+    function _setMsMinutes(val) {
+        if (window._msState) window._msState.minutes = val;
+        var btns = document.querySelectorAll('#milestone-progress-overlay .qc-duration-btns:last-of-type .r8-btn');
+        btns.forEach(function (b) { b.classList.remove('qc-selected'); });
+        btns.forEach(function (b) { if (b.textContent.trim() === String(val)) b.classList.add('qc-selected'); });
+    }
+
+    function _cancelMsProgress() {
+        var el = document.getElementById('milestone-progress-overlay');
+        if (el) el.remove();
+        window._msState = null;
+    }
+
+    function _confirmMsProgress() {
+        var s = window._msState;
+        if (!s) return;
+        var input = document.getElementById('ms-progress-input');
+        var newProgress = parseInt(input ? input.value : 0);
+        if (isNaN(newProgress) || newProgress < (s.ms.progress || 0)) {
+            alert('进度不能倒退');
+            return;
+        }
+        newProgress = Math.min(100, Math.max(0, newProgress));
+
+        var el = document.getElementById('milestone-progress-overlay');
+        if (el) el.remove();
+        window._msState = null;
+
+        var oldProgress = s.ms.progress || 0;
+        s.ms.progress = newProgress;
+        var progressDelta = newProgress - oldProgress;
+        var minutes = s.minutes || 30;
+
+        // 里程碑完成
+        if (newProgress >= 100) {
+            s.ms.completed = true;
+            s.ms.completedAt = new Date().toISOString();
+            s.project.currentMilestone++;
+
+            var isProjectComplete = s.project.currentMilestone >= s.project.milestones.length;
+            if (isProjectComplete) s.project.completed = true;
+
+            var sawdust = isProjectComplete ? 200 : 60;
+            var flame = isProjectComplete ? 100 : 40;
+            var blackDog = isBlackDogTask(s.project);
+            if (blackDog) { sawdust *= 2; flame *= 2; GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1; }
+            else { GameState.blackDogCombo = 0; }
+
+            GameState.stats.sawdust += sawdust;
+            GameState.stats.flame += flame;
+            GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
+            GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, s.project.interest, minutes);
+
+            var logText = isProjectComplete
+                ? '完成项目「' + s.project.name + '」！+' + sawdust + '木屑 +' + flame + '火苗'
+                : '完成里程碑「' + s.ms.name + '」+' + sawdust + '木屑 +' + flame + '火苗';
+            addLog(logText);
+        } else {
+            // 未完成，给予进度奖励
+            var reward = Math.round(progressDelta * 0.5);
+            var flameReward = Math.round(progressDelta * 0.3);
+            GameState.stats.sawdust += reward;
+            GameState.stats.flame += flameReward;
+            GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
+            GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, s.project.interest, minutes);
+
+            addLog('推进「' + s.project.name + '」里程碑「' + s.ms.name + '」进度 ' + oldProgress + '%→' + newProgress + '% +' + reward + '木屑 +' + flameReward + '火苗');
+        }
+
+        saveGame();
+        updateResources();
+        render();
+        renderTasks();
     }
 
     function completeTodo(id) {
@@ -281,8 +398,6 @@ var TaskSystem = (function () {
 
         if (mode === 'daily') {
             finishDaily(item, minutes, rating);
-        } else if (mode === 'milestone') {
-            finishMilestone(item, minutes, rating);
         } else if (mode === 'todo') {
             finishTodo(item, minutes, rating);
         }
@@ -321,42 +436,6 @@ var TaskSystem = (function () {
         updateResources();
         render();
         renderTasks();
-    }
-
-    function finishMilestone(project, minutes, rating) {
-        var ms = project.milestones[project.currentMilestone];
-        ms.completed = true;
-        ms.completedAt = new Date().toISOString();
-        project.currentMilestone++;
-
-        var isComplete = project.currentMilestone >= project.milestones.length;
-        if (isComplete) project.completed = true;
-
-        var sawdust = isComplete ? 200 : 60;
-        var flame = isComplete ? 100 : 40;
-        sawdust = Math.round(sawdust * (rating / 3));
-        flame = Math.round(flame * (rating / 3));
-
-        var blackDog = isBlackDogTask(project);
-        if (blackDog) {
-            sawdust *= 2; flame *= 2;
-            GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1;
-        } else {
-            GameState.blackDogCombo = 0;
-        }
-
-        GameState.stats.sawdust += sawdust;
-        GameState.stats.flame += flame;
-        GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
-        GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, project.interest, minutes);
-
-        var logText = isComplete
-            ? '完成项目「' + project.name + '」！+' + sawdust + '木屑 +' + flame + '火苗'
-            : '推进「' + project.name + '」里程碑「' + ms.name + '」+' + sawdust + '木屑 +' + flame + '火苗';
-        addLog(logText + (blackDog ? ' [黑狗征服者]' : ''));
-        saveGame();
-        updateResources();
-        render();
     }
 
     function finishTodo(todo, minutes, rating) {
@@ -491,6 +570,7 @@ var TaskSystem = (function () {
         projects.forEach(function (p) {
             var ms = p.milestones[p.currentMilestone];
             var progress = p.currentMilestone + '/' + p.milestones.length;
+            var msProgress = ms && ms.progress ? ms.progress + '%' : '0%';
             var attrs = attrBadge(p);
             var deadlineStr = p.deadline ? '<span class="tomb-deadline">' + daysUntil(p.deadline) + '</span>' : '';
             html +=
@@ -499,9 +579,9 @@ var TaskSystem = (function () {
                 '<span class="tomb-task-name">' + p.name + '</span>' +
                 attrs + deadlineStr +
                 '</div>' +
-                '<div class="tomb-task-meta">进度 ' + progress + (ms ? ' · 当前：' + ms.name : '') + '</div>' +
+                '<div class="tomb-task-meta">节点 ' + progress + (ms ? ' · ' + ms.name + '（' + msProgress + '）' : '') + '</div>' +
                 '<div class="tomb-task-actions">' +
-                (ms ? '<button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.completeMilestone(' + p.id + ')">完成节点</button>' : '') +
+                (ms ? '<button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.completeMilestone(' + p.id + ')">更新进度</button>' : '') +
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeProject(' + p.id + ')">✕</button>' +
                 '</div></div>';
         });
@@ -583,6 +663,10 @@ var TaskSystem = (function () {
         _selectOpt: _selectOpt,
         _closeForm: _closeForm,
         _submitForm: _submitForm,
+        _setMsProgress: _setMsProgress,
+        _setMsMinutes: _setMsMinutes,
+        _cancelMsProgress: _cancelMsProgress,
+        _confirmMsProgress: _confirmMsProgress,
     };
 })();
 
