@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火柴人的时光管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/retro8-ui@0.4.0/dist/retro8.min.css">
+    <link rel="stylesheet" href="styles/app.css">
+</head>
+<body class="r8-theme--dark">
+    <div id="app">
+        <!-- Screen 1: 开幕 · 萤火虫森林 -->
+        <div id="screen-opening" class="screen active">
+            <div class="opening-container">
+                <div class="opening-fireflies"></div>
+                <div class="opening-content">
+                    <div id="opening-narrative" class="opening-narrative"></div>
+                    <div id="opening-dialogue" class="opening-dialogue hidden">
+                        <div id="opening-question" class="opening-question"></div>
+                        <div id="opening-choices" class="opening-choices"></div>
+                    </div>
+                    <button id="opening-continue-btn" class="opening-continue hidden" onclick="Opening.advance()">继续</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 4: 第一天主界面 -->
+        <div id="screen-main" class="screen">
+            <div class="main-layout">
+                <!-- 顶部状态栏 -->
+                <header class="status-bar">
+                    <div class="r8-panel status-panel">
+                        <div class="player-info">
+                            <span class="player-avatar">🔥</span>
+                            <span class="player-name-display" id="display-name"></span>
+                            <span class="r8-badge r8-badge--warning" id="display-day">第1天</span>
+                        </div>
+                        <div class="resource-bar">
+                            <span class="resource" title="体力"><span class="res-icon">⚡</span><span id="res-energy">100</span></span>
+                            <span class="resource" title="精力"><span class="res-icon">💜</span><span id="res-spirit">50</span></span>
+                            <span class="resource" title="木屑"><span class="res-icon">🪵</span><span id="res-sawdust">100</span></span>
+                            <span class="resource" title="火苗"><span class="res-icon">🔥</span><span id="res-flame">100</span></span>
+                            <span class="resource" title="灰烬"><span class="res-icon">💎</span><span id="res-ash">10000</span></span>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Tile 地图主视图 -->
+                <div class="map-viewport" id="map-viewport">
+                    <canvas id="game-canvas"></canvas>
+                    <div class="map-hud">
+                        <p class="map-hint" id="map-hint">点击地图移动 · 点击地点图标前往并进入</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 地点 Overlay -->
+            <div id="loc-overlay-root" class="loc-overlay-root hidden">
+                <div class="loc-overlay-backdrop" onclick="closeLocationOverlay()"></div>
+                <div class="loc-overlay-panel">
+                    <header class="loc-overlay-header">
+                        <span id="loc-overlay-title">地点</span>
+                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="closeLocationOverlay()">✕ 返回地图</button>
+                    </header>
+                    <div class="loc-overlay-body">
+
+                        <!-- 神使残响 -->
+                        <div id="loc-god" class="loc-panel hidden">
+                            <div class="r8-window chat-window loc-chat-window">
+                                <div class="r8-window__titlebar">
+                                    <span class="r8-window__title" id="god-chat-title">🧙 神使残响</span>
+                                </div>
+                                <div class="r8-window__body chat-messages" id="chat-messages"></div>
+                                <div class="chat-input-area">
+                                    <input type="text" id="chat-input" class="r8-input" placeholder="跟神使残响说点什么…" onkeydown="handleChatKey(event)">
+                                    <button class="r8-btn r8-btn--primary" onclick="sendMessage()">发送</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 营地篝火 -->
+                        <div id="loc-camp" class="loc-panel hidden">
+                            <div class="camp-grid">
+                                <div class="r8-panel stats-detail-panel">
+                                    <h3 class="panel-title">🔥 状态</h3>
+                                    <div class="stats-grid">
+                                        <div class="stat-row"><span>体力</span><div class="stat-bar"><div class="stat-fill energy-fill" id="bar-energy"></div></div><span id="stat-energy">100</span></div>
+                                        <div class="stat-row"><span>精力</span><div class="stat-bar"><div class="stat-fill spirit-fill" id="bar-spirit"></div></div><span id="stat-spirit">50</span></div>
+                                        <div class="stat-row"><span>火苗</span><span class="stat-value fire-color" id="stat-flame">100</span></div>
+                                        <div class="stat-row"><span>木屑</span><span class="stat-value" id="stat-sawdust">100</span></div>
+                                        <div class="stat-row"><span>灰烬</span><span class="stat-value" id="stat-ash">10000</span></div>
+                                    </div>
+                                    <div class="stat-meta">
+                                        <span id="stat-depression">黑狗缠身</span>
+                                        <span id="stat-burning">燃烧0天</span>
+                                    </div>
+                                </div>
+                                <div class="r8-panel task-panel">
+                                    <h3 class="panel-title">🔁 日常任务</h3>
+                                    <div id="task-list-daily" class="task-list"></div>
+                                </div>
+                                <div class="r8-panel task-panel">
+                                    <h3 class="panel-title">⚡ 支线任务</h3>
+                                    <div id="task-list-side" class="task-list"></div>
+                                </div>
+                                <div class="r8-panel task-panel">
+                                    <h3 class="panel-title">⚔️ 主线任务</h3>
+                                    <div id="task-list-main" class="task-list"></div>
+                                </div>
+                                <div class="r8-panel shop-panel">
+                                    <h3 class="panel-title">🏪 商店</h3>
+                                    <div class="shop-quick">
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('flameTea')">🍵 火种茶 30</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('sparkCandy')">🍬 焰火糖 20</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('fireStarter')">🔥 助燃剂 100</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('mirror')">🪞 镜子 200</button>
+                                    </div>
+                                </div>
+                                <div class="r8-panel quick-panel">
+                                    <h3 class="panel-title">⚡ 操作</h3>
+                                    <div class="quick-actions">
+                                        <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="endDay()">🌙 结束一天</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="askGod('help')">📖 玩法</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="exportData()">💾 备份</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="importData()">📂 导入</button>
+                                        <button class="r8-btn r8-btn--danger r8-btn--sm" onclick="confirmReset()">💀 重启</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 魔法学院废墟 -->
+                        <div id="loc-academy" class="loc-panel hidden">
+                            <div class="academy-intro">
+                                <p>这里曾是火柴世界最伟大的学府，如今已成废墟。遍地的灰烬中，或许还埋藏着远古的知识与智慧。</p>
+                            </div>
+                            <div id="academy-content">
+                                <div class="academy-dig-section">
+                                    <div class="academy-dig-header">
+                                        <div class="academy-dig-info">
+                                            <p class="academy-dig-desc">在废墟中搜寻古老的羊皮纸碎片</p>
+                                            <p class="academy-dig-cost">消耗：体力 5 + 精力 5 + 灰烬 50</p>
+                                        </div>
+                                        <div class="academy-dig-actions">
+                                            <span class="academy-progress-badge" id="academy-progress">0 / 87</span>
+                                            <button id="academy-dig-btn" class="r8-btn r8-btn--primary r8-btn--sm" type="button" onclick="Academy.handleDig()">挖掘</button>
+                                        </div>
+                                    </div>
+                                    <p class="academy-warning hidden" id="academy-warning"></p>
+                                </div>
+                                <div id="academy-stories" class="academy-stories"></div>
+                            </div>
+                        </div>
+
+                        <!-- 战友陵墓 · 任务系统 -->
+                        <div id="loc-tomb" class="loc-panel hidden">
+                            <div class="tomb-header">
+                                <p class="tomb-flavor">十九棵幼苗在灰烬中沉睡。完成任务，收集灰烬，滋养它们。</p>
+                            </div>
+                            <div id="tomb-task-list" class="tomb-task-list"></div>
+                        </div>
+
+                        <!-- 森林边缘 -->
+                        <div id="loc-forest" class="loc-panel hidden">
+                            <div class="loc-stub">
+                                <p class="loc-stub-icon">🐕</p>
+                                <h3>森林边缘</h3>
+                                <p>黑狗的足迹在腐叶间若隐若现。高重要、低兴趣的任务，它最先嗅到。</p>
+                                <p class="loc-stub-note">黑狗斥候 · 即将开放</p>
+                            </div>
+                        </div>
+
+                        <!-- 命火祭坛 · 命理分析 -->
+                        <div id="loc-bazi" class="loc-panel hidden">
+                            <div class="bazi-container">
+                                <div class="bazi-intro">
+                                    <p>紫色火焰在祭坛上跳跃。据说，在火柴人世界诞生之初，每一根火柴的命运都被写进了干支的密码中。</p>
+                                </div>
+
+                                <!-- 输入表单 -->
+                                <div id="bazi-form" class="bazi-form">
+                                    <div class="bazi-field">
+                                        <label class="bazi-label">出生日期</label>
+                                        <input type="date" id="bazi-date" class="r8-input bazi-input">
+                                    </div>
+                                    <div class="bazi-field">
+                                        <label class="bazi-label">出生时间</label>
+                                        <select id="bazi-hour" class="r8-input bazi-input">
+                                            <option value="-1">不确定</option>
+                                            <option value="0">子时 (23:00-00:59)</option>
+                                            <option value="1">丑时 (01:00-02:59)</option>
+                                            <option value="2">寅时 (03:00-04:59)</option>
+                                            <option value="3">卯时 (05:00-06:59)</option>
+                                            <option value="4">辰时 (07:00-08:59)</option>
+                                            <option value="5">巳时 (09:00-10:59)</option>
+                                            <option value="6">午时 (11:00-12:59)</option>
+                                            <option value="7">未时 (13:00-14:59)</option>
+                                            <option value="8">申时 (15:00-16:59)</option>
+                                            <option value="9">酉时 (17:00-18:59)</option>
+                                            <option value="10">戌时 (19:00-20:59)</option>
+                                            <option value="11">亥时 (21:00-22:59)</option>
+                                        </select>
+                                    </div>
+                                    <div class="bazi-field">
+                                        <label class="bazi-label">性别</label>
+                                        <div class="bazi-gender-btns">
+                                            <button class="r8-btn r8-btn--secondary r8-btn--sm bazi-gender-btn bazi-gender-active" data-gender="male" onclick="BaziModule.setGender('male')">男</button>
+                                            <button class="r8-btn r8-btn--secondary r8-btn--sm bazi-gender-btn" data-gender="female" onclick="BaziModule.setGender('female')">女</button>
+                                        </div>
+                                    </div>
+                                    <div class="bazi-field">
+                                        <label class="bazi-label">想问什么方向？（可选）</label>
+                                        <select id="bazi-focus" class="r8-input bazi-input">
+                                            <option value="general">综合分析</option>
+                                            <option value="career">事业发展</option>
+                                            <option value="wealth">财运</option>
+                                            <option value="love">婚姻感情</option>
+                                            <option value="health">健康</option>
+                                            <option value="year">今年流年运势</option>
+                                        </select>
+                                    </div>
+                                    <div class="bazi-actions">
+                                        <button class="r8-btn r8-btn--primary" onclick="BaziModule.analyze()">开始解命</button>
+                                    </div>
+                                    <p class="bazi-cost">消耗：灰烬 100</p>
+                                </div>
+
+                                <!-- 结果区域 -->
+                                <div id="bazi-result" class="bazi-result hidden">
+                                    <div id="bazi-chart" class="bazi-chart"></div>
+                                    <div id="bazi-reading" class="bazi-reading"></div>
+                                    <div class="bazi-result-actions">
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="BaziModule.reset()">重新排盘</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="BaziModule.askMore()">追问</button>
+                                    </div>
+                                </div>
+
+                                <!-- 追问区域 -->
+                                <div id="bazi-followup" class="bazi-followup hidden">
+                                    <div class="bazi-followup-input">
+                                        <input type="text" id="bazi-question" class="r8-input" placeholder="关于命盘想问什么…" onkeydown="if(event.key==='Enter')BaziModule.sendFollowup()">
+                                        <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="BaziModule.sendFollowup()">问</button>
+                                    </div>
+                                    <div id="bazi-followup-answer" class="bazi-followup-answer"></div>
+                                </div>
+
+                                <!-- Loading -->
+                                <div id="bazi-loading" class="bazi-loading hidden">
+                                    <p class="bazi-loading-text">紫火摇曳中……命运的纹路正在浮现……</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 种子花园 · 轻社交 -->
+                        <div id="loc-garden" class="loc-panel hidden">
+                            <div class="garden-container">
+                                <!-- Tab 切换 -->
+                                <div class="garden-tabs">
+                                    <button class="r8-btn r8-btn--secondary r8-btn--sm garden-tab garden-tab-active" data-tab="browse" onclick="GardenUI.switchTab('browse')">浏览种子</button>
+                                    <button class="r8-btn r8-btn--secondary r8-btn--sm garden-tab" data-tab="plant" onclick="GardenUI.switchTab('plant')">埋种子</button>
+                                    <button class="r8-btn r8-btn--secondary r8-btn--sm garden-tab" data-tab="mine" onclick="GardenUI.switchTab('mine')">我的种子</button>
+                                </div>
+
+                                <!-- 浏览种子 -->
+                                <div id="garden-tab-browse" class="garden-tab-content">
+                                    <div class="garden-section">
+                                        <h4 class="garden-section-title">今日漂流种子</h4>
+                                        <div id="garden-random-seeds" class="garden-seed-list">
+                                            <p class="garden-empty">加载中…</p>
+                                        </div>
+                                    </div>
+                                    <div class="garden-section">
+                                        <h4 class="garden-section-title">公共花园</h4>
+                                        <div id="garden-public-seeds" class="garden-seed-list">
+                                            <p class="garden-empty">加载中…</p>
+                                        </div>
+                                        <div class="garden-pager">
+                                            <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="GardenUI.prevPage()">上一页</button>
+                                            <span id="garden-page-info" class="garden-page-info">1</span>
+                                            <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="GardenUI.nextPage()">下一页</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 埋种子 -->
+                                <div id="garden-tab-plant" class="garden-tab-content hidden">
+                                    <div class="garden-plant-form">
+                                        <div class="garden-field">
+                                            <label class="garden-label">写下你的种子（留言）</label>
+                                            <textarea id="seed-content" class="r8-input garden-textarea" maxlength="500" rows="4" placeholder="在灰烬中埋下一颗种子……"></textarea>
+                                            <span class="garden-char-count"><span id="seed-char-count">0</span>/500</span>
+                                        </div>
+                                        <div class="garden-field">
+                                            <label class="garden-label">可见性</label>
+                                            <div class="garden-vis-btns">
+                                                <button class="r8-btn r8-btn--secondary r8-btn--sm garden-vis-btn garden-vis-active" data-vis="public" onclick="GardenUI.setVisibility('public')">公开</button>
+                                                <button class="r8-btn r8-btn--secondary r8-btn--sm garden-vis-btn" data-vis="bottle" onclick="GardenUI.setVisibility('bottle')">漂流瓶</button>
+                                                <button class="r8-btn r8-btn--secondary r8-btn--sm garden-vis-btn" data-vis="private" onclick="GardenUI.setVisibility('private')">仅自己</button>
+                                            </div>
+                                            <p class="garden-vis-desc" id="garden-vis-desc">所有人可在花园中看到</p>
+                                        </div>
+                                        <div class="garden-plant-actions">
+                                            <button class="r8-btn r8-btn--primary" onclick="GardenUI.submitSeed()">埋下种子</button>
+                                            <span class="garden-cost">消耗 80 灰烬 | 今日剩余 <span id="seed-remain">3</span> 次</span>
+                                        </div>
+                                        <div id="garden-plant-msg" class="garden-msg hidden"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 我的种子 -->
+                                <div id="garden-tab-mine" class="garden-tab-content hidden">
+                                    <div id="garden-my-seeds" class="garden-seed-list">
+                                        <p class="garden-empty">加载中…</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/retro8-ui@0.4.0/dist/retro8.min.js"></script>
+    <script src="data/parchment-stories.js"></script>
+    <script src="data/memories.js"></script>
+    <script src="scripts/game-state.js"></script>
+    <script src="scripts/game-engine.js"></script>
+    <script src="scripts/academy.js"></script>
+    <script src="scripts/ai-chat.js"></script>
+    <script src="scripts/bazi.js"></script>
+    <script src="scripts/supabase-client.js"></script>
+    <script src="scripts/seed-social.js"></script>
+    <script src="scripts/garden-ui.js"></script>
+    <script src="scripts/opening.js"></script>
+    <script src="scripts/task-system.js"></script>
+    <script src="scripts/tile-map.js"></script>
+    <script src="scripts/map-ui.js"></script>
+    <script src="scripts/app.js"></script>
+</body>
+</html>

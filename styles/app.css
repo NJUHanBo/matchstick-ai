@@ -1,0 +1,1860 @@
+/* 萤火虫森林 · 守墓者 */
+
+:root {
+    --bg-void: #050508;
+    --bg-surface: #0a0a10;
+    --bg-panel: #0d0d15;
+    --border: #1a1a2a;
+    --border-active: #2a3a2a;
+    --text-main: #8a8a7a;
+    --text-dim: #4a4a40;
+    --text-bright: #c0b8a0;
+    --fire-glow: #c85a20;
+    --fire-dim: #8a3810;
+    --firefly-green: #3a6840;
+    --firefly-bright: #5aaa50;
+    --sprout-green: #406030;
+    --sprout-bright: #70b050;
+    --ash-gray: #5a5a50;
+    --gold-dim: #8a7030;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-void);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Override retro8 theme tokens for dark forest feel */
+:root {
+    --r8-color-bg: var(--bg-void);
+    --r8-color-surface: var(--bg-surface);
+    --r8-color-surface-2: var(--bg-panel);
+    --r8-color-surface-3: #111118;
+    --r8-color-border: var(--border);
+    --r8-color-text: var(--text-main);
+    --r8-color-primary: var(--fire-glow);
+    --r8-color-primary-text: #000;
+    --r8-shadow-sm: 2px 2px 0 0 #0a0a0a;
+    --r8-shadow-md: 3px 3px 0 0 #080808;
+    --r8-shadow-lg: 4px 4px 0 0 #060606;
+}
+
+/* Screen system */
+.screen {
+    display: none;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.screen.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============ Opening: 萤火虫森林 · 开幕 ============ */
+.opening-container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.opening-fireflies {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+        radial-gradient(1.5px 1.5px at 15% 25%, var(--firefly-green), transparent),
+        radial-gradient(1px 1px at 75% 15%, var(--firefly-bright), transparent),
+        radial-gradient(1.5px 1.5px at 55% 65%, var(--firefly-green), transparent),
+        radial-gradient(1px 1px at 25% 75%, var(--firefly-bright), transparent),
+        radial-gradient(1px 1px at 85% 55%, var(--firefly-green), transparent),
+        radial-gradient(1.5px 1.5px at 10% 45%, var(--firefly-green), transparent),
+        radial-gradient(1px 1px at 45% 85%, var(--firefly-bright), transparent),
+        radial-gradient(1px 1px at 65% 35%, var(--firefly-green), transparent),
+        radial-gradient(1.5px 1.5px at 90% 80%, var(--firefly-green), transparent),
+        radial-gradient(1px 1px at 35% 10%, var(--firefly-bright), transparent);
+    animation: opening-fireflies 5s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes opening-fireflies {
+    0% { opacity: 0.2; }
+    40% { opacity: 0.5; }
+    70% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+
+.opening-content {
+    position: relative;
+    z-index: 1;
+    max-width: 560px;
+    width: 90%;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.opening-narrative {
+    min-height: 120px;
+    margin-bottom: 30px;
+}
+
+.opening-narrative .narr-line {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: narr-fadein 0.8s ease forwards;
+}
+
+.opening-narrative .narr-line.narr-bright {
+    color: var(--text-bright);
+}
+
+.opening-narrative .narr-line.narr-fire {
+    color: var(--fire-glow);
+    text-shadow: 0 0 6px rgba(200, 90, 30, 0.3);
+}
+
+.opening-narrative .narr-line.narr-green {
+    color: var(--sprout-bright);
+}
+
+@keyframes narr-fadein {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.opening-dialogue {
+    text-align: left;
+}
+
+.opening-question {
+    font-size: 15px;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+    line-height: 1.6;
+    opacity: 0;
+    animation: narr-fadein 0.5s ease forwards;
+}
+
+.opening-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.opening-choice-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-main);
+    background: var(--bg-surface);
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    opacity: 0;
+    animation: narr-fadein 0.4s ease forwards;
+}
+
+.opening-choice-btn:hover {
+    border-color: var(--firefly-green);
+    background: var(--bg-panel);
+    color: var(--text-bright);
+}
+
+.opening-choice-btn:active {
+    border-color: var(--fire-glow);
+    background: #0f0f18;
+}
+
+.opening-choice-btn.choice-selected {
+    border-color: var(--fire-glow);
+    color: var(--fire-glow);
+    background: rgba(200, 90, 30, 0.05);
+    pointer-events: none;
+}
+
+.opening-continue {
+    margin-top: 30px;
+    padding: 10px 28px;
+    font-size: 13px;
+    color: var(--text-dim);
+    background: transparent;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    opacity: 0;
+    animation: narr-fadein 0.6s ease 0.3s forwards;
+}
+
+.opening-continue:hover {
+    border-color: var(--firefly-green);
+    color: var(--text-bright);
+}
+
+.hidden { display: none !important; }
+
+/* ============ Main: 萤火虫森林 · 守墓夜 ============ */
+#screen-main.active {
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.main-layout {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background:
+        radial-gradient(ellipse at 20% 80%, rgba(58, 104, 64, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(58, 104, 64, 0.02) 0%, transparent 40%),
+        var(--bg-void);
+}
+
+/* Status bar */
+.status-bar {
+    padding: 6px 10px;
+    border-bottom: 3px solid var(--border);
+    background: var(--bg-panel);
+}
+
+.status-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.player-avatar { font-size: 22px; }
+.player-name-display { font-size: 14px; color: var(--text-bright); }
+
+.resource-bar {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+}
+
+.resource {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-dim);
+}
+
+.res-icon { font-size: 16px; }
+
+/* ============ Tile 地图 ============ */
+.map-viewport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    background:
+        radial-gradient(ellipse at 50% 60%, rgba(200, 90, 32, 0.04) 0%, transparent 45%),
+        radial-gradient(ellipse at 30% 70%, rgba(58, 104, 64, 0.05) 0%, transparent 50%),
+        var(--bg-void);
+}
+
+#game-canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+    border: 3px solid var(--border);
+    box-shadow: 0 0 40px rgba(58, 104, 64, 0.08), 4px 4px 0 0 #060606;
+}
+
+.map-hud {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.map-hint {
+    margin: 0;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--firefly-bright);
+    background: rgba(5, 5, 8, 0.85);
+    border: 2px solid var(--border);
+    white-space: nowrap;
+}
+
+/* ============ 地点 Overlay ============ */
+.loc-overlay-root {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loc-overlay-root.hidden {
+    display: none;
+}
+
+.loc-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 5, 8, 0.75);
+    backdrop-filter: blur(2px);
+}
+
+.loc-overlay-panel {
+    position: relative;
+    width: min(960px, 94vw);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    border: 3px solid var(--border-active);
+    box-shadow: 4px 4px 0 0 #060606, 0 0 30px rgba(58, 104, 64, 0.1);
+    z-index: 1;
+}
+
+.loc-overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 3px solid var(--border);
+    font-size: 14px;
+    color: var(--text-bright);
+}
+
+.loc-overlay-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    min-height: 200px;
+}
+
+.loc-panel.hidden {
+    display: none;
+}
+
+.loc-panel:not(.hidden) {
+    display: block;
+}
+
+.loc-chat-window {
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+}
+
+.loc-chat-window .r8-window__body {
+    flex: 1;
+    min-height: 280px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.camp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+}
+
+.loc-stub {
+    text-align: center;
+    padding: 40px 24px;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.loc-stub-icon {
+    font-size: 48px;
+    margin: 0 0 16px;
+}
+
+.loc-stub h3 {
+    font-size: 16px;
+    color: var(--text-bright);
+    margin: 0 0 12px;
+}
+
+.loc-stub p {
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--text-main);
+    margin: 0 0 10px;
+}
+
+.loc-stub-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 24px !important;
+}
+
+/* Main body (legacy, overlays use camp-grid) */
+.main-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* Chat area */
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+.chat-window {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-window .r8-window__body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Chat messages */
+.msg {
+    max-width: 80%;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.8;
+    border: 3px solid var(--border);
+    background: var(--bg-panel);
+    animation: msgIn 0.2s ease-out;
+}
+
+@keyframes msgIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-god {
+    align-self: flex-start;
+    border-color: var(--firefly-green);
+    box-shadow: 2px 2px 0 0 rgba(58, 104, 64, 0.3);
+}
+
+.msg-god .msg-sender {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    color: var(--firefly-bright);
+    font-size: 11px;
+    margin-bottom: 6px;
+    opacity: 0.8;
+}
+
+.msg-user {
+    align-self: flex-end;
+    border-color: var(--fire-dim);
+    box-shadow: 2px 2px 0 0 rgba(138, 56, 16, 0.3);
+}
+
+.msg-user .msg-sender {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    color: var(--fire-glow);
+    font-size: 11px;
+    margin-bottom: 6px;
+    text-align: right;
+    opacity: 0.8;
+}
+
+.msg-text {
+    color: var(--text-main);
+}
+
+/* Chat input */
+.chat-input-area {
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    border-top: 2px solid var(--border);
+}
+
+.chat-input-area .r8-input {
+    flex: 1;
+    color: var(--text-bright) !important;
+    background: var(--bg-surface) !important;
+}
+
+/* Side panel */
+.side-panel {
+    width: 280px;
+    padding: 8px;
+    border-left: 3px solid var(--border);
+    background: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+/* Stats detail panel */
+.stats-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.stat-row > span:first-child {
+    width: 36px;
+    color: var(--text-dim);
+}
+
+.stat-bar {
+    flex: 1;
+    height: 10px;
+    background: var(--bg-void);
+    border: 2px solid var(--border);
+}
+
+.stat-fill {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.energy-fill { background: var(--fire-glow); }
+.spirit-fill { background: var(--firefly-bright); }
+
+.stat-value {
+    font-size: 12px;
+    color: var(--text-bright);
+}
+
+.fire-color { color: var(--fire-glow); }
+
+.stat-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+/* Shop quick */
+.shop-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.shop-panel .r8-btn--sm {
+    font-size: 10px !important;
+}
+
+.panel-title {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    font-size: 13px;
+    color: var(--gold-dim);
+    margin: 0 0 10px 0;
+}
+
+.task-panel { flex: 1; }
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.empty-tasks {
+    text-align: center;
+    padding: 24px 10px;
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+.empty-tasks .hint {
+    margin-top: 10px;
+    color: var(--firefly-green);
+    font-size: 12px;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 3px solid var(--border);
+    background: var(--bg-surface);
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-main);
+}
+
+.task-item:hover {
+    border-color: var(--border-active);
+}
+
+.task-item.done {
+    opacity: 0.3;
+    text-decoration: line-through;
+}
+
+.quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* Timer overlay */
+.timer-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(5, 5, 8, 0.95);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: nightFadeIn 0.3s ease;
+}
+
+.timer-content {
+    text-align: center;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.timer-task-name {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    font-size: 16px;
+    color: var(--text-bright);
+    margin-bottom: 30px;
+}
+
+.timer-display {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    font-size: 48px;
+    color: var(--fire-glow);
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px rgba(200, 90, 30, 0.4);
+}
+
+.timer-progress-bar {
+    width: 100%;
+    height: 12px;
+    background: var(--bg-void);
+    border: 3px solid var(--border);
+    margin-bottom: 16px;
+}
+
+.timer-progress-fill {
+    height: 100%;
+    background: var(--fire-glow);
+    transition: width 1s linear;
+}
+
+.timer-target {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 30px;
+}
+
+/* Task setup */
+.task-setup-content {
+    max-width: 450px;
+}
+
+.setup-field {
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.setup-field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+}
+
+.setup-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.setup-selected {
+    border-color: var(--fire-glow) !important;
+    box-shadow: 3px 3px 0 0 rgba(200, 90, 30, 0.4) !important;
+    color: var(--fire-glow) !important;
+}
+
+.setup-summary {
+    font-size: 11px;
+    color: var(--text-main);
+    padding: 10px;
+    border: 2px solid var(--border);
+    background: var(--bg-void);
+    margin: 16px 0 24px;
+    text-align: center;
+}
+
+/* End day report */
+.endday-content {
+    max-width: 460px;
+}
+
+.endday-stats {
+    text-align: left;
+    margin: 20px 0 24px;
+    border: 3px solid var(--border);
+    background: var(--bg-surface);
+    padding: 16px;
+}
+
+.endday-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+}
+
+.endday-row:last-child {
+    border-bottom: none;
+}
+
+.endday-row span:first-child {
+    color: var(--text-dim);
+}
+
+.endday-value {
+    color: var(--text-bright);
+}
+
+.endday-warning {
+    margin-top: 12px;
+    padding: 10px;
+    border: 3px solid #8a2020;
+    background: rgba(138, 32, 32, 0.15);
+    color: #cc4444;
+    font-size: 12px;
+    text-align: center;
+}
+
+.timer-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* Rating stars */
+.rating-stars {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+/* Task delete button */
+.task-delete {
+    margin-left: auto;
+    opacity: 0.3;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.task-delete:hover { opacity: 1; color: #c44; }
+
+.task-name { flex: 1; }
+
+.task-streak {
+    font-size: 10px;
+    color: var(--fire-glow);
+    margin-left: 4px;
+}
+
+.task-deadline {
+    font-size: 10px;
+    color: var(--firefly-bright);
+    margin-left: 4px;
+}
+
+.task-progress {
+    font-size: 10px;
+    color: var(--gold-dim);
+    margin-left: 4px;
+}
+
+.task-panel {
+    flex: none;
+}
+
+.task-item.timing {
+    border-color: var(--fire-glow);
+    box-shadow: 2px 2px 0 0 rgba(200, 90, 30, 0.3);
+}
+
+.timer-display {
+    color: var(--fire-glow);
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    font-size: 10px;
+    margin-left: 6px;
+}
+
+/* Night overlay */
+.night-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg-void);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: nightFadeIn 1s ease;
+}
+
+@keyframes nightFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.night-content {
+    text-align: center;
+    padding: 40px;
+    max-width: 500px;
+}
+
+.night-fireflies {
+    width: 200px;
+    height: 100px;
+    margin: 0 auto 30px;
+    background:
+        radial-gradient(2px 2px at 30% 40%, var(--firefly-bright), transparent),
+        radial-gradient(2px 2px at 70% 30%, var(--firefly-green), transparent),
+        radial-gradient(2px 2px at 50% 70%, var(--firefly-bright), transparent),
+        radial-gradient(2px 2px at 20% 80%, var(--firefly-green), transparent),
+        radial-gradient(2px 2px at 80% 60%, var(--firefly-bright), transparent),
+        radial-gradient(1px 1px at 40% 20%, var(--firefly-green), transparent);
+    animation: fireflies 3s ease-in-out infinite alternate;
+}
+
+.night-message {
+    font-size: 14px;
+    color: var(--text-bright);
+    line-height: 2;
+    margin-bottom: 20px;
+}
+
+.night-memory {
+    text-align: left;
+    margin-bottom: 24px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    background: rgba(10, 10, 16, 0.6);
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.night-memory-period {
+    font-size: 10px;
+    color: var(--firefly-green);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.night-memory-title {
+    font-size: 16px;
+    color: var(--fire-glow);
+    margin: 0 0 12px;
+    text-shadow: 0 0 6px rgba(200, 90, 30, 0.2);
+}
+
+.night-memory-text {
+    font-size: 13px;
+    color: var(--text-bright);
+    line-height: 1.9;
+    margin: 0;
+}
+
+.night-summary {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-void); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ============ 魔法学院 ============ */
+.academy-intro {
+    padding: 8px 0 12px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.academy-dig-section {
+    padding: 12px;
+    border: 3px solid #2a1a3a;
+    background: rgba(139, 92, 246, 0.05);
+    margin-bottom: 16px;
+}
+
+.academy-dig-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.academy-dig-desc {
+    font-size: 13px;
+    color: var(--text-main);
+    margin: 0 0 4px;
+}
+
+.academy-dig-cost {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 0;
+}
+
+.academy-dig-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.academy-progress-badge {
+    font-size: 12px;
+    padding: 3px 8px;
+    border: 2px solid var(--border);
+    color: var(--text-bright);
+    background: var(--bg-panel);
+}
+
+.academy-warning {
+    font-size: 11px;
+    color: #dc3545;
+    margin: 8px 0 0;
+}
+
+.academy-warning.hidden {
+    display: none;
+}
+
+.academy-stories {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.academy-story {
+    border: 2px solid var(--border);
+    background: var(--bg-surface);
+    padding: 0;
+}
+
+.academy-story-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-main);
+    font-size: 13px;
+    text-align: left;
+}
+
+.academy-story-header:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.academy-story-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.academy-story-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.academy-story-name {
+    font-size: 13px;
+    color: var(--text-bright);
+}
+
+.academy-story-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.academy-story-arrow {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.academy-progress-bar {
+    height: 3px;
+    background: var(--bg-void);
+    margin: 0 12px;
+}
+
+.academy-progress-fill {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.academy-story-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 4px 12px 8px;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.academy-fragments {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px;
+    padding: 4px 12px 12px;
+}
+
+.academy-fragments.hidden {
+    display: none;
+}
+
+.academy-frag {
+    padding: 8px;
+    font-size: 11px;
+    border: 2px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text-dim);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.academy-frag.found {
+    border-color: var(--story-color, var(--border));
+    color: var(--text-bright);
+}
+
+.academy-frag.found:hover {
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--story-color, #888) 30%, transparent);
+}
+
+.academy-frag.locked {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* 羊皮纸发现/阅读 overlay */
+.parchment-reveal {
+    max-width: 560px;
+    width: 90vw;
+    max-height: 75vh;
+    overflow-y: auto;
+    margin: auto;
+    padding: 24px;
+    background: var(--bg-panel);
+    border: 3px solid var(--story-color, var(--border));
+    box-shadow: 0 0 30px color-mix(in srgb, var(--story-color, #888) 20%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.parchment-reveal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.parchment-reveal-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    color: #000;
+    font-weight: bold;
+}
+
+.parchment-reveal-from {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.parchment-reveal-title {
+    font-size: 16px;
+    margin: 0;
+}
+
+.parchment-reveal-content {
+    font-size: 13px;
+    line-height: 2;
+    color: var(--text-main);
+    white-space: pre-wrap;
+}
+
+/* ============ 战友陵墓 · 任务系统 ============ */
+.tomb-header {
+    margin-bottom: 16px;
+}
+
+.tomb-flavor {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+
+.tomb-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 14px;
+    border-bottom: 2px solid var(--border);
+}
+
+.tomb-tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tomb-tab:hover { color: var(--text-bright); }
+
+.tomb-tab-active {
+    color: var(--fire-glow);
+    border-bottom-color: var(--fire-glow);
+}
+
+.tomb-add-row {
+    margin-bottom: 12px;
+}
+
+.tomb-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tomb-empty {
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.tomb-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tomb-done-group {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    opacity: 0.6;
+}
+
+.tomb-done-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+}
+
+.tomb-task-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border: 2px solid var(--border);
+    transition: border-color 0.15s;
+}
+
+.tomb-task-item:hover {
+    border-color: var(--border-active);
+}
+
+.tomb-task-item.tomb-task-done {
+    opacity: 0.5;
+    border-color: transparent;
+}
+
+.tomb-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    margin-left: 6px;
+    flex-shrink: 0;
+}
+
+.tomb-badge-blackdog { background: #4a2030; color: #d06060; border: 1px solid #6a3040; }
+.tomb-badge-important { background: #3a2a10; color: var(--gold-dim); border: 1px solid #5a4020; }
+
+.tomb-task-main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.tomb-task-name {
+    font-size: 13px;
+    color: var(--text-bright);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tomb-task-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    width: 100%;
+}
+
+.tomb-deadline {
+    font-size: 10px;
+    color: var(--gold-dim);
+    margin-left: 6px;
+}
+
+.tomb-done-badge {
+    font-size: 10px;
+    color: var(--sprout-bright);
+    margin-left: 6px;
+}
+
+.qc-blackdog-hint {
+    color: #d06060;
+    font-size: 12px;
+    margin: 4px 0 8px;
+    text-align: center;
+}
+
+/* Task add form */
+.task-form-content {
+    max-width: 400px;
+    width: 90vw;
+}
+
+.task-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 16px 0 20px;
+    text-align: left;
+}
+
+.task-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.task-form-label {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.task-form-input {
+    width: 100%;
+}
+
+.task-form-select {
+    display: flex;
+    gap: 6px;
+}
+
+.task-form-opt-active {
+    border-color: var(--fire-glow) !important;
+    color: var(--fire-glow) !important;
+    box-shadow: 0 0 6px rgba(200, 90, 30, 0.3) !important;
+}
+
+.tomb-streak {
+    font-size: 11px;
+    color: var(--fire-glow);
+}
+
+.tomb-task-check {
+    color: var(--sprout-bright);
+    font-size: 14px;
+}
+
+.tomb-task-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.tomb-del-btn {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+}
+
+/* Quick complete overlay */
+.quick-complete-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.qc-field label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+}
+
+.qc-duration-btns,
+.qc-rating-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.qc-selected {
+    border-color: var(--fire-glow) !important;
+    color: var(--fire-glow) !important;
+    box-shadow: 0 0 6px rgba(200, 90, 30, 0.3) !important;
+}
+
+/* ========== 命火祭坛 · Bazi Module ========== */
+
+.bazi-container {
+    padding: 16px;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.bazi-intro {
+    margin-bottom: 20px;
+    padding: 12px;
+    border-left: 3px solid #7a50aa;
+    color: var(--text-bright);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.bazi-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.bazi-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bazi-label {
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+.bazi-input {
+    width: 100%;
+    max-width: 280px;
+}
+
+.bazi-gender-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.bazi-gender-active {
+    border-color: #7a50aa !important;
+    color: #7a50aa !important;
+    box-shadow: 0 0 6px rgba(122, 80, 170, 0.3) !important;
+}
+
+.bazi-actions {
+    margin-top: 8px;
+}
+
+.bazi-cost {
+    font-size: 11px;
+    color: var(--text-main);
+    margin-top: 4px;
+}
+
+/* Chart */
+.bazi-chart {
+    margin-bottom: 20px;
+}
+
+.bazi-chart-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.bazi-chart-row {
+    display: flex;
+}
+
+.bazi-chart-header .bazi-chart-cell {
+    background: var(--bg-panel);
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.bazi-chart-cell {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 16px;
+    position: relative;
+}
+
+.bazi-chart-cell:last-child {
+    border-right: none;
+}
+
+.bazi-chart-row:last-child .bazi-chart-cell {
+    border-bottom: none;
+}
+
+.bazi-day-master {
+    background: rgba(122, 80, 170, 0.15);
+    font-weight: bold;
+}
+
+.bazi-wx-tag {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+.bazi-canggan-row .bazi-chart-cell {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.bazi-shishen-row .bazi-chart-cell {
+    font-size: 11px;
+    color: #7a50aa;
+    background: rgba(122, 80, 170, 0.05);
+}
+
+/* 五行颜色 */
+.bazi-chart-cell[data-wx="木"] { color: #5aaa50; }
+.bazi-chart-cell[data-wx="火"] { color: #c85a20; }
+.bazi-chart-cell[data-wx="土"] { color: #b8a040; }
+.bazi-chart-cell[data-wx="金"] { color: #c0b8a0; }
+.bazi-chart-cell[data-wx="水"] { color: #4080c0; }
+
+.bazi-wuxing-summary {
+    font-size: 12px;
+    color: var(--text-main);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.bazi-summary-title {
+    color: var(--text-dim);
+}
+
+.bazi-wx-item[data-wx="木"] { color: #5aaa50; }
+.bazi-wx-item[data-wx="火"] { color: #c85a20; }
+.bazi-wx-item[data-wx="土"] { color: #b8a040; }
+.bazi-wx-item[data-wx="金"] { color: #c0b8a0; }
+.bazi-wx-item[data-wx="水"] { color: #4080c0; }
+
+.bazi-strength {
+    color: #7a50aa;
+}
+
+.bazi-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+
+/* Reading */
+.bazi-reading {
+    line-height: 1.7;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+.bazi-reading p {
+    margin: 8px 0;
+}
+
+.bazi-error {
+    color: #c85a20;
+    font-style: italic;
+}
+
+.bazi-result-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+}
+
+/* Followup */
+.bazi-followup {
+    margin-top: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+}
+
+.bazi-followup-input {
+    display: flex;
+    gap: 8px;
+}
+
+.bazi-followup-input .r8-input {
+    flex: 1;
+}
+
+.bazi-followup-answer {
+    margin-top: 12px;
+    line-height: 1.7;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+.bazi-followup-answer p {
+    margin: 8px 0;
+}
+
+/* Loading */
+.bazi-loading {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.bazi-loading-text {
+    color: #7a50aa;
+    font-size: 13px;
+    animation: bazi-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes bazi-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* ========== 种子花园 · Garden Social ========== */
+
+.garden-container {
+    padding: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.garden-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+}
+
+.garden-tab-active {
+    border-color: #c070a0 !important;
+    color: #c070a0 !important;
+    box-shadow: 0 0 6px rgba(192, 112, 160, 0.3) !important;
+}
+
+.garden-tab-content.hidden {
+    display: none;
+}
+
+.garden-section {
+    margin-bottom: 24px;
+}
+
+.garden-section-title {
+    font-size: 13px;
+    color: var(--text-bright);
+    margin: 0 0 10px;
+}
+
+/* Seed cards */
+.garden-seed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.seed-card {
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 2px;
+    background: var(--bg-panel);
+}
+
+.seed-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.seed-author {
+    font-size: 12px;
+    color: #c070a0;
+}
+
+.seed-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+.seed-content {
+    font-size: 13px;
+    color: var(--text-bright);
+    line-height: 1.6;
+    margin: 0 0 8px;
+    word-break: break-word;
+}
+
+.seed-rating {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.seed-star-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.seed-star-btn:hover {
+    border-color: #c070a0;
+    color: #c070a0;
+}
+
+.seed-rated {
+    font-size: 12px;
+    color: #c070a0;
+}
+
+.seed-rate-error {
+    font-size: 11px;
+    color: #c85a20;
+    margin-left: 8px;
+}
+
+/* Pager */
+.garden-pager {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    justify-content: center;
+}
+
+.garden-page-info {
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+/* Plant form */
+.garden-plant-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.garden-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.garden-label {
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+.garden-textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 80px;
+    font-size: 13px;
+}
+
+.garden-char-count {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+}
+
+.garden-vis-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.garden-vis-active {
+    border-color: #c070a0 !important;
+    color: #c070a0 !important;
+    box-shadow: 0 0 6px rgba(192, 112, 160, 0.3) !important;
+}
+
+.garden-vis-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 0;
+}
+
+.garden-plant-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.garden-cost {
+    font-size: 11px;
+    color: var(--text-main);
+}
+
+.garden-msg {
+    padding: 8px 12px;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.garden-msg-success {
+    background: rgba(90, 170, 80, 0.1);
+    border: 1px solid var(--firefly-green);
+    color: var(--firefly-bright);
+}
+
+.garden-msg-error {
+    background: rgba(200, 90, 32, 0.1);
+    border: 1px solid var(--fire-dim);
+    color: var(--fire-glow);
+}
+
+.garden-msg-info {
+    background: rgba(122, 80, 170, 0.1);
+    border: 1px solid #7a50aa;
+    color: #7a50aa;
+}
+
+.garden-empty {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 20px;
+}
+
+/* Night transition seed reward */
+.night-seed-reward {
+    margin: 12px 0;
+    padding: 10px 14px;
+    border: 1px solid #c070a0;
+    border-radius: 2px;
+    background: rgba(192, 112, 160, 0.08);
+}
+
+.night-seed-title {
+    font-size: 13px;
+    color: #c070a0;
+    margin: 0 0 4px;
+}
+
+.night-seed-detail {
+    font-size: 11px;
+    color: var(--text-main);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .camp-grid { grid-template-columns: 1fr; }
+    .map-hint { font-size: 9px; white-space: normal; max-width: 90vw; text-align: center; }
+    .resource-bar { gap: 6px; }
+    .status-panel { flex-direction: column; gap: 4px; }
+    .loc-overlay-panel { width: 98vw; max-height: 92vh; }
+    .bazi-container { padding: 12px; }
+    .bazi-input { max-width: 100%; }
+    .garden-container { padding: 12px; }
+    .garden-tabs { flex-wrap: wrap; }
+}
