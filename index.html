@@ -361,6 +361,22 @@
         </div>
     </div>
 
+    <!-- 意见反馈悬浮按钮 -->
+    <div id="feedback-fab" class="feedback-fab" onclick="FeedbackUI.open()">?</div>
+
+    <!-- 反馈弹窗 -->
+    <div id="feedback-modal" class="feedback-modal hidden">
+        <div class="feedback-box">
+            <h3 class="feedback-title">意见反馈</h3>
+            <textarea id="feedback-text" class="r8-input feedback-textarea" rows="5" maxlength="1000" placeholder="遇到问题？有建议？随时告诉我们…"></textarea>
+            <div class="feedback-actions">
+                <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="FeedbackUI.close()">取消</button>
+                <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="FeedbackUI.submit()">提交</button>
+            </div>
+            <p id="feedback-msg" class="feedback-msg hidden"></p>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/retro8-ui@0.4.0/dist/retro8.min.js"></script>
     <script src="data/parchment-stories.js"></script>
@@ -373,6 +389,7 @@
     <script src="scripts/supabase-client.js"></script>
     <script src="scripts/auth-ui.js"></script>
     <script src="scripts/analytics.js"></script>
+    <script src="scripts/feedback-ui.js"></script>
     <script src="scripts/seed-social.js"></script>
     <script src="scripts/garden-ui.js"></script>
     <script src="scripts/opening.js"></script>
