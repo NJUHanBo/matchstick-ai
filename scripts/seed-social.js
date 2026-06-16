@@ -74,21 +74,11 @@ var SeedSocial = (function () {
             return { success: false, reason: `今天已经埋了${MAX_SEEDS_PER_DAY}颗种子，明天再来` };
         }
 
-        // 检查灰烬
-        if (GameState.stats.ash < ASH_COST) {
-            return { success: false, reason: `灰烬不足（需要${ASH_COST}，当前${GameState.stats.ash}）` };
-        }
-
         // AI 审核
         const modResult = await moderateContent(content.trim());
         if (!modResult.pass) {
             return { success: false, reason: `内容未通过审核：${modResult.reason || '含有不当内容'}` };
         }
-
-        // 扣除灰烬
-        GameState.stats.ash -= ASH_COST;
-        saveGame();
-        updateResources();
 
         // 写入 Supabase
         const db = SupabaseClient.getClient();
@@ -105,10 +95,6 @@ var SeedSocial = (function () {
 
         if (error) {
             console.error('Plant seed error:', error);
-            // 回退灰烬
-            GameState.stats.ash += ASH_COST;
-            saveGame();
-            updateResources();
             return { success: false, reason: '种子埋入失败，请稍后再试' };
         }
 
