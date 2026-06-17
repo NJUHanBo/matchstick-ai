@@ -1073,6 +1073,12 @@ function startGameAfterAuth() {
         AIMemory.load().catch(() => {});
     }
 
+    // 背景音乐
+    if (window.BGMusic) {
+        BGMusic.init();
+        BGMusic.tryAutoplay();
+    }
+
     if (loadGame() && GameState.character) {
         enterMainScreen();
     } else {
