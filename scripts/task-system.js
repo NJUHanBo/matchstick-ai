@@ -553,6 +553,7 @@ var TaskSystem = (function () {
                 '<div class="tomb-task-meta">' + t.duration + '分钟/天</div>' +
                 '<div class="tomb-task-actions">' +
                 (!t.completed ? '<button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.completeDaily(' + t.id + ')">完成</button>' : '') +
+                '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem.editDaily(' + t.id + ')">编辑</button>' +
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeDaily(' + t.id + ')">✕</button>' +
                 '</div></div>';
         });
@@ -587,6 +588,7 @@ var TaskSystem = (function () {
                 '<div class="tomb-task-meta">节点 ' + progress + (ms ? ' · ' + ms.name + '（' + msProgress + '）' : '') + '</div>' +
                 '<div class="tomb-task-actions">' +
                 (ms ? '<button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.completeMilestone(' + p.id + ')">更新进度</button>' : '') +
+                '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem.editProject(' + p.id + ')">编辑</button>' +
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeProject(' + p.id + ')">✕</button>' +
                 '</div></div>';
         });
@@ -712,6 +714,123 @@ var TaskSystem = (function () {
         btn.classList.add('task-form-opt-active');
     }
 
+    function editDaily(id) {
+        var tasks = GameState.dailyTasks || [];
+        var task = tasks.find(function (t) { return t.id === id; });
+        if (!task) return;
+
+        var overlay = document.createElement('div');
+        overlay.id = 'edit-todo-overlay';
+        overlay.className = 'timer-overlay';
+        overlay.innerHTML =
+            '<div class="timer-content task-setup-content">' +
+            '<h2 class="timer-task-name">编辑日常</h2>' +
+            '<div class="task-form-fields">' +
+            '<div class="task-form-field"><label class="task-form-label">名称</label>' +
+            '<input type="text" id="edit-todo-name" class="r8-input task-form-input" value="' + (task.name || '') + '"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">每次时长（分钟）</label>' +
+            '<input type="number" id="edit-todo-duration" class="r8-input task-form-input" value="' + (task.duration || 30) + '" min="5" max="480"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">重要性</label>' +
+            '<div class="task-form-select">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (task.importance === 'high' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'high\',this)">高</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (task.importance === 'medium' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'medium\',this)">中</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (task.importance === 'low' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'low\',this)">低</button>' +
+            '</div></div>' +
+            '<div class="task-form-field"><label class="task-form-label">兴趣度</label>' +
+            '<div class="task-form-select">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (task.interest === 'high' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'high\',this)">高</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (task.interest === 'medium' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'medium\',this)">中</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (task.interest === 'low' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'low\',this)">低</button>' +
+            '</div></div>' +
+            '</div>' +
+            '<div class="timer-buttons">' +
+            '<button class="r8-btn r8-btn--secondary" onclick="TaskSystem._cancelEdit()">取消</button>' +
+            '<button class="r8-btn r8-btn--primary" onclick="TaskSystem._confirmEditDaily(' + id + ')">保存</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+        window._editState = { importance: task.importance, interest: task.interest };
+    }
+
+    function _confirmEditDaily(id) {
+        var tasks = GameState.dailyTasks || [];
+        var task = tasks.find(function (t) { return t.id === id; });
+        if (!task) return;
+
+        var name = document.getElementById('edit-todo-name').value.trim();
+        var duration = parseInt(document.getElementById('edit-todo-duration').value) || 30;
+        if (!name) { alert('名称不能为空'); return; }
+
+        task.name = name;
+        task.duration = duration;
+        task.importance = window._editState ? window._editState.importance : task.importance;
+        task.interest = window._editState ? window._editState.interest : task.interest;
+
+        var el = document.getElementById('edit-todo-overlay');
+        if (el) el.remove();
+        window._editState = null;
+        saveGame();
+        render();
+        renderTasks();
+    }
+
+    function editProject(id) {
+        var projects = GameState.projects || [];
+        var project = projects.find(function (p) { return p.id === id; });
+        if (!project) return;
+
+        var overlay = document.createElement('div');
+        overlay.id = 'edit-todo-overlay';
+        overlay.className = 'timer-overlay';
+        overlay.innerHTML =
+            '<div class="timer-content task-setup-content">' +
+            '<h2 class="timer-task-name">编辑项目</h2>' +
+            '<div class="task-form-fields">' +
+            '<div class="task-form-field"><label class="task-form-label">项目名称</label>' +
+            '<input type="text" id="edit-todo-name" class="r8-input task-form-input" value="' + (project.name || '') + '"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">截止日期（可留空）</label>' +
+            '<input type="date" id="edit-todo-deadline" class="r8-input task-form-input" value="' + (project.deadline || '') + '"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">重要性</label>' +
+            '<div class="task-form-select">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (project.importance === 'high' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'high\',this)">高</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (project.importance === 'medium' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'medium\',this)">中</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (project.importance === 'low' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'low\',this)">低</button>' +
+            '</div></div>' +
+            '<div class="task-form-field"><label class="task-form-label">兴趣度</label>' +
+            '<div class="task-form-select">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (project.interest === 'high' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'high\',this)">高</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (project.interest === 'medium' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'medium\',this)">中</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (project.interest === 'low' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'low\',this)">低</button>' +
+            '</div></div>' +
+            '</div>' +
+            '<div class="timer-buttons">' +
+            '<button class="r8-btn r8-btn--secondary" onclick="TaskSystem._cancelEdit()">取消</button>' +
+            '<button class="r8-btn r8-btn--primary" onclick="TaskSystem._confirmEditProject(' + id + ')">保存</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+        window._editState = { importance: project.importance, interest: project.interest };
+    }
+
+    function _confirmEditProject(id) {
+        var projects = GameState.projects || [];
+        var project = projects.find(function (p) { return p.id === id; });
+        if (!project) return;
+
+        var name = document.getElementById('edit-todo-name').value.trim();
+        var deadline = document.getElementById('edit-todo-deadline').value;
+        if (!name) { alert('名称不能为空'); return; }
+
+        project.name = name;
+        project.deadline = deadline || null;
+        project.importance = window._editState ? window._editState.importance : project.importance;
+        project.interest = window._editState ? window._editState.interest : project.interest;
+
+        var el = document.getElementById('edit-todo-overlay');
+        if (el) el.remove();
+        window._editState = null;
+        saveGame();
+        render();
+    }
+
     function _cancelEdit() {
         var el = document.getElementById('edit-todo-overlay');
         if (el) el.remove();
@@ -763,6 +882,8 @@ var TaskSystem = (function () {
         completeMilestone: completeMilestone,
         completeTodo: completeTodo,
         editTodo: editTodo,
+        editDaily: editDaily,
+        editProject: editProject,
         removeDaily: removeDaily,
         removeProject: removeProject,
         removeTodo: removeTodo,
@@ -780,6 +901,8 @@ var TaskSystem = (function () {
         _editOpt: _editOpt,
         _cancelEdit: _cancelEdit,
         _confirmEdit: _confirmEdit,
+        _confirmEditDaily: _confirmEditDaily,
+        _confirmEditProject: _confirmEditProject,
     };
 })();
 
