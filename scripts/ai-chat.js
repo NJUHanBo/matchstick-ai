@@ -34,6 +34,7 @@ ${this._getPersona()}
 ${GameState.blackDogCombo > 0 ? `- 黑狗征服者连击 x${GameState.blackDogCombo}` : ''}
 ${this._getTaskList()}
 ${this._getRecentLog()}
+${this._getMemory()}
 
 ## 你的职责
 1. 给予守墓者情感支持、鼓励、建议
@@ -110,6 +111,11 @@ ${this._getRecentLog()}
             const data = await response.json();
             const raw = data.choices?.[0]?.message?.content || '';
 
+            // 异步追加记忆（不阻塞回复）
+            if (window.AIMemory && raw) {
+                AIMemory.appendAfterChat(userText, raw).catch(() => {});
+            }
+
             return this._parseResponse(raw);
         } catch (err) {
             console.error('DeepSeek request failed:', err);
@@ -166,6 +172,13 @@ ${this._getRecentLog()}
         if (logs.length === 0) return '';
         const recent = logs.slice(-50);
         return '- 最近动态（' + logs.length + '条记录，显示最近' + recent.length + '条）：\n' + recent.map(l => `  · ${l}`).join('\n');
+    },
+
+    _getMemory() {
+        if (!window.AIMemory || !AIMemory.isLoaded()) return '';
+        const mem = AIMemory.get();
+        if (!mem || !mem.trim()) return '';
+        return `\n## 关于这位守墓者的记忆\n${mem.trim()}`;
     },
 
     _fallbackReply(userText) {

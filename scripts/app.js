@@ -876,6 +876,19 @@ async function settleSeedsAndTransition(result, s) {
     // 刷新花园随机缓存
     if (window.GardenUI) GardenUI.refreshRandomCache();
 
+    // AI 记忆压缩整理
+    if (window.AIMemory) {
+        const tasks = GameState.dailyTasks || [];
+        const completed = tasks.filter(t => t.done).length;
+        AIMemory.compressAtEndDay({
+            day: s.totalDays,
+            flame: s.flame,
+            ash: s.ash,
+            tasksCompleted: completed,
+            burningDays: s.burningDays,
+        }).catch(() => {});
+    }
+
     showNightTransition(result, s, seedResult);
 }
 
@@ -956,6 +969,7 @@ function quickBuy(itemId) {
         saveGame();
         updateResources();
         addMessage('god', result.msg);
+        if (window.AIMemory) AIMemory.recordEvent('购买了' + itemId);
     } else {
         addMessage('god', result.reason);
     }
@@ -1052,6 +1066,11 @@ window.addEventListener('DOMContentLoaded', () => {
 function startGameAfterAuth() {
     if (window.Analytics && SupabaseClient.isLoggedIn()) {
         Analytics.trackLogin('email');
+    }
+
+    // 加载 AI 记忆
+    if (window.AIMemory && SupabaseClient.isReady()) {
+        AIMemory.load().catch(() => {});
     }
 
     if (loadGame() && GameState.character) {
