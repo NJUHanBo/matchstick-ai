@@ -21,7 +21,7 @@ var AIMemory = (function () {
             .from('user_memory')
             .select('memory')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         memoryCache = data ? data.memory : '';
         loaded = true;

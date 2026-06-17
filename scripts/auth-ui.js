@@ -48,8 +48,16 @@ var AuthUI = (function () {
 
         // Supabase 会在 URL hash 中带回 access_token
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const authError = hashParams.get('error') || hashParams.get('error_code');
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
+
+        if (authError) {
+            window.history.replaceState(null, '', window.location.pathname);
+            showAuthScreen();
+            showAuthError(getAuthErrorMessage(hashParams));
+            return;
+        }
 
         if (accessToken && refreshToken) {
             const { data, error } = await db.auth.setSession({
@@ -63,6 +71,11 @@ var AuthUI = (function () {
                 onLoginSuccess(data.session.user);
                 return;
             }
+
+            window.history.replaceState(null, '', window.location.pathname);
+            showAuthScreen();
+            showAuthError('登录状态保存失败，请重新发送验证邮件。');
+            return;
         }
 
         // 检查是否已有 session
@@ -83,6 +96,8 @@ var AuthUI = (function () {
     }
 
     function showAuthScreen() {
+        document.getElementById('auth-email-step').classList.remove('hidden');
+        document.getElementById('auth-waiting-step').classList.add('hidden');
         document.getElementById('screen-auth').classList.remove('hidden');
         document.getElementById('screen-auth').classList.add('active');
     }
@@ -92,22 +107,41 @@ var AuthUI = (function () {
         document.getElementById('screen-auth').classList.remove('active');
     }
 
+    function showAuthError(message) {
+        const errorEl = document.getElementById('auth-error');
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+    }
+
+    function getAuthErrorMessage(hashParams) {
+        const errorCode = hashParams.get('error_code');
+        const description = hashParams.get('error_description');
+
+        if (errorCode === 'otp_expired') {
+            return '验证链接已过期或已被使用，请重新发送验证邮件。';
+        }
+
+        if (description) {
+            return '登录验证失败：' + description;
+        }
+
+        return '登录验证失败，请重新发送验证邮件。';
+    }
+
     async function sendMagicLink() {
         const emailInput = document.getElementById('auth-email');
         const email = emailInput.value.trim();
         const errorEl = document.getElementById('auth-error');
 
         if (!email || !email.includes('@')) {
-            errorEl.textContent = '请输入有效邮箱地址';
-            errorEl.classList.remove('hidden');
+            showAuthError('请输入有效邮箱地址');
             return;
         }
 
         errorEl.classList.add('hidden');
 
         if (!SupabaseClient.isReady()) {
-            errorEl.textContent = '网络未就绪，请稍后重试';
-            errorEl.classList.remove('hidden');
+            showAuthError('网络未就绪，请稍后重试');
             return;
         }
 
@@ -120,8 +154,7 @@ var AuthUI = (function () {
         });
 
         if (error) {
-            errorEl.textContent = '发送失败：' + error.message;
-            errorEl.classList.remove('hidden');
+            showAuthError('发送失败：' + error.message);
             return;
         }
 
