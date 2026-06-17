@@ -567,6 +567,11 @@ var TaskSystem = (function () {
             return html + '<p class="tomb-empty">还没有进行中的项目。</p>';
         }
 
+        // 排序：逾期 > 截止日近 > 高重要 > 无截止
+        projects.sort(function (a, b) {
+            return todoSortScore(a) - todoSortScore(b);
+        });
+
         projects.forEach(function (p) {
             var ms = p.milestones[p.currentMilestone];
             var progress = p.currentMilestone + '/' + p.milestones.length;
@@ -596,6 +601,13 @@ var TaskSystem = (function () {
             return html + '<p class="tomb-empty">没有待办事项。</p>';
         }
 
+        // 排序：逾期 > 今天截止 > 高重要 > 有截止日期（按日期升序） > 无截止日期
+        todos.sort(function (a, b) {
+            var scoreA = todoSortScore(a);
+            var scoreB = todoSortScore(b);
+            return scoreA - scoreB;
+        });
+
         todos.forEach(function (t) {
             var attrs = attrBadge(t);
             var deadlineStr = t.deadline ? '<span class="tomb-deadline">' + daysUntil(t.deadline) + '</span>' : '';
@@ -608,10 +620,26 @@ var TaskSystem = (function () {
                 '<div class="tomb-task-meta">预计 ' + t.duration + '分钟</div>' +
                 '<div class="tomb-task-actions">' +
                 '<button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.completeTodo(' + t.id + ')">完成</button>' +
+                '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem.editTodo(' + t.id + ')">编辑</button>' +
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeTodo(' + t.id + ')">✕</button>' +
                 '</div></div>';
         });
         return html;
+    }
+
+    function todoSortScore(t) {
+        var score = 0;
+        if (t.deadline) {
+            var days = Math.ceil((new Date(t.deadline) - new Date()) / 86400000);
+            if (days < 0) score = -1000 + days; // 逾期的排最前
+            else if (days === 0) score = -500;   // 今天截止
+            else score = days;                    // 按剩余天数
+        } else {
+            score = 9999; // 无截止日期排后面
+        }
+        // 高重要性提前
+        if (t.importance === 'high') score -= 100;
+        return score;
     }
 
     // ========== 辅助 ==========
@@ -634,6 +662,87 @@ var TaskSystem = (function () {
         return '还有' + diff + '天';
     }
 
+    // ========== 编辑待办 ==========
+
+    function editTodo(id) {
+        var todos = GameState.todos || [];
+        var todo = todos.find(function (t) { return t.id === id; });
+        if (!todo) return;
+
+        var overlay = document.createElement('div');
+        overlay.id = 'edit-todo-overlay';
+        overlay.className = 'timer-overlay';
+        overlay.innerHTML =
+            '<div class="timer-content task-setup-content">' +
+            '<h2 class="timer-task-name">编辑待办</h2>' +
+            '<div class="task-form-fields">' +
+            '<div class="task-form-field"><label class="task-form-label">名称</label>' +
+            '<input type="text" id="edit-todo-name" class="r8-input task-form-input" value="' + (todo.name || '') + '"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">截止日期（可留空）</label>' +
+            '<input type="date" id="edit-todo-deadline" class="r8-input task-form-input" value="' + (todo.deadline || '') + '"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">预计时长（分钟）</label>' +
+            '<input type="number" id="edit-todo-duration" class="r8-input task-form-input" value="' + (todo.duration || 30) + '" min="5" max="480"></div>' +
+            '<div class="task-form-field"><label class="task-form-label">重要性</label>' +
+            '<div class="task-form-select">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (todo.importance === 'high' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'high\',this)">高</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (todo.importance === 'medium' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'medium\',this)">中</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (todo.importance === 'low' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'importance\',\'low\',this)">低</button>' +
+            '</div></div>' +
+            '<div class="task-form-field"><label class="task-form-label">兴趣度</label>' +
+            '<div class="task-form-select">' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (todo.interest === 'high' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'high\',this)">高</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (todo.interest === 'medium' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'medium\',this)">中</button>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm' + (todo.interest === 'low' ? ' task-form-opt-active' : '') + '" onclick="TaskSystem._editOpt(\'interest\',\'low\',this)">低</button>' +
+            '</div></div>' +
+            '</div>' +
+            '<div class="timer-buttons">' +
+            '<button class="r8-btn r8-btn--secondary" onclick="TaskSystem._cancelEdit()">取消</button>' +
+            '<button class="r8-btn r8-btn--primary" onclick="TaskSystem._confirmEdit(' + id + ')">保存</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+        window._editState = { importance: todo.importance, interest: todo.interest };
+    }
+
+    function _editOpt(field, value, btn) {
+        if (!window._editState) return;
+        window._editState[field] = value;
+        var parent = btn.parentElement;
+        var btns = parent.querySelectorAll('.r8-btn');
+        btns.forEach(function (b) { b.classList.remove('task-form-opt-active'); });
+        btn.classList.add('task-form-opt-active');
+    }
+
+    function _cancelEdit() {
+        var el = document.getElementById('edit-todo-overlay');
+        if (el) el.remove();
+        window._editState = null;
+    }
+
+    function _confirmEdit(id) {
+        var todos = GameState.todos || [];
+        var todo = todos.find(function (t) { return t.id === id; });
+        if (!todo) return;
+
+        var name = document.getElementById('edit-todo-name').value.trim();
+        var deadline = document.getElementById('edit-todo-deadline').value;
+        var duration = parseInt(document.getElementById('edit-todo-duration').value) || 30;
+
+        if (!name) { alert('名称不能为空'); return; }
+
+        todo.name = name;
+        todo.deadline = deadline || null;
+        todo.duration = duration;
+        todo.importance = window._editState ? window._editState.importance : todo.importance;
+        todo.interest = window._editState ? window._editState.interest : todo.interest;
+
+        var el = document.getElementById('edit-todo-overlay');
+        if (el) el.remove();
+        window._editState = null;
+
+        saveGame();
+        render();
+    }
+
 
     // ========== 每日重置 ==========
 
@@ -653,6 +762,7 @@ var TaskSystem = (function () {
         completeDaily: completeDaily,
         completeMilestone: completeMilestone,
         completeTodo: completeTodo,
+        editTodo: editTodo,
         removeDaily: removeDaily,
         removeProject: removeProject,
         removeTodo: removeTodo,
@@ -667,6 +777,9 @@ var TaskSystem = (function () {
         _setMsMinutes: _setMsMinutes,
         _cancelMsProgress: _cancelMsProgress,
         _confirmMsProgress: _confirmMsProgress,
+        _editOpt: _editOpt,
+        _cancelEdit: _cancelEdit,
+        _confirmEdit: _confirmEdit,
     };
 })();
 
