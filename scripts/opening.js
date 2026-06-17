@@ -113,7 +113,7 @@ var Opening = (function () {
 
     function showQuestion() {
         if (questionIndex >= questions.length) {
-            finishOpening();
+            showNameInput();
             return;
         }
 
@@ -138,6 +138,39 @@ var Opening = (function () {
                 cEl.appendChild(btn);
             })(q.choices[i], i);
         }
+    }
+
+    function showNameInput() {
+        var qEl = document.getElementById('opening-question');
+        var cEl = document.getElementById('opening-choices');
+
+        qEl.textContent = '最后一个问题......你叫什么名字？';
+        qEl.style.animation = 'none';
+        qEl.offsetHeight;
+        qEl.style.animation = '';
+
+        cEl.innerHTML =
+            '<div class="opening-name-input">' +
+            '<input type="text" id="opening-name" class="r8-input" maxlength="12" placeholder="输入你的名字" style="text-align:center;color:#fff;max-width:200px;">' +
+            '<button type="button" class="opening-choice-btn" onclick="Opening._confirmName()" style="margin-top:12px;">就是这个名字</button>' +
+            '</div>';
+
+        setTimeout(function () {
+            var input = document.getElementById('opening-name');
+            if (input) input.focus();
+        }, 300);
+    }
+
+    function _confirmName() {
+        var input = document.getElementById('opening-name');
+        var name = input ? input.value.trim() : '';
+        if (!name) {
+            input.style.borderColor = '#c85a20';
+            input.placeholder = '请输入名字';
+            return;
+        }
+        answers.playerName = name;
+        finishOpening();
     }
 
     function selectChoice(questionId, value, btnEl) {
@@ -212,7 +245,7 @@ var Opening = (function () {
             depressionStatus: pressure.status,
             dailySpirit: pressure.spiritCap,
             nextMilestone: pressure.nextMilestone,
-            ash: 100 + pressure.ashBonus,
+            ash: 500 + pressure.ashBonus,
             godType: godType,
             rhythm: rhythm,
         };
@@ -242,7 +275,7 @@ var Opening = (function () {
 
     function initializeGame(result) {
         GameState.character = {
-            name: '零',
+            name: answers.playerName || '零',
             gender: 'other',
             godType: result.godType,
             rhythm: result.rhythm,
@@ -274,6 +307,7 @@ var Opening = (function () {
     return {
         start: start,
         advance: advance,
+        _confirmName: _confirmName,
     };
 })();
 
