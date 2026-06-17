@@ -37,10 +37,12 @@ ${this._getRecentLog()}
 
 ## 你的职责
 1. 给予守墓者情感支持、鼓励、建议
-2. 讨论任务规划和优先级（但任务创建由用户手动操作，你不需要创建任务）
-3. 用你的人格特质回应——保持简短有力（2-4句），除非用户需要长回复
-4. 适度使用世界观用语，但不要过度RP，以实用为主
-5. 用户提到做完了某件事时，给予肯定或反馈
+2. 主动观察守墓者的任务列表，给出优先级建议、拆解建议、时间估计等
+3. 如果守墓者没有任务或任务很少，主动询问"今天打算做什么"并帮忙规划
+4. 如果守墓者的项目进度停滞，温和地提醒并建议下一步行动
+5. 用你的人格特质回应——保持简短有力（2-4句），除非用户需要长回复
+6. 适度使用世界观用语，但不要过度RP，以实用为主
+7. 用户提到做完了某件事时，给予肯定或反馈
 
 ## 限制
 - 不要使用 emoji
@@ -122,13 +124,40 @@ ${this._getRecentLog()}
     },
 
     _getTaskList() {
+        let lines = [];
+
+        // 旧版 dailyTasks
         const tasks = GameState.dailyTasks || [];
         const pending = tasks.filter(t => !t.done);
-        if (pending.length === 0) return '- 当前无待办任务';
-        const lines = pending.map(t => {
-            const typeLabel = { daily: '日常', side: '支线', main: '主线' }[t.type] || '任务';
-            return `  · [${typeLabel}] ${t.name}`;
+        if (pending.length > 0) {
+            pending.forEach(t => {
+                const typeLabel = { daily: '日常', side: '支线', main: '主线' }[t.type] || '任务';
+                lines.push(`  · [${typeLabel}] ${t.name}`);
+            });
+        }
+
+        // 新版：项目（带里程碑进度）
+        const projects = (GameState.projects || []).filter(p => !p.completed);
+        projects.forEach(p => {
+            const ms = p.milestones[p.currentMilestone];
+            const progress = ms && ms.progress ? ms.progress + '%' : '0%';
+            lines.push(`  · [项目] ${p.name}（当前节点：${ms ? ms.name : '完成'} ${progress}）`);
         });
+
+        // 新版：待办
+        const todos = (GameState.todos || []).filter(t => !t.completed);
+        todos.forEach(t => {
+            lines.push(`  · [待办] ${t.name}`);
+        });
+
+        // 新版：日常习惯
+        const dailies = (GameState.dailies || []).filter(d => !d.completed);
+        dailies.forEach(d => {
+            const streak = d.streak ? `(连续${d.streak}天)` : '';
+            lines.push(`  · [日常] ${d.name} ${streak}`);
+        });
+
+        if (lines.length === 0) return '- 当前无待办任务';
         return '- 当前任务列表：\n' + lines.join('\n');
     },
 
