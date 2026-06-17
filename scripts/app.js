@@ -1016,6 +1016,19 @@ function confirmReset() {
     }
 }
 
+// ============ Change name ============
+
+function changeName() {
+    var currentName = GameState.character ? GameState.character.name : '';
+    var newName = prompt('输入新名字（当前：' + currentName + '）', currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+        GameState.character.name = newName.trim();
+        document.getElementById('display-name').textContent = newName.trim();
+        saveGame();
+        addMessage('god', '好。从现在起，你叫「' + newName.trim() + '」。');
+    }
+}
+
 // ============ Init ============
 
 window.addEventListener('DOMContentLoaded', () => {
