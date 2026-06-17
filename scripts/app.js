@@ -637,20 +637,20 @@ function deleteTask(id) {
 }
 
 function renderTasks() {
-    const tasks = GameState.dailyTasks;
+    const tasks = GameState.dailyTasks || [];
 
     const daily = tasks.filter(t => t.type === 'daily' || !t.type);
-    const side = tasks.filter(t => t.type === 'side');
-    const main = tasks.filter(t => t.type === 'main');
+    const side = (GameState.todos || []).filter(t => !t.completed);
+    const main = (GameState.projects || []).filter(t => !t.completed);
 
-    renderTaskList('task-list-daily', daily, '在战友陵墓中添加任务');
-    renderTaskList('task-list-side', side, '在战友陵墓中添加任务');
-    renderTaskList('task-list-main', main, '在战友陵墓中添加任务');
+    renderCampTaskList('task-list-daily', daily, '在战友陵墓中添加任务');
+    renderCampTaskList('task-list-side', side, '在战友陵墓中添加任务');
+    renderCampTaskList('task-list-main', main, '在战友陵墓中添加任务');
 
     if (window.TaskSystem) TaskSystem.render();
 }
 
-function renderTaskList(containerId, tasks, hint) {
+function renderCampTaskList(containerId, tasks, hint) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -659,23 +659,39 @@ function renderTaskList(containerId, tasks, hint) {
         return;
     }
 
+    const isDone = t => t.done || t.completed;
+
     container.innerHTML = tasks.map(t => {
-        const status = t.done ? '✅' : '⬜';
+        const status = isDone(t) ? '✅' : '⬜';
         let extra = '';
         if (t.type === 'daily' && t.streak > 0) extra = `<span class="task-streak">🔥${t.streak}</span>`;
-        if (t.type === 'side' && t.deadline) {
+        if (t.type === 'todo' && t.deadline) {
             const daysLeft = Math.ceil((new Date(t.deadline) - new Date()) / 86400000);
             extra = `<span class="task-deadline">${daysLeft <= 0 ? '逾期' : daysLeft + '天'}</span>`;
         }
-        if (t.type === 'main' && t.milestones && t.milestones.length > 0) {
-            extra = `<span class="task-progress">${t.currentMilestone || 0}/${t.milestones.length}</span>`;
+        if (t.type === 'project' && t.milestones && t.milestones.length > 0) {
+            const ms = t.milestones[t.currentMilestone];
+            const msProgress = ms && ms.progress ? ms.progress + '%' : '0%';
+            extra = `<span class="task-progress">${t.currentMilestone || 0}/${t.milestones.length} · ${ms ? ms.name : ''}（${msProgress}）</span>`;
         }
+
+        let actionHtml = '';
+        if (!isDone(t)) {
+            if (t.type === 'daily') {
+                actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeDaily(${t.id})">✓</span>`;
+            } else if (t.type === 'todo') {
+                actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeTodo(${t.id})">✓</span>`;
+            } else if (t.type === 'project') {
+                actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeMilestone(${t.id})">⬆</span>`;
+            }
+        }
+
         return `
-            <div class="task-item ${t.done ? 'done' : ''}" onclick="toggleTask(${t.id})">
+            <div class="task-item ${isDone(t) ? 'done' : ''}">
                 <span>${status}</span>
                 <span class="task-name">${t.name}</span>
                 ${extra}
-                ${!t.done ? `<span class="task-delete" onclick="event.stopPropagation(); deleteTask(${t.id})">✕</span>` : ''}
+                ${actionHtml}
             </div>
         `;
     }).join('');
@@ -747,9 +763,12 @@ function endDay() {
 
 function showEndDayPreview() {
     const s = GameState.stats;
-    const tasks = GameState.dailyTasks;
-    const completed = tasks.filter(t => t.done).length;
-    const total = tasks.length;
+    const tasks = GameState.dailyTasks || [];
+    const todos = GameState.todos || [];
+    const projects = GameState.projects || [];
+    const isDone = t => t.done || t.completed;
+    const completed = tasks.filter(isDone).length + todos.filter(isDone).length;
+    const total = tasks.length + todos.filter(t => !isDone(t)).length + projects.filter(t => !isDone(t)).length;
 
     const ashGain = Math.floor(s.flame / 2);
     const newFlame = Math.floor(s.flame / 2);
@@ -822,8 +841,8 @@ function confirmEndDay() {
     const result = GameEngine.endDay(GameState);
     const s = GameState.stats;
 
-    const done = (GameState.dailyTasks || []).filter(t => t.completed).length;
-    addLog(`结束第${s.totalDays - 1}天，完成${done}个任务，火苗${s.flame}，灰烬+${result.ashGain || 0}`);
+    const dailyDone = (GameState.dailyTasks || []).filter(t => t.done || t.completed).length;
+    addLog(`结束第${s.totalDays - 1}天，完成${dailyDone}个任务，火苗${s.flame}，灰烬+${result.ashGain || 0}`);
 
     if (window.TaskSystem) TaskSystem.resetDaily();
     saveGame();
@@ -879,7 +898,7 @@ async function settleSeedsAndTransition(result, s) {
     // AI 记忆压缩整理
     if (window.AIMemory) {
         const tasks = GameState.dailyTasks || [];
-        const completed = tasks.filter(t => t.done).length;
+        const completed = tasks.filter(t => t.done || t.completed).length;
         AIMemory.compressAtEndDay({
             day: s.totalDays,
             flame: s.flame,

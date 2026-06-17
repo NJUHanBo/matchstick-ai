@@ -804,6 +804,15 @@ body {
 
 .task-delete:hover { opacity: 1; color: #c44; }
 
+.task-action {
+    margin-left: auto;
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0.6;
+    padding: 0 4px;
+}
+.task-action:hover { opacity: 1; color: #5a5; }
+
 .task-name { flex: 1; }
 
 .task-streak {
