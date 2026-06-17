@@ -2074,15 +2074,182 @@ body {
     color: var(--fire-glow);
 }
 
-/* Responsive */
+/* ============ Responsive — Mobile ============ */
+
 @media (max-width: 768px) {
-    .camp-grid { grid-template-columns: 1fr; }
-    .map-hint { font-size: 9px; white-space: normal; max-width: 90vw; text-align: center; }
-    .resource-bar { gap: 6px; }
-    .status-panel { flex-direction: column; gap: 4px; }
-    .loc-overlay-panel { width: 98vw; max-height: 92vh; }
+    /* --- 顶栏 & 资源条 --- */
+    .status-panel {
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px 8px !important;
+    }
+
+    .resource-bar {
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+        font-size: 12px;
+    }
+
+    .resource { gap: 2px; }
+    .res-icon { font-size: 13px; }
+
+    .player-avatar { font-size: 18px; }
+    .player-name-display { font-size: 12px; }
+
+    /* --- 地图 --- */
+    .map-viewport { min-height: 180px; }
+    .map-hint {
+        font-size: 9px;
+        white-space: normal;
+        max-width: 90vw;
+        text-align: center;
+    }
+
+    /* --- 地点 Overlay --- */
+    .loc-overlay-panel {
+        width: 100vw;
+        max-height: 100vh;
+        height: 100vh;
+        border: none;
+        box-shadow: none;
+    }
+
+    .loc-overlay-header {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .loc-overlay-body {
+        padding: 8px;
+        min-height: 0;
+    }
+
+    /* --- 营地篝火 grid --- */
+    .camp-grid { grid-template-columns: 1fr; gap: 6px; }
+
+    .panel-title { font-size: 11px; margin-bottom: 6px; }
+
+    .stats-grid { gap: 4px; }
+    .stat-row { font-size: 10px; gap: 6px; }
+    .stat-row > span:first-child { width: 30px; }
+    .stat-value { font-size: 11px; }
+    .stat-meta { font-size: 9px; }
+
+    .shop-quick { gap: 4px; }
+    .shop-panel .r8-btn--sm { font-size: 9px !important; }
+
+    .task-item {
+        padding: 6px 8px;
+        font-size: 12px;
+        gap: 6px;
+    }
+
+    .quick-actions { gap: 4px; }
+
+    /* --- 神使聊天 --- */
+    .loc-chat-window { min-height: 300px; }
+    .loc-chat-window .r8-window__body {
+        min-height: 200px;
+        max-height: 60vh;
+    }
+
+    .msg {
+        max-width: 90%;
+        padding: 8px 10px;
+        font-size: 13px;
+        line-height: 1.7;
+    }
+
+    .msg-god .msg-sender,
+    .msg-user .msg-sender { font-size: 9px; }
+
+    .chat-input-area { padding: 6px; gap: 4px; }
+    .chat-input-area .r8-input { font-size: 14px; }
+
+    /* --- 各类 Overlay 弹窗 --- */
+    .timer-content {
+        padding: 20px 16px;
+        max-width: 100%;
+        width: 92%;
+    }
+
+    .timer-task-name { font-size: 13px; margin-bottom: 16px; }
+    .timer-display { font-size: 32px; margin-bottom: 14px; }
+    .timer-target { font-size: 11px; margin-bottom: 16px; }
+    .timer-buttons { gap: 8px; flex-wrap: wrap; }
+
+    .endday-content { max-width: 100%; }
+    .endday-stats { padding: 10px; }
+    .endday-row { font-size: 11px; padding: 6px 0; }
+
+    .task-setup-content { max-width: 100%; }
+    .setup-field label { font-size: 10px; }
+    .setup-options { gap: 4px; }
+
+    .task-form-content { max-width: 100%; width: 92vw; }
+    .task-form-fields { gap: 10px; margin: 12px 0 14px; }
+    .task-form-label { font-size: 11px; }
+
+    .rating-stars { gap: 4px; }
+
+    .night-content { padding: 24px 16px; }
+    .night-memory-title { font-size: 14px; }
+    .night-memory-text { font-size: 12px; }
+    .night-message { font-size: 13px; }
+
+    /* --- 战友陵墓 --- */
+    .tomb-flavor { font-size: 12px; }
+    .tomb-tabs { margin-bottom: 10px; }
+    .tomb-tab { padding: 6px 12px; font-size: 12px; }
+    .tomb-task-item { padding: 8px 10px; gap: 6px; }
+    .tomb-task-name { font-size: 12px; }
+    .tomb-task-meta { font-size: 10px; }
+    .tomb-task-actions { gap: 3px; }
+
+    .qc-field label { font-size: 12px; }
+    .qc-duration-btns, .qc-rating-btns { gap: 4px; }
+
+    /* --- 魔法学院 --- */
+    .academy-dig-header { gap: 8px; }
+    .academy-fragments {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 4px;
+    }
+    .academy-frag { padding: 6px; font-size: 10px; }
+
+    .parchment-reveal {
+        width: 96vw;
+        padding: 16px;
+        max-height: 85vh;
+    }
+    .parchment-reveal-title { font-size: 14px; }
+    .parchment-reveal-content { font-size: 12px; }
+
+    /* --- 命火祭坛 --- */
     .bazi-container { padding: 12px; }
     .bazi-input { max-width: 100%; }
+    .bazi-chart-cell { padding: 6px 2px; font-size: 14px; }
+    .bazi-reading { font-size: 12px; }
+
+    /* --- 种子花园 --- */
     .garden-container { padding: 12px; }
     .garden-tabs { flex-wrap: wrap; }
+    .seed-content { font-size: 12px; }
+
+    /* --- 反馈按钮 --- */
+    .feedback-fab { bottom: 12px; right: 12px; width: 36px; height: 36px; font-size: 16px; }
+
+    /* --- 通用按钮触摸优化 --- */
+    .r8-btn--sm { min-height: 32px; min-width: 32px; }
+    .r8-btn { min-height: 36px; }
+}
+
+/* 极窄屏（<400px） */
+@media (max-width: 400px) {
+    .resource-bar { font-size: 11px; }
+    .resource { gap: 1px; }
+    .timer-display { font-size: 28px; }
+    .msg { font-size: 12px; padding: 6px 8px; }
+    .loc-overlay-header { font-size: 11px; }
 }

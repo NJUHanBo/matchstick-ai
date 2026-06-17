@@ -272,7 +272,7 @@
             const mapPxH = MAP_H * TILE;
             const scaleX = w / mapPxW;
             const scaleY = h / mapPxH;
-            this.scale = Math.max(2, Math.floor(Math.min(scaleX, scaleY)));
+            this.scale = Math.max(1, Math.floor(Math.min(scaleX, scaleY)));
             this.canvas.width = mapPxW;
             this.canvas.height = mapPxH;
             this.canvas.style.width = mapPxW * this.scale + 'px';
@@ -283,6 +283,11 @@
         _bindEvents() {
             this.canvas.addEventListener('click', (e) => this._onClick(e));
             this.canvas.addEventListener('mousemove', (e) => this._onMove(e));
+            this.canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                const t = e.changedTouches[0];
+                if (t) this._onClick(t);
+            }, { passive: false });
             window.addEventListener('keydown', (e) => {
                 if (this.paused) return;
                 if (e.key === 'Enter' && this.nearLocation) {
