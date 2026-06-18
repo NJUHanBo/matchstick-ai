@@ -632,8 +632,13 @@ body {
 }
 
 .task-item.done {
-    opacity: 0.3;
-    text-decoration: line-through;
+    opacity: 0.7;
+    border-left: 3px solid var(--sprout-bright);
+    background: rgba(64, 96, 48, 0.08);
+}
+
+.task-item.done .task-name {
+    color: var(--sprout-bright);
 }
 
 .quick-actions {
@@ -2072,6 +2077,134 @@ body {
 
 .feedback-msg-error {
     color: var(--fire-glow);
+}
+
+/* ============ 今日战报 ============ */
+
+.battle-report-panel {
+    border-left: 3px solid var(--sprout-green);
+}
+
+.br-progress {
+    margin-bottom: 10px;
+}
+
+.br-progress-label {
+    font-size: 11px;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.br-progress-bar {
+    height: 8px;
+    background: var(--bg-void);
+    border: 2px solid var(--border);
+}
+
+.br-progress-fill {
+    height: 100%;
+    background: var(--sprout-bright);
+    transition: width 0.5s ease;
+}
+
+.br-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.br-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: rgba(64, 96, 48, 0.06);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    animation: brSlideIn 0.3s ease-out;
+}
+
+@keyframes brSlideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.br-icon { font-size: 13px; flex-shrink: 0; }
+
+.br-name {
+    flex: 1;
+    color: var(--text-bright);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.br-rewards {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.br-reward {
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.br-reward--sawdust { color: var(--text-bright); background: rgba(192, 184, 160, 0.1); }
+.br-reward--flame { color: var(--fire-glow); background: rgba(200, 90, 32, 0.1); }
+
+/* ============ 陵墓已完成折叠区 ============ */
+
+.tomb-completed-section {
+    margin-top: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+}
+
+.tomb-completed-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 0;
+    width: 100%;
+    text-align: left;
+}
+
+.tomb-completed-toggle:hover { color: var(--text-main); }
+
+.tomb-completed-arrow {
+    font-size: 10px;
+    width: 12px;
+    text-align: center;
+}
+
+.tomb-completed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.tomb-task-completed {
+    opacity: 0.65;
+    border-color: transparent;
+    background: rgba(64, 96, 48, 0.05);
+    border-left: 2px solid var(--sprout-green);
+}
+
+.tomb-task-completed .tomb-task-name {
+    color: var(--sprout-bright);
+}
+
+.tomb-completed-check {
+    font-size: 12px;
+    margin-right: 4px;
 }
 
 /* ============ 任务完成反馈动画 ============ */

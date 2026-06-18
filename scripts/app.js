@@ -650,8 +650,79 @@ function renderTasks() {
     renderCampTaskList('task-list-daily', daily, '在战友陵墓中添加任务');
     renderCampTaskList('task-list-side', side, '在战友陵墓中添加任务');
     renderCampTaskList('task-list-main', main, '在战友陵墓中添加任务');
+    renderBattleReport();
 
     if (window.TaskSystem) TaskSystem.render();
+}
+
+function renderBattleReport() {
+    const panel = document.getElementById('battle-report-panel');
+    const container = document.getElementById('battle-report');
+    if (!panel || !container) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const logs = GameState.logs || [];
+
+    const todayLogs = logs.filter(l => {
+        const match = l.match(/^\[(\d+\/\d+)/);
+        if (!match) return false;
+        const now = new Date();
+        const logDate = match[1];
+        const todayDate = (now.getMonth() + 1) + '/' + now.getDate();
+        return logDate === todayDate;
+    }).filter(l =>
+        l.includes('完成') || l.includes('推进')
+    );
+
+    const dailyTasks = (GameState.dailyTasks || []).filter(t => t.type === 'daily');
+    const doneCount = dailyTasks.filter(t => t.done || t.completed).length;
+    const totalCount = dailyTasks.length;
+
+    if (todayLogs.length === 0 && doneCount === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = '';
+
+    let html = '';
+
+    if (totalCount > 0) {
+        const pct = Math.round((doneCount / totalCount) * 100);
+        html += '<div class="br-progress">';
+        html += '<div class="br-progress-label">日常进度 ' + doneCount + '/' + totalCount + '</div>';
+        html += '<div class="br-progress-bar"><div class="br-progress-fill" style="width:' + pct + '%"></div></div>';
+        html += '</div>';
+    }
+
+    if (todayLogs.length > 0) {
+        html += '<div class="br-entries">';
+        todayLogs.forEach(function (log) {
+            var text = log.replace(/^\[.*?\]\s*/, '');
+            var icon = '✅';
+            if (text.includes('推进')) icon = '⬆️';
+            if (text.includes('项目')) icon = '🏆';
+
+            var rewards = '';
+            var sawMatch = text.match(/\+(\d+)木屑/);
+            var flameMatch = text.match(/\+(\d+)火苗/);
+            if (sawMatch) rewards += '<span class="br-reward br-reward--sawdust">🪵+' + sawMatch[1] + '</span>';
+            if (flameMatch) rewards += '<span class="br-reward br-reward--flame">🔥+' + flameMatch[1] + '</span>';
+
+            var taskName = '';
+            var nameMatch = text.match(/「(.+?)」/);
+            if (nameMatch) taskName = nameMatch[1];
+
+            html += '<div class="br-entry">';
+            html += '<span class="br-icon">' + icon + '</span>';
+            html += '<span class="br-name">' + (taskName || text) + '</span>';
+            html += '<span class="br-rewards">' + rewards + '</span>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
 }
 
 function renderCampTaskList(containerId, tasks, hint) {

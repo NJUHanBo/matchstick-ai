@@ -586,10 +586,12 @@ var TaskSystem = (function () {
     }
 
     function renderProjectList() {
-        var projects = (GameState.projects || []).filter(function (p) { return !p.completed; });
+        var allProjects = GameState.projects || [];
+        var projects = allProjects.filter(function (p) { return !p.completed; });
+        var completed = allProjects.filter(function (p) { return p.completed; });
         var html = '<div class="tomb-add-row"><button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.addProject()">+ 添加项目</button></div>';
 
-        if (projects.length === 0) {
+        if (projects.length === 0 && completed.length === 0) {
             return html + '<p class="tomb-empty">还没有进行中的项目。</p>';
         }
 
@@ -617,22 +619,24 @@ var TaskSystem = (function () {
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeProject(' + p.id + ')">✕</button>' +
                 '</div></div>';
         });
+
+        html += renderCompletedSection(completed, 'project');
         return html;
     }
 
     function renderTodoList() {
-        var todos = (GameState.todos || []).filter(function (t) { return !t.completed; });
+        var allTodos = GameState.todos || [];
+        var todos = allTodos.filter(function (t) { return !t.completed; });
+        var completed = allTodos.filter(function (t) { return t.completed; });
         var html = '<div class="tomb-add-row"><button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.addTodo()">+ 添加待办</button></div>';
 
-        if (todos.length === 0) {
+        if (todos.length === 0 && completed.length === 0) {
             return html + '<p class="tomb-empty">没有待办事项。</p>';
         }
 
         // 排序：逾期 > 今天截止 > 高重要 > 有截止日期（按日期升序） > 无截止日期
         todos.sort(function (a, b) {
-            var scoreA = todoSortScore(a);
-            var scoreB = todoSortScore(b);
-            return scoreA - scoreB;
+            return todoSortScore(a) - todoSortScore(b);
         });
 
         todos.forEach(function (t) {
@@ -651,6 +655,8 @@ var TaskSystem = (function () {
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeTodo(' + t.id + ')">✕</button>' +
                 '</div></div>';
         });
+
+        html += renderCompletedSection(completed, 'todo');
         return html;
     }
 
@@ -687,6 +693,63 @@ var TaskSystem = (function () {
         if (diff < 0) return '逾期' + Math.abs(diff) + '天';
         if (diff === 0) return '今天截止';
         return '还有' + diff + '天';
+    }
+
+    // ========== 已完成折叠区 ==========
+
+    var completedExpanded = {};
+
+    function renderCompletedSection(items, type) {
+        if (!items || items.length === 0) return '';
+
+        // 只保留最近 7 天完成的
+        var cutoff = Date.now() - 7 * 86400000;
+        var recent = items.filter(function (t) {
+            var at = t.completedAt ? new Date(t.completedAt).getTime() : 0;
+            return at > cutoff;
+        }).sort(function (a, b) {
+            return (new Date(b.completedAt || 0)).getTime() - (new Date(a.completedAt || 0)).getTime();
+        });
+
+        if (recent.length === 0) return '';
+
+        var expanded = completedExpanded[type] || false;
+        var html = '<div class="tomb-completed-section">';
+        html += '<button class="tomb-completed-toggle" onclick="TaskSystem.toggleCompleted(\'' + type + '\')">';
+        html += '<span class="tomb-completed-arrow">' + (expanded ? '▼' : '▶') + '</span>';
+        html += '已完成（' + recent.length + '）';
+        html += '</button>';
+
+        if (expanded) {
+            html += '<div class="tomb-completed-list">';
+            recent.forEach(function (t) {
+                var dateStr = '';
+                if (t.completedAt) {
+                    var d = new Date(t.completedAt);
+                    dateStr = (d.getMonth() + 1) + '/' + d.getDate();
+                }
+                var extra = '';
+                if (type === 'project') {
+                    extra = ' · ' + (t.milestones ? t.milestones.length : 0) + '个里程碑';
+                }
+                html += '<div class="tomb-task-item tomb-task-completed">' +
+                    '<div class="tomb-task-main">' +
+                    '<span class="tomb-completed-check">✅</span>' +
+                    '<span class="tomb-task-name">' + t.name + '</span>' +
+                    '</div>' +
+                    '<div class="tomb-task-meta">' + dateStr + ' 完成' + extra + '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    function toggleCompleted(type) {
+        completedExpanded[type] = !completedExpanded[type];
+        render();
     }
 
     // ========== 编辑待办 ==========
@@ -912,6 +975,7 @@ var TaskSystem = (function () {
         removeDaily: removeDaily,
         removeProject: removeProject,
         removeTodo: removeTodo,
+        toggleCompleted: toggleCompleted,
         resetDaily: resetDaily,
         _setQc: _setQc,
         _cancelComplete: _cancelComplete,
