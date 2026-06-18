@@ -301,6 +301,19 @@ var TaskSystem = (function () {
                 ? '完成项目「' + s.project.name + '」！+' + sawdust + '木屑 +' + flame + '火苗'
                 : '完成里程碑「' + s.ms.name + '」+' + sawdust + '木屑 +' + flame + '火苗';
             addLog(logText);
+
+            saveGame();
+            updateResources();
+            render();
+            renderTasks();
+
+            if (window.GameFeedback) {
+                if (isProjectComplete) {
+                    GameFeedback.onProjectComplete(s.project, sawdust, flame, blackDog, GameState.blackDogCombo || 0);
+                } else {
+                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, blackDog, GameState.blackDogCombo || 0);
+                }
+            }
         } else {
             // 未完成，给予进度奖励
             var reward = Math.round(progressDelta * 0.5);
@@ -311,12 +324,16 @@ var TaskSystem = (function () {
             GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, s.project.interest, minutes);
 
             addLog('推进「' + s.project.name + '」里程碑「' + s.ms.name + '」进度 ' + oldProgress + '%→' + newProgress + '% +' + reward + '木屑 +' + flameReward + '火苗');
-        }
 
-        saveGame();
-        updateResources();
-        render();
-        renderTasks();
+            saveGame();
+            updateResources();
+            render();
+            renderTasks();
+
+            if (window.GameFeedback) {
+                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, oldProgress, newProgress);
+            }
+        }
     }
 
     function completeTodo(id) {
@@ -436,6 +453,10 @@ var TaskSystem = (function () {
         updateResources();
         render();
         renderTasks();
+
+        if (window.GameFeedback) {
+            GameFeedback.onDailyComplete(task, sawdust, flame, calcEnergyCost(minutes), blackDog, GameState.blackDogCombo || 0);
+        }
     }
 
     function finishTodo(todo, minutes, rating) {
@@ -463,6 +484,10 @@ var TaskSystem = (function () {
         saveGame();
         updateResources();
         render();
+
+        if (window.GameFeedback) {
+            GameFeedback.onTodoComplete(todo, sawdust, flame, calcEnergyCost(minutes), blackDog, GameState.blackDogCombo || 0);
+        }
     }
 
     // ========== 计算工具 ==========

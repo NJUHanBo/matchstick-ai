@@ -2074,6 +2074,212 @@ body {
     color: var(--fire-glow);
 }
 
+/* ============ 任务完成反馈动画 ============ */
+
+.reward-burst {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.reward-burst--out {
+    animation: rewardFadeOut 0.6s ease forwards;
+}
+
+@keyframes rewardFadeOut {
+    to { opacity: 0; transform: scale(1.05); }
+}
+
+/* 全屏闪光 */
+.reward-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(200, 140, 40, 0.15), transparent 70%);
+    animation: flashPulse 0.4s ease-out;
+}
+
+.reward-flash--blackdog {
+    background: radial-gradient(circle at 50% 50%, rgba(180, 60, 60, 0.18), transparent 70%);
+}
+
+.reward-flash--project {
+    background: radial-gradient(circle at 50% 50%, rgba(255, 209, 102, 0.2), transparent 70%);
+}
+
+@keyframes flashPulse {
+    0% { opacity: 0; transform: scale(0.8); }
+    30% { opacity: 1; }
+    100% { opacity: 0.6; transform: scale(1); }
+}
+
+/* 奖励卡片 */
+.reward-card {
+    position: relative;
+    text-align: center;
+    animation: cardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cardPop {
+    0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+    60% { transform: scale(1.05) translateY(-5px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.reward-title {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    font-size: 14px;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+    text-shadow: 0 0 12px rgba(200, 160, 80, 0.4);
+}
+
+.reward-title--blackdog {
+    color: #d06060;
+    text-shadow: 0 0 12px rgba(208, 96, 96, 0.5);
+}
+
+.reward-title--project {
+    color: #ffd166;
+    font-size: 16px;
+    text-shadow: 0 0 16px rgba(255, 209, 102, 0.6);
+}
+
+.reward-subtitle {
+    font-size: 12px;
+    color: var(--text-main);
+    margin-bottom: 12px;
+}
+
+/* 奖励数字 */
+.reward-items {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.reward-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: numFloat 0.6s ease-out;
+}
+
+.reward-item--sawdust .reward-num { color: var(--text-bright); }
+.reward-item--flame .reward-num { color: var(--fire-glow); }
+
+.reward-icon { font-size: 20px; }
+
+.reward-num {
+    font-family: var(--r8-font-display, 'Press Start 2P', monospace);
+    font-size: 22px;
+    text-shadow: 0 0 10px currentColor;
+}
+
+@keyframes numFloat {
+    0% { opacity: 0; transform: translateY(16px) scale(0.7); }
+    50% { transform: translateY(-4px) scale(1.1); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 连击标识 */
+.reward-combo {
+    font-size: 12px;
+    color: #d06060;
+    margin-top: 8px;
+    animation: comboPulse 0.5s ease-out;
+}
+
+.reward-combo--high {
+    font-size: 14px;
+    color: #ff6060;
+    text-shadow: 0 0 10px rgba(255, 96, 96, 0.5);
+    animation: comboPulse 0.5s ease-out, comboGlow 1s ease-in-out infinite alternate;
+}
+
+@keyframes comboPulse {
+    0% { opacity: 0; transform: scale(0.5); }
+    60% { transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes comboGlow {
+    from { text-shadow: 0 0 6px rgba(255, 96, 96, 0.3); }
+    to { text-shadow: 0 0 14px rgba(255, 96, 96, 0.6); }
+}
+
+.reward-streak {
+    font-size: 11px;
+    color: var(--fire-glow);
+    margin-top: 6px;
+}
+
+.reward-cost {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 8px;
+}
+
+/* 粒子飞散 */
+.reward-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--fire-glow);
+    top: 50%;
+    left: 50%;
+    border-radius: 1px;
+    animation: particleBurst 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes particleBurst {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
+/* 资源栏脉冲 */
+.resource--pulse {
+    animation: resPulse 0.6s ease-out;
+}
+
+@keyframes resPulse {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.3); filter: brightness(2); }
+    60% { transform: scale(1.1); filter: brightness(1.4); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* 屏幕震动 */
+.screen-shake {
+    animation: shake 0.3s ease-out;
+}
+
+.screen-shake--heavy {
+    animation: shakeHeavy 0.4s ease-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, 2px); }
+    80% { transform: translate(1px, -1px); }
+}
+
+@keyframes shakeHeavy {
+    0%, 100% { transform: translate(0); }
+    15% { transform: translate(-4px, 2px); }
+    30% { transform: translate(3px, -3px); }
+    45% { transform: translate(-3px, 1px); }
+    60% { transform: translate(2px, -2px); }
+    75% { transform: translate(-1px, 2px); }
+    90% { transform: translate(1px, -1px); }
+}
+
 /* ============ Responsive — Mobile ============ */
 
 @media (max-width: 768px) {

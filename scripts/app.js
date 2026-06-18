@@ -624,6 +624,10 @@ function submitRating(rating) {
 
     if (window.Analytics) Analytics.trackTaskComplete(task.name, actualMinutes, rating, r);
 
+    if (window.GameFeedback) {
+        GameFeedback.onDailyComplete(task, r.sawdust, r.flame, r.energyCost, result.isBlackDog, result.combo);
+    }
+
     activeTimerTask = null;
     updateResources();
     saveGame();
