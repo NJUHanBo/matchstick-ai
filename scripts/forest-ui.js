@@ -72,6 +72,20 @@ var ForestUI = (function () {
         html += '<div class="forest-stat-item"><span class="forest-stat-label">当前连击</span><span class="forest-stat-value forest-combo' + (stats.combo > 0 ? ' forest-combo-active' : '') + '">' + stats.combo + '</span></div>';
         html += '</div>';
 
+        // 黑狗围猎入口
+        html += '<div class="forest-hunt-section">';
+        html += '<button class="r8-btn r8-btn--primary forest-hunt-btn" onclick="BlackDogGame.launch()">⚔ 黑狗围猎</button>';
+        html += '<p class="forest-hunt-desc">用拼音打碎涌来的负面念头</p>';
+        var bdg = (typeof GameState !== 'undefined' && GameState.blackDogGame) || {};
+        if (bdg.highScore) {
+            html += '<div class="forest-hunt-records">';
+            html += '<span>最高分 ' + bdg.highScore + '</span>';
+            html += '<span>最高波次 ' + (bdg.highWave || 0) + '</span>';
+            html += '<span>累计击杀 ' + (bdg.totalKilled || 0) + '</span>';
+            html += '</div>';
+        }
+        html += '</div>';
+
         // 提示
         html += '<p class="forest-tip">「' + tip + '」</p>';
 
