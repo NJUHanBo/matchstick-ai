@@ -35,12 +35,38 @@ var BlackDogGame = (function () {
         ['一无是处','yiwushichu'],['得过且过','deguoqieguo'],
     ];
 
-    var DOG_SCORES = { s: 10, m: 25, l: 50 };
-    var DOG_SPEEDS = { s: 28, m: 20, l: 14 };
+    // ===== Boss 词库 =====
+    // 疾影型：短句，极快
+    var BOSS_FAST = [
+        { name: '疾影·焦', text: '你不行的', pinyin: 'nibuxingde' },
+        { name: '疾影·惧', text: '别挣扎了', pinyin: 'biezhengzhale' },
+        { name: '疾影·怯', text: '你会搞砸', pinyin: 'nihuigaoza' },
+        { name: '疾影·躁', text: '来不及了', pinyin: 'laibujile' },
+        { name: '疾影·厌', text: '没人在意', pinyin: 'meirenzaiyi' },
+        { name: '疾影·惰', text: '明天再说', pinyin: 'mingtianzaishuo' },
+        { name: '疾影·疑', text: '都在笑你', pinyin: 'douzaixiaoni' },
+        { name: '疾影·寒', text: '不值一提', pinyin: 'buzhiyiti' },
+    ];
+    // 深渊型：长句，极慢，巨大
+    var BOSS_SLOW = [
+        { name: '深渊·绝望', text: '你永远不会好起来的', pinyin: 'niyongyuanbuhuihaoqilaide' },
+        { name: '深渊·虚无', text: '做什么都没有意义', pinyin: 'zuoshenmadoumeiyouyiyi' },
+        { name: '深渊·否定', text: '你从来就不够好', pinyin: 'niconglaijiubugouhao' },
+        { name: '深渊·孤寂', text: '没有人真的在乎你', pinyin: 'meiyourenzhendezaihuni' },
+        { name: '深渊·倦怠', text: '再努力也改变不了什么', pinyin: 'zainuliyegaibianbuliaoshenme' },
+        { name: '深渊·自毁', text: '你活该过得这么差', pinyin: 'nihuogaiguodezhemecha' },
+        { name: '深渊·深渊', text: '一切都已经太迟了', pinyin: 'yiqiedouyijingtaichile' },
+        { name: '深渊·空洞', text: '你就是个彻头彻尾的失败者', pinyin: 'nijiushigechetoucheweideshibaizhe' },
+    ];
+
+    var DOG_SCORES = { s: 10, m: 25, l: 50, boss_fast: 80, boss_slow: 120 };
+    var DOG_SPEEDS = { s: 28, m: 20, l: 14, boss_fast: 45, boss_slow: 8 };
     var DOG_COLORS = {
         s: { body: '#1a1a2e', eye: '#ff3344', glow: '#ff334480' },
         m: { body: '#12102a', eye: '#cc22ff', glow: '#cc22ff80' },
         l: { body: '#0a0818', eye: '#ff2222', glow: '#ff222280' },
+        boss_fast: { body: '#2a1010', eye: '#ff4400', glow: '#ff440088' },
+        boss_slow: { body: '#08001a', eye: '#8800ff', glow: '#8800ff88' },
     };
 
     // ===== 音效 =====
@@ -177,7 +203,7 @@ var BlackDogGame = (function () {
                     '..##....##..',
                     '...#....#...',
                 ], { '#': c.body, 'E': c.eye });
-            } else {
+            } else if (k === 'l') {
                 sp[k] = makeSprite([
                     '...##......##...',
                     '..####....####..',
@@ -188,6 +214,35 @@ var BlackDogGame = (function () {
                     '..###......###..',
                     '...##......##...',
                     '....#......#....',
+                ], { '#': c.body, 'E': c.eye });
+            } else if (k === 'boss_fast') {
+                sp[k] = makeSprite([
+                    '..##......##..',
+                    '.####....####.',
+                    '.#E.######.E#.',
+                    '.##############',
+                    '####..####..###',
+                    '.###..####..##.',
+                    '..##........#..',
+                    '...##......#...',
+                    '....##...##....',
+                    '.....#...#.....',
+                ], { '#': c.body, 'E': c.eye });
+            } else if (k === 'boss_slow') {
+                sp[k] = makeSprite([
+                    '....##..........##....',
+                    '...####........####...',
+                    '..######......######..',
+                    '.########....########.',
+                    '.##E..############E##.',
+                    '.########################',
+                    '########..####..########',
+                    '.######..........######.',
+                    '..#####..........#####..',
+                    '...####..........####...',
+                    '....###..........###....',
+                    '.....##..........##.....',
+                    '......#..........#......',
                 ], { '#': c.body, 'E': c.eye });
             }
         }
@@ -234,11 +289,23 @@ var BlackDogGame = (function () {
             else { size = r < 0.4 ? 's' : r < 0.75 ? 'm' : 'l'; }
             spawnQueue.push(size);
         }
+
+        // 第3波起每波末尾加一只 boss
+        if (wave >= 3) {
+            var bossType = Math.random() < 0.5 ? 'boss_fast' : 'boss_slow';
+            spawnQueue.push(bossType);
+        }
+
         spawnInterval = Math.max(700, 2500 - (wave - 1) * 200);
         spawnTimer = 800;
     }
 
     function pickWord(size) {
+        if (size === 'boss_fast' || size === 'boss_slow') {
+            var bpool = size === 'boss_fast' ? BOSS_FAST : BOSS_SLOW;
+            var pick = bpool[Math.floor(Math.random() * bpool.length)];
+            return { text: pick.text, pinyin: pick.pinyin, bossName: pick.name };
+        }
         var pool = size === 's' ? POOL_S : size === 'm' ? POOL_M : POOL_L;
         var usedFirstLetters = {};
         dogs.forEach(function (d) {
@@ -247,18 +314,19 @@ var BlackDogGame = (function () {
 
         var candidates = pool.filter(function (w) { return !usedFirstLetters[w[1][0]]; });
         if (candidates.length === 0) candidates = pool;
-        var pick = candidates[Math.floor(Math.random() * candidates.length)];
-        return { text: pick[0], pinyin: pick[1] };
+        pick = candidates[Math.floor(Math.random() * candidates.length)];
+        return { text: pick[0], pinyin: pick[1], bossName: null };
     }
 
     function spawnDog() {
         if (spawnQueue.length === 0) return;
         var size = spawnQueue.shift();
         var word = pickWord(size);
+        var isBoss = size === 'boss_fast' || size === 'boss_slow';
         var angle = Math.random() * Math.PI * 2;
-        var dist = Math.max(W, H) * 0.55;
+        var dist = Math.max(W, H) * (isBoss ? 0.6 : 0.55);
         var speed = DOG_SPEEDS[size] * (1 + (wave - 1) * 0.04);
-        dogs.push({
+        var dog = {
             x: CX + Math.cos(angle) * dist,
             y: CY + Math.sin(angle) * dist,
             speed: speed,
@@ -269,7 +337,19 @@ var BlackDogGame = (function () {
             alive: true,
             flash: 0,
             bobPhase: Math.random() * Math.PI * 2,
-        });
+            isBoss: isBoss,
+            bossName: word.bossName,
+        };
+        dogs.push(dog);
+
+        // boss 出场提示
+        if (isBoss) {
+            popups.push({
+                text: word.bossName, x: CX, y: 35,
+                t: 1500, max: 1500,
+                color: size === 'boss_fast' ? '#ff4400' : '#8800ff',
+            });
+        }
     }
 
     // ===== 入口 =====
@@ -496,12 +576,27 @@ var BlackDogGame = (function () {
         var gained = Math.round(pts * mult);
         score += gained;
 
-        // 粒子爆炸
+        // 粒子爆炸（boss 更猛烈）
         var col = DOG_COLORS[dog.size];
-        emitParticles(dog.x, dog.y, [col.eye, '#ff8844', '#ffcc44', col.body], dog.size === 'l' ? 16 : dog.size === 'm' ? 12 : 8);
+        var pCount = dog.isBoss ? 24 : (dog.size === 'l' ? 16 : dog.size === 'm' ? 12 : 8);
+        emitParticles(dog.x, dog.y, [col.eye, '#ff8844', '#ffcc44', col.body], pCount);
 
-        // 碎字闪现
-        flashes.push({ text: dog.text, x: dog.x, y: dog.y, t: 600, max: 600 });
+        // 碎字闪现（boss 更大更持久）
+        flashes.push({
+            text: dog.text, x: dog.x, y: dog.y,
+            t: dog.isBoss ? 1000 : 600,
+            max: dog.isBoss ? 1000 : 600,
+        });
+
+        // boss 击杀名字弹出
+        if (dog.isBoss && dog.bossName) {
+            popups.push({
+                text: dog.bossName + ' SLAIN',
+                x: CX, y: CY - 30,
+                t: 1200, max: 1200,
+                color: col.eye,
+            });
+        }
 
         // 分数弹出
         popups.push({ text: '+' + gained, x: dog.x + 10, y: dog.y - 10, t: 800, max: 800, color: '#ffcc44' });
@@ -513,7 +608,7 @@ var BlackDogGame = (function () {
         }
 
         sfx('kill');
-        freezeT = 50;
+        freezeT = dog.isBoss ? 120 : 50;
 
         input = '';
         targetDog = null;
@@ -665,21 +760,38 @@ var BlackDogGame = (function () {
     function drawDog(dog) {
         var sp = sprites[dog.size];
         if (!sp) return;
+        var bobAmp = dog.isBoss ? 2.5 : 1.5;
         var ox = Math.floor(dog.x - sp.w / 2);
-        var oy = Math.floor(dog.y - sp.h / 2 + Math.sin(dog.bobPhase) * 1.5);
+        var oy = Math.floor(dog.y - sp.h / 2 + Math.sin(dog.bobPhase) * bobAmp);
         var isTarget = dog === targetDog;
+        var col = DOG_COLORS[dog.size];
+
+        // boss 脉动光晕
+        if (dog.isBoss) {
+            var pulse = 0.12 + Math.sin(dog.bobPhase * 2) * 0.06;
+            var radius = sp.w * (dog.size === 'boss_slow' ? 1.2 : 0.9);
+            var grd = ctx.createRadialGradient(
+                Math.floor(dog.x), Math.floor(dog.y), 2,
+                Math.floor(dog.x), Math.floor(dog.y), radius
+            );
+            grd.addColorStop(0, col.glow);
+            grd.addColorStop(1, 'transparent');
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = grd;
+            ctx.fillRect(dog.x - radius, dog.y - radius, radius * 2, radius * 2);
+            ctx.globalAlpha = 1;
+        }
 
         // 目标高亮光圈
         if (isTarget) {
-            ctx.strokeStyle = '#ffcc44';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = dog.isBoss ? col.eye : '#ffcc44';
+            ctx.lineWidth = dog.isBoss ? 1.5 : 1;
             ctx.beginPath();
             ctx.arc(Math.floor(dog.x), Math.floor(dog.y), sp.w * 0.8, 0, Math.PI * 2);
             ctx.stroke();
         }
 
         // 眼睛光晕
-        var col = DOG_COLORS[dog.size];
         sp.px.forEach(function (p) {
             if (p[2] === col.eye) {
                 ctx.fillStyle = col.glow;
@@ -693,13 +805,22 @@ var BlackDogGame = (function () {
             ctx.fillRect(ox + p[0], oy + p[1], 1, 1);
         });
 
+        // boss 名字标签
+        if (dog.isBoss && dog.bossName) {
+            ctx.font = '5px ' + FONT_PX;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = col.eye;
+            ctx.fillText(dog.bossName, Math.floor(dog.x), oy - 18);
+        }
+
         // 词语
-        var wordY = oy - 10;
+        var wordY = oy - (dog.isBoss ? 12 : 10);
         ctx.textAlign = 'center';
 
         // 中文词
-        ctx.font = (dog.size === 'l' ? '11' : '9') + 'px ' + FONT_CN;
-        ctx.fillStyle = isTarget ? '#ff6644' : '#aa8888';
+        var fontSize = dog.isBoss ? 12 : (dog.size === 'l' ? 11 : 9);
+        ctx.font = (dog.isBoss ? 'bold ' : '') + fontSize + 'px ' + FONT_CN;
+        ctx.fillStyle = isTarget ? (dog.isBoss ? col.eye : '#ff6644') : (dog.isBoss ? '#cc8888' : '#aa8888');
         ctx.fillText(dog.text, Math.floor(dog.x), wordY);
 
         // 拼音
@@ -710,7 +831,7 @@ var BlackDogGame = (function () {
         var pyX = Math.floor(dog.x) - pyW / 2;
 
         for (var ci = 0; ci < py.length; ci++) {
-            ctx.fillStyle = ci < dog.typed ? '#44ff44' : '#555555';
+            ctx.fillStyle = ci < dog.typed ? '#44ff44' : (dog.isBoss ? '#666666' : '#555555');
             ctx.fillText(py[ci], pyX, pyY);
             pyX += ctx.measureText(py[ci]).width;
         }
