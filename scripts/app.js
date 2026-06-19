@@ -280,9 +280,9 @@ function completeTaskByName(name, minutes, rating) {
 function addLog(text) {
     if (!GameState.logs) GameState.logs = [];
     const now = new Date();
-    const date = now.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
     const time = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    GameState.logs.push(`[${date} ${time}] ${text}`);
+    const day = GameState.stats ? GameState.stats.totalDays : 0;
+    GameState.logs.push(`[D${day} ${time}] ${text}`);
 }
 
 function addTask(name, type, extra) {
@@ -660,16 +660,12 @@ function renderBattleReport() {
     const container = document.getElementById('battle-report');
     if (!panel || !container) return;
 
-    const today = new Date().toISOString().split('T')[0];
     const logs = GameState.logs || [];
+    const currentDay = GameState.stats ? GameState.stats.totalDays : 0;
+    const dayTag = '[D' + currentDay + ' ';
 
-    const todayLogs = logs.filter(l => {
-        const match = l.match(/^\[(\d+\/\d+)/);
-        if (!match) return false;
-        const now = new Date();
-        const logDate = match[1];
-        const todayDate = (now.getMonth() + 1) + '/' + now.getDate();
-        return logDate === todayDate;
+    const todayLogs = logs.filter(function (l) {
+        return l.startsWith(dayTag);
     }).filter(l =>
         l.includes('完成') || l.includes('推进')
     );
