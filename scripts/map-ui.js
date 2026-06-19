@@ -51,6 +51,11 @@ var MapUI = {
                 if (window.GardenUI && GardenUI.init) GardenUI.init();
             });
         }
+        if (id === 'forest') {
+            requestAnimationFrame(() => {
+                if (window.ForestUI && ForestUI.render) ForestUI.render();
+            });
+        }
     },
 
     close() {
