@@ -384,6 +384,7 @@ var BlackDogGame = (function () {
         window.removeEventListener('resize', rescale);
         if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
         overlay = null; canvas = null; ctx = null;
+        if (window.ForestUI && ForestUI.render) ForestUI.render();
     }
 
     function rescale() {
