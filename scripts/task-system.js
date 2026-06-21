@@ -272,10 +272,16 @@ var TaskSystem = (function () {
         if (el) el.remove();
         window._msState = null;
 
+        var minutes = s.minutes || 30;
+        var energyCost = calcEnergyCost(minutes);
+        if (GameState.stats.energy < energyCost) {
+            showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
+            return;
+        }
+
         var oldProgress = s.ms.progress || 0;
         s.ms.progress = newProgress;
         var progressDelta = newProgress - oldProgress;
-        var minutes = s.minutes || 30;
 
         // 里程碑完成
         if (newProgress >= 100) {
@@ -309,9 +315,9 @@ var TaskSystem = (function () {
 
             if (window.GameFeedback) {
                 if (isProjectComplete) {
-                    GameFeedback.onProjectComplete(s.project, sawdust, flame, blackDog, GameState.blackDogCombo || 0);
+                    GameFeedback.onProjectComplete(s.project, sawdust, flame, energyCost, blackDog, GameState.blackDogCombo || 0);
                 } else {
-                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, blackDog, GameState.blackDogCombo || 0);
+                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, energyCost, blackDog, GameState.blackDogCombo || 0);
                 }
             }
         } else {
@@ -331,7 +337,7 @@ var TaskSystem = (function () {
             renderTasks();
 
             if (window.GameFeedback) {
-                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, oldProgress, newProgress);
+                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, energyCost, oldProgress, newProgress);
             }
         }
     }
@@ -421,6 +427,12 @@ var TaskSystem = (function () {
     }
 
     function finishDaily(task, minutes, rating) {
+        var energyCost = calcEnergyCost(minutes);
+        if (GameState.stats.energy < energyCost) {
+            showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
+            return;
+        }
+
         var today = new Date().toISOString().split('T')[0];
         var yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
@@ -460,6 +472,12 @@ var TaskSystem = (function () {
     }
 
     function finishTodo(todo, minutes, rating) {
+        var energyCost = calcEnergyCost(minutes);
+        if (GameState.stats.energy < energyCost) {
+            showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
+            return;
+        }
+
         todo.completed = true;
         todo.completedAt = new Date().toISOString();
 
@@ -491,6 +509,21 @@ var TaskSystem = (function () {
     }
 
     // ========== 计算工具 ==========
+
+    function showResourceWarning(title, required, current, label) {
+        var overlay = document.createElement('div');
+        overlay.id = 'resource-warning-overlay';
+        overlay.className = 'timer-overlay';
+        overlay.innerHTML =
+            '<div class="timer-content">' +
+            '<h2 class="timer-task-name" style="color:#ff6644;">' + title + '</h2>' +
+            '<p style="color:var(--text-main);margin:12px 0;">需要 ' + required + ' ' + label + '，当前只有 ' + current + '</p>' +
+            '<p style="color:var(--text-dim);font-size:11px;">休息一下，或者用商店道具恢复</p>' +
+            '<div class="timer-buttons">' +
+            '<button class="r8-btn r8-btn--secondary" onclick="document.getElementById(\'resource-warning-overlay\').remove()">知道了</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+    }
 
     function isBlackDogTask(task) {
         return task && task.importance === 'high' && task.interest === 'low';

@@ -208,7 +208,7 @@ var GameFeedback = (function () {
         });
     }
 
-    function onMilestoneProgress(project, ms, sawdust, flame, oldProgress, newProgress) {
+    function onMilestoneProgress(project, ms, sawdust, flame, energyCost, oldProgress, newProgress) {
         sfxComplete();
 
         showRewardBurst({
@@ -216,10 +216,11 @@ var GameFeedback = (function () {
             subtitle: ms.name + ' ' + oldProgress + '% → ' + newProgress + '%',
             sawdust: sawdust,
             flame: flame,
+            energyCost: energyCost,
         });
     }
 
-    function onMilestoneComplete(project, ms, sawdust, flame, isBlackDog, combo) {
+    function onMilestoneComplete(project, ms, sawdust, flame, energyCost, isBlackDog, combo) {
         sfxMilestone();
         screenShake('light');
 
@@ -228,12 +229,13 @@ var GameFeedback = (function () {
             subtitle: '「' + project.name + '」· ' + ms.name,
             sawdust: sawdust,
             flame: flame,
+            energyCost: energyCost,
             isBlackDog: isBlackDog,
             combo: combo,
         });
     }
 
-    function onProjectComplete(project, sawdust, flame, isBlackDog, combo) {
+    function onProjectComplete(project, sawdust, flame, energyCost, isBlackDog, combo) {
         sfxProject();
         screenShake('heavy');
 
@@ -242,6 +244,7 @@ var GameFeedback = (function () {
             subtitle: '「' + project.name + '」',
             sawdust: sawdust,
             flame: flame,
+            energyCost: energyCost,
             isBlackDog: isBlackDog,
             combo: combo,
             isProject: true,
