@@ -278,6 +278,11 @@ var TaskSystem = (function () {
             showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
             return;
         }
+        var spiritChange = calcSpiritChange(s.project.interest, minutes);
+        if (spiritChange < 0 && GameState.stats.spirit < Math.abs(spiritChange)) {
+            showResourceWarning('精力不足', Math.abs(spiritChange), GameState.stats.spirit, '精力');
+            return;
+        }
 
         var oldProgress = s.ms.progress || 0;
         s.ms.progress = newProgress;
@@ -315,9 +320,9 @@ var TaskSystem = (function () {
 
             if (window.GameFeedback) {
                 if (isProjectComplete) {
-                    GameFeedback.onProjectComplete(s.project, sawdust, flame, energyCost, blackDog, GameState.blackDogCombo || 0);
+                    GameFeedback.onProjectComplete(s.project, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0);
                 } else {
-                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, energyCost, blackDog, GameState.blackDogCombo || 0);
+                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0);
                 }
             }
         } else {
@@ -337,7 +342,7 @@ var TaskSystem = (function () {
             renderTasks();
 
             if (window.GameFeedback) {
-                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, energyCost, oldProgress, newProgress);
+                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, energyCost, spiritChange, oldProgress, newProgress);
             }
         }
     }
@@ -432,6 +437,11 @@ var TaskSystem = (function () {
             showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
             return;
         }
+        var spiritChange = calcSpiritChange(task.interest, minutes);
+        if (spiritChange < 0 && GameState.stats.spirit < Math.abs(spiritChange)) {
+            showResourceWarning('精力不足', Math.abs(spiritChange), GameState.stats.spirit, '精力');
+            return;
+        }
 
         var today = new Date().toISOString().split('T')[0];
         var yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -467,7 +477,7 @@ var TaskSystem = (function () {
         renderTasks();
 
         if (window.GameFeedback) {
-            GameFeedback.onDailyComplete(task, sawdust, flame, calcEnergyCost(minutes), blackDog, GameState.blackDogCombo || 0);
+            GameFeedback.onDailyComplete(task, sawdust, flame, calcEnergyCost(minutes), spiritChange, blackDog, GameState.blackDogCombo || 0);
         }
     }
 
@@ -475,6 +485,11 @@ var TaskSystem = (function () {
         var energyCost = calcEnergyCost(minutes);
         if (GameState.stats.energy < energyCost) {
             showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
+            return;
+        }
+        var spiritChange = calcSpiritChange(todo.interest, minutes);
+        if (spiritChange < 0 && GameState.stats.spirit < Math.abs(spiritChange)) {
+            showResourceWarning('精力不足', Math.abs(spiritChange), GameState.stats.spirit, '精力');
             return;
         }
 
@@ -504,7 +519,7 @@ var TaskSystem = (function () {
         render();
 
         if (window.GameFeedback) {
-            GameFeedback.onTodoComplete(todo, sawdust, flame, calcEnergyCost(minutes), blackDog, GameState.blackDogCombo || 0);
+            GameFeedback.onTodoComplete(todo, sawdust, flame, calcEnergyCost(minutes), spiritChange, blackDog, GameState.blackDogCombo || 0);
         }
     }
 
@@ -539,6 +554,12 @@ var TaskSystem = (function () {
 
     function calcEnergyCost(minutes) {
         return Math.max(1, Math.round((minutes / 480) * 100));
+    }
+
+    function calcSpiritChange(interest, minutes) {
+        if (interest === 'high') return Math.round(minutes * 0.3);
+        if (interest === 'low') return -Math.round(minutes * 0.3);
+        return 0;
     }
 
     function adjustSpirit(current, interest, minutes) {

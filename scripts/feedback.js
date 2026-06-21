@@ -113,6 +113,13 @@ var GameFeedback = (function () {
         if (opts.energyCost) {
             card.innerHTML += '<div class="reward-cost">-' + opts.energyCost + ' 体力</div>';
         }
+        if (opts.spiritChange) {
+            if (opts.spiritChange < 0) {
+                card.innerHTML += '<div class="reward-cost">-' + Math.abs(opts.spiritChange) + ' 精力</div>';
+            } else {
+                card.innerHTML += '<div class="reward-item reward-item--spirit"><span class="reward-icon">💧</span><span class="reward-num">+' + opts.spiritChange + ' 精力</span></div>';
+            }
+        }
 
         overlay.appendChild(card);
 
@@ -176,7 +183,7 @@ var GameFeedback = (function () {
 
     // ========== 对外接口 ==========
 
-    function onDailyComplete(task, sawdust, flame, energyCost, isBlackDog, combo) {
+    function onDailyComplete(task, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
         if (isBlackDog) sfxBlackDog(combo);
         else sfxComplete();
 
@@ -185,6 +192,7 @@ var GameFeedback = (function () {
             sawdust: sawdust,
             flame: flame,
             energyCost: energyCost,
+            spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
             streak: task.streak,
@@ -193,7 +201,7 @@ var GameFeedback = (function () {
         if (isBlackDog && combo >= 2) screenShake('light');
     }
 
-    function onTodoComplete(todo, sawdust, flame, energyCost, isBlackDog, combo) {
+    function onTodoComplete(todo, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
         if (isBlackDog) sfxBlackDog(combo);
         else sfxComplete();
 
@@ -203,12 +211,13 @@ var GameFeedback = (function () {
             sawdust: sawdust,
             flame: flame,
             energyCost: energyCost,
+            spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
         });
     }
 
-    function onMilestoneProgress(project, ms, sawdust, flame, energyCost, oldProgress, newProgress) {
+    function onMilestoneProgress(project, ms, sawdust, flame, energyCost, spiritChange, oldProgress, newProgress) {
         sfxComplete();
 
         showRewardBurst({
@@ -217,10 +226,11 @@ var GameFeedback = (function () {
             sawdust: sawdust,
             flame: flame,
             energyCost: energyCost,
+            spiritChange: spiritChange,
         });
     }
 
-    function onMilestoneComplete(project, ms, sawdust, flame, energyCost, isBlackDog, combo) {
+    function onMilestoneComplete(project, ms, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
         sfxMilestone();
         screenShake('light');
 
@@ -230,12 +240,13 @@ var GameFeedback = (function () {
             sawdust: sawdust,
             flame: flame,
             energyCost: energyCost,
+            spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
         });
     }
 
-    function onProjectComplete(project, sawdust, flame, energyCost, isBlackDog, combo) {
+    function onProjectComplete(project, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
         sfxProject();
         screenShake('heavy');
 
@@ -245,6 +256,7 @@ var GameFeedback = (function () {
             sawdust: sawdust,
             flame: flame,
             energyCost: energyCost,
+            spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
             isProject: true,
