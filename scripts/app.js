@@ -808,9 +808,25 @@ function quickBuy(itemId) {
         updateResources();
         addMessage('god', result.msg);
         if (window.AIMemory) AIMemory.recordEvent('购买了' + itemId);
+        showQuickBuyToast(result.msg, true);
     } else {
         addMessage('god', result.reason);
+        showQuickBuyToast(result.reason, false);
     }
+}
+
+function showQuickBuyToast(text, success) {
+    var existing = document.getElementById('shop-toast');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'shop-toast';
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:8px 20px;border-radius:4px;font-size:13px;z-index:9999;pointer-events:none;transition:opacity 0.3s;'
+        + (success ? 'background:#1a2a1a;color:#44ff44;border:1px solid #44ff4466;' : 'background:#2a1a1a;color:#ff6644;border:1px solid #ff664466;');
+    toast.textContent = text;
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.style.opacity = '0'; }, 1500);
+    setTimeout(function () { if (toast.parentNode) toast.remove(); }, 2000);
 }
 
 // ============ Data backup ============
