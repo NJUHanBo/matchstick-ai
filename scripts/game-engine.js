@@ -2,114 +2,18 @@
 
 const GameEngine = {
 
-    // ========== 体力消耗 ==========
-    // 8小时工作 = 100体力耗尽
-    calcEnergyConsumption(durationMinutes) {
-        return Math.round((durationMinutes / 480) * 100);
-    },
-
-    // ========== 精力消耗 ==========
-    // 高兴趣: 恢复20精力, 中: 消耗20, 低: 消耗40
-    calcSpiritCost(interest) {
-        const map = { high: -20, medium: 20, low: 40 };
-        return map[interest] || 20;
-    },
-
-    // ========== 木屑奖励 ==========
-    calcSawdustReward(rating, durationMinutes, actualMinutes) {
-        const base = 10;
-        const ratingMultiplier = rating / 5;
-        const timeEfficiency = Math.min(actualMinutes / durationMinutes, 1.5);
-        return Math.round(base * ratingMultiplier * timeEfficiency);
-    },
-
-    // ========== 火苗奖励 ==========
-    calcFlameReward(sawdustReward, state) {
-        if (state.vacation.isOnVacation) return 0;
-        const baseFlame = sawdustReward / 2;
-        const sawdustMultiplier = 1 + (state.stats.sawdust - 100) / 1000;
-        let flame = baseFlame * Math.max(sawdustMultiplier, 0.1);
-        if (state.shop.activeEffects.mirror) flame *= 2;
-        if (state.shop.activeEffects.oxygenChamber) flame *= 2;
-        return Math.round(flame);
-    },
-
-    // ========== 黑狗征服者 ==========
-    isBlackDogTask(task) {
-        return task.importance === 'high' && task.interest === 'low';
-    },
-
-    getComboBonus(state) {
-        const combo = state.blackDogCombo || 0;
-        return Math.min(combo * 0.25, 0.75); // 最高75%
-    },
-
-    updateCombo(state, isBlackDogTask) {
-        if (isBlackDogTask) {
-            state.blackDogCombo = (state.blackDogCombo || 0) + 1;
-            state.blackDogTotalCompleted = (state.blackDogTotalCompleted || 0) + 1;
-        } else {
-            state.blackDogCombo = 0;
-        }
-    },
-
-    // ========== 完整的任务完成流程 ==========
-    completeTask(state, task, rating, actualMinutes) {
-        const durationMinutes = task.duration || 30;
-
-        // 体力检查
-        const energyCost = this.calcEnergyConsumption(durationMinutes);
-        const spiritCost = this.calcSpiritCost(task.interest || 'medium');
-
-        if (state.stats.energy < energyCost) {
-            return { success: false, reason: '体力不足' };
-        }
-        if (state.stats.spirit < spiritCost && spiritCost > 0) {
-            return { success: false, reason: '精力不足' };
-        }
-
-        // 扣除消耗
-        state.stats.energy = Math.max(0, state.stats.energy - energyCost);
-        state.stats.spirit = Math.max(0, state.stats.spirit - spiritCost);
-        if (spiritCost < 0) {
-            state.stats.spirit = Math.min(100, state.stats.spirit - spiritCost);
-        }
-
-        // 计算奖励
-        let sawdust = this.calcSawdustReward(rating, durationMinutes, actualMinutes || durationMinutes);
-        let flame = this.calcFlameReward(sawdust, state);
-
-        // 黑狗征服者加成
-        const isBD = this.isBlackDogTask(task);
-        if (isBD) {
-            flame *= 2; // 火苗暴击翻倍
-            const comboBonus = this.getComboBonus(state);
-            flame = Math.round(flame * (1 + comboBonus));
-        }
-        this.updateCombo(state, isBD);
-
-        // 应用奖励
-        state.stats.sawdust += sawdust;
-        state.stats.flame += flame;
-
-        // 标记完成
-        task.done = true;
-        task.rating = rating;
-        task.completedAt = new Date().toISOString();
-
-        return {
-            success: true,
-            rewards: { sawdust, flame, energyCost, spiritCost },
-            isBlackDog: isBD,
-            combo: state.blackDogCombo || 0,
-        };
-    },
-
     // ========== 结束一天 ==========
     endDay(state) {
         const s = state.stats;
         const ashGain = Math.floor(s.flame / 2);
         const wasBurning = s.flame >= 100;
+
+        // 度假自动结束检查
+        if (state.vacation.isOnVacation && state.vacation.endDate) {
+            if (new Date() >= new Date(state.vacation.endDate)) {
+                this.endVacation(state);
+            }
+        }
 
         // 火苗衰减（除非度假/助燃剂）
         if (!state.vacation.isOnVacation && !state.shop.activeEffects.fireStarter) {
@@ -137,19 +41,26 @@ const GameEngine = {
         // 重置黑狗连击
         state.blackDogCombo = 0;
 
+        // 重置每日杂念
+        state.dailyThoughtCompleted = false;
+
+        // 记录日期
+        state.lastPlayedDate = new Date().toISOString().split('T')[0];
+
         // 重置日常任务（streak处理），支线完成的移除，主线保留
         state.dailyTasks = state.dailyTasks.filter(t => {
-            if (t.type === 'side' && t.done) return false; // 支线完成即删
+            if (t.type === 'side' && (t.done || t.completed)) return false;
             return true;
         });
         state.dailyTasks.forEach(t => {
             if (t.type === 'daily' || !t.type) {
-                if (t.done) {
+                if (t.done || t.completed) {
                     t.streak = (t.streak || 0) + 1;
                 } else {
-                    t.streak = 0; // 没完成断streak
+                    t.streak = 0;
                 }
                 t.done = false;
+                t.completed = false;
                 t.rating = null;
                 t.timerStarted = null;
             }

@@ -298,10 +298,9 @@ var TaskSystem = (function () {
             if (isProjectComplete) s.project.completed = true;
 
             var sawdust = isProjectComplete ? 200 : 60;
-            var flame = isProjectComplete ? 100 : 40;
-            var blackDog = isBlackDogTask(s.project);
-            if (blackDog) { sawdust *= 2; flame *= 2; GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1; }
-            else { GameState.blackDogCombo = 0; }
+            var flame = applyFlameModifiers(isProjectComplete ? 100 : 40);
+            var bd = applyBlackDogBonus(sawdust, flame, s.project);
+            sawdust = bd.sawdust; flame = bd.flame; var blackDog = bd.blackDog;
 
             GameState.stats.sawdust += sawdust;
             GameState.stats.flame += flame;
@@ -328,7 +327,7 @@ var TaskSystem = (function () {
         } else {
             // 未完成，给予进度奖励
             var reward = Math.round(progressDelta * 0.5);
-            var flameReward = Math.round(progressDelta * 0.3);
+            var flameReward = applyFlameModifiers(Math.round(progressDelta * 0.3));
             GameState.stats.sawdust += reward;
             GameState.stats.flame += flameReward;
             GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
@@ -455,15 +454,9 @@ var TaskSystem = (function () {
         task.completed = true;
 
         var sawdust = calcDailyReward(task, minutes, rating);
-        var flame = Math.round(sawdust * 0.5);
-        var blackDog = isBlackDogTask(task);
-        if (blackDog) {
-            sawdust = sawdust * 2;
-            flame = flame * 2;
-            GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1;
-        } else {
-            GameState.blackDogCombo = 0;
-        }
+        var flame = applyFlameModifiers(Math.round(sawdust * 0.5));
+        var bd = applyBlackDogBonus(sawdust, flame, task);
+        sawdust = bd.sawdust; flame = bd.flame; var blackDog = bd.blackDog;
 
         GameState.stats.sawdust += sawdust;
         GameState.stats.flame += flame;
@@ -497,16 +490,10 @@ var TaskSystem = (function () {
         todo.completedAt = new Date().toISOString();
 
         var baseFlame = 10;
-        var flame = Math.round(baseFlame * (rating / 3));
+        var flame = applyFlameModifiers(Math.round(baseFlame * (rating / 3)));
         var sawdust = Math.round(flame * 1.5);
-
-        var blackDog = isBlackDogTask(todo);
-        if (blackDog) {
-            sawdust *= 2; flame *= 2;
-            GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1;
-        } else {
-            GameState.blackDogCombo = 0;
-        }
+        var bd = applyBlackDogBonus(sawdust, flame, todo);
+        sawdust = bd.sawdust; flame = bd.flame; var blackDog = bd.blackDog;
 
         GameState.stats.sawdust += sawdust;
         GameState.stats.flame += flame;
@@ -538,6 +525,27 @@ var TaskSystem = (function () {
             '<button class="r8-btn r8-btn--secondary" onclick="document.getElementById(\'resource-warning-overlay\').remove()">知道了</button>' +
             '</div></div>';
         document.body.appendChild(overlay);
+    }
+
+    function applyFlameModifiers(flame) {
+        if (GameState.vacation && GameState.vacation.isOnVacation) return 0;
+        if (GameState.shop && GameState.shop.activeEffects.mirror) flame *= 2;
+        if (GameState.shop && GameState.shop.activeEffects.oxygenChamber) flame *= 2;
+        return Math.round(flame);
+    }
+
+    function applyBlackDogBonus(sawdust, flame, task) {
+        if (!isBlackDogTask(task)) {
+            GameState.blackDogCombo = 0;
+            return { sawdust: sawdust, flame: flame, blackDog: false };
+        }
+        GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1;
+        GameState.blackDogTotalCompleted = (GameState.blackDogTotalCompleted || 0) + 1;
+        sawdust *= 2;
+        flame *= 2;
+        var comboBonus = Math.min((GameState.blackDogCombo - 1) * 0.25, 0.75);
+        flame = Math.round(flame * (1 + comboBonus));
+        return { sawdust: sawdust, flame: flame, blackDog: true };
     }
 
     function isBlackDogTask(task) {

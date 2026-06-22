@@ -7,7 +7,76 @@ function showScreen(id) {
 
 // ============ Main screen ============
 
+function checkAutoEndDay() {
+    const today = new Date().toISOString().split('T')[0];
+    const last = GameState.lastPlayedDate;
+    if (!last || last === today) {
+        if (!GameState.lastPlayedDate) {
+            GameState.lastPlayedDate = today;
+            saveGame();
+        }
+        return;
+    }
+
+    const lastDate = new Date(last + 'T00:00:00');
+    const todayDate = new Date(today + 'T00:00:00');
+    const missedDays = Math.round((todayDate - lastDate) / 86400000);
+    if (missedDays <= 0) return;
+
+    const cap = Math.min(missedDays, 30);
+    const flameBefore = GameState.stats.flame;
+
+    for (let i = 0; i < cap; i++) {
+        GameEngine.endDay(GameState);
+        if (window.TaskSystem) TaskSystem.resetDaily();
+    }
+
+    GameState.lastPlayedDate = today;
+    saveGame();
+
+    const flameAfter = GameState.stats.flame;
+    const flameLost = flameBefore - flameAfter;
+
+    showAutoEndDayNotice(cap, flameBefore, flameAfter, flameLost);
+}
+
+function showAutoEndDayNotice(days, flameBefore, flameAfter, flameLost) {
+    const overlay = document.createElement('div');
+    overlay.id = 'auto-endday-overlay';
+    overlay.className = 'timer-overlay';
+    overlay.innerHTML = `
+        <div class="timer-content endday-content">
+            <h2 class="timer-task-name">你离开了 ${days} 天</h2>
+            <div class="endday-stats">
+                <div class="endday-row">
+                    <span>经过天数</span>
+                    <span class="endday-value">${days} 天${days >= 30 ? '（上限30天）' : ''}</span>
+                </div>
+                <div class="endday-row">
+                    <span>火苗变化</span>
+                    <span class="endday-value fire-color">${flameBefore} → ${flameAfter}${flameLost > 0 ? '（-' + flameLost + '）' : ''}</span>
+                </div>
+                <div class="endday-row">
+                    <span>当前游戏日</span>
+                    <span class="endday-value">第${GameState.stats.totalDays}天</span>
+                </div>
+                <div class="endday-row">
+                    <span>状态</span>
+                    <span class="endday-value">${GameState.depression.status}</span>
+                </div>
+                ${flameAfter <= 0 ? '<div class="endday-warning">⚠️ 火苗已熄灭</div>' : ''}
+            </div>
+            <div class="timer-buttons">
+                <button class="r8-btn r8-btn--primary" onclick="document.getElementById('auto-endday-overlay').remove()">继续</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
 function enterMainScreen() {
+    checkAutoEndDay();
+
     const god = GOD_INFO[GameState.character.godType];
 
     document.getElementById('display-name').textContent = GameState.character.name;
@@ -253,30 +322,6 @@ function handleEngineCommand(userText) {
 
 // ============ Task system ============
 
-function completeTaskByName(name, minutes, rating) {
-    const tasks = GameState.dailyTasks || [];
-    const lower = name.toLowerCase();
-
-    let task = tasks.find(t => !t.done && t.name === name);
-    if (!task) task = tasks.find(t => !t.done && t.name.includes(name));
-    if (!task) task = tasks.find(t => !t.done && name.includes(t.name));
-    if (!task) task = tasks.find(t => !t.done && t.name.toLowerCase().includes(lower));
-    if (!task) task = tasks.find(t => !t.done && lower.includes(t.name.toLowerCase()));
-
-    if (!task) {
-        console.log('completeTaskByName: no match for', name);
-        return;
-    }
-
-    task.duration = minutes || task.duration || 30;
-    const result = GameEngine.completeTask(GameState, task, rating || 3, minutes || 30);
-    if (result.success) {
-        if (task.type === 'daily') task.streak = (task.streak || 0) + 1;
-        addLog(`完成「${task.name}」${minutes}分钟，评分${rating}/5，获得木屑${result.rewards.sawdust}+火苗${result.rewards.flame}`);
-        saveGame();
-    }
-}
-
 function addLog(text) {
     if (!GameState.logs) GameState.logs = [];
     const now = new Date();
@@ -312,324 +357,6 @@ function addTask(name, type, extra) {
     GameState.dailyTasks.push(base);
     const typeLabel = { daily: '日常', side: '支线', main: '主线' }[type] || '任务';
     addLog(`创建${typeLabel}任务「${name}」`);
-    saveGame();
-    renderTasks();
-}
-
-// ============ Timer overlay ============
-
-let activeTimerTask = null;
-let timerInterval = null;
-let timerPaused = false;
-let timerPausedTotal = 0;
-let timerPauseStart = 0;
-
-function toggleTask(id) {
-    const task = GameState.dailyTasks.find(t => t.id === id);
-    if (!task || task.done) return;
-    showTaskSetup(id);
-}
-
-function showTaskSetup(id) {
-    const task = GameState.dailyTasks.find(t => t.id === id);
-    if (!task) return;
-
-    const overlay = document.createElement('div');
-    overlay.id = 'task-setup-overlay';
-    overlay.className = 'timer-overlay';
-    overlay.innerHTML = `
-        <div class="timer-content task-setup-content">
-            <h2 class="timer-task-name">${task.name}</h2>
-
-            <div class="setup-field">
-                <label>计划时长（分钟）</label>
-                <div class="setup-options">
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="setSetupDuration(5)">5</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="setSetupDuration(15)">15</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm setup-selected" onclick="setSetupDuration(30)">30</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="setSetupDuration(60)">60</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="setSetupDuration(120)">120</button>
-                </div>
-            </div>
-
-            <div class="setup-field">
-                <label>重要性</label>
-                <div class="setup-options">
-                    <button class="r8-btn r8-btn--danger r8-btn--sm" onclick="setSetupImportance('high')">高</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm setup-selected" onclick="setSetupImportance('medium')">中</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="setSetupImportance('low')">低</button>
-                </div>
-            </div>
-
-            <div class="setup-field">
-                <label>兴趣度</label>
-                <div class="setup-options">
-                    <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="setSetupInterest('high')">高</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm setup-selected" onclick="setSetupInterest('medium')">中</button>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="setSetupInterest('low')">低</button>
-                </div>
-            </div>
-
-            <div class="setup-summary" id="setup-summary">
-                体力消耗: 6 | 精力消耗: 20
-            </div>
-
-            <div class="timer-buttons">
-                <button class="r8-btn r8-btn--secondary" onclick="cancelTaskSetup()">取消</button>
-                <button class="r8-btn r8-btn--primary" onclick="confirmTaskStart(${id})">开始任务</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    // 存储临时设置
-    window._taskSetup = { duration: 30, importance: 'medium', interest: 'medium' };
-    updateSetupSummary();
-}
-
-function setSetupDuration(val) {
-    window._taskSetup.duration = val;
-    highlightSetupBtn(0, val);
-    updateSetupSummary();
-}
-
-function setSetupImportance(val) {
-    window._taskSetup.importance = val;
-    highlightSetupBtn(1, val);
-    updateSetupSummary();
-}
-
-function setSetupInterest(val) {
-    window._taskSetup.interest = val;
-    highlightSetupBtn(2, val);
-    updateSetupSummary();
-}
-
-function highlightSetupBtn(fieldIdx, val) {
-    const fields = document.querySelectorAll('.setup-field');
-    if (!fields[fieldIdx]) return;
-    const btns = fields[fieldIdx].querySelectorAll('.r8-btn');
-    btns.forEach(b => b.classList.remove('setup-selected'));
-    // 找到匹配的按钮
-    btns.forEach(b => {
-        const text = b.textContent.trim();
-        const matchMap = {
-            '5': 5, '15': 15, '30': 30, '60': 60, '120': 120,
-            '高': 'high', '中': 'medium', '低': 'low'
-        };
-        if (matchMap[text] === val || matchMap[text] === String(val)) {
-            b.classList.add('setup-selected');
-        }
-    });
-}
-
-function updateSetupSummary() {
-    const s = window._taskSetup;
-    const energy = GameEngine.calcEnergyConsumption(s.duration);
-    const spirit = GameEngine.calcSpiritCost(s.interest);
-    const el = document.getElementById('setup-summary');
-    if (el) {
-        let text = `体力消耗: ${energy}`;
-        if (spirit > 0) text += ` | 精力消耗: ${spirit}`;
-        else text += ` | 精力恢复: ${Math.abs(spirit)}`;
-        if (s.importance === 'high' && s.interest === 'low') text += ' | ⚡黑狗任务';
-        el.textContent = text;
-    }
-}
-
-function cancelTaskSetup() {
-    const el = document.getElementById('task-setup-overlay');
-    if (el) el.remove();
-    window._taskSetup = null;
-}
-
-function confirmTaskStart(id) {
-    const task = GameState.dailyTasks.find(t => t.id === id);
-    if (!task || !window._taskSetup) return;
-
-    // 应用设置
-    task.duration = window._taskSetup.duration;
-    task.importance = window._taskSetup.importance;
-    task.interest = window._taskSetup.interest;
-
-    const el = document.getElementById('task-setup-overlay');
-    if (el) el.remove();
-    window._taskSetup = null;
-
-    // 检查体力/精力
-    const energyCost = GameEngine.calcEnergyConsumption(task.duration);
-    const spiritCost = GameEngine.calcSpiritCost(task.interest);
-
-    if (GameState.stats.energy < energyCost) {
-        addMessage('god', `体力不足（需要${energyCost}，当前${GameState.stats.energy}）。休息一下。`);
-        return;
-    }
-    if (spiritCost > 0 && GameState.stats.spirit < spiritCost) {
-        addMessage('god', `精力不足（需要${spiritCost}，当前${GameState.stats.spirit}）。先做点感兴趣的事。`);
-        return;
-    }
-
-    // 开始计时
-    activeTimerTask = task;
-    task.timerStarted = Date.now();
-    timerPaused = false;
-    timerPausedTotal = 0;
-    timerPauseStart = 0;
-    saveGame();
-
-    showTimerOverlay();
-}
-
-function showTimerOverlay() {
-    const task = activeTimerTask;
-    if (!task) return;
-
-    const overlay = document.createElement('div');
-    overlay.id = 'timer-overlay';
-    overlay.className = 'timer-overlay';
-    overlay.innerHTML = `
-        <div class="timer-content">
-            <h2 class="timer-task-name">${task.name}</h2>
-            <div class="timer-display" id="timer-clock">00:00</div>
-            <div class="timer-progress-bar">
-                <div class="timer-progress-fill" id="timer-progress"></div>
-            </div>
-            <p class="timer-target">计划时长：${task.duration || 30} 分钟</p>
-            <div class="timer-buttons">
-                <button class="r8-btn r8-btn--secondary" id="timer-pause-btn" onclick="toggleTimerPause()">暂停</button>
-                <button class="r8-btn r8-btn--danger" onclick="abandonTask()">放弃</button>
-                <button class="r8-btn r8-btn--primary" onclick="finishTask()">完成</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    timerInterval = setInterval(updateTimerDisplay, 1000);
-    updateTimerDisplay();
-}
-
-function updateTimerDisplay() {
-    const clock = document.getElementById('timer-clock');
-    const progress = document.getElementById('timer-progress');
-    if (!clock || !activeTimerTask) return;
-
-    const elapsed = getTimerElapsed();
-    const mins = Math.floor(elapsed / 60);
-    const secs = elapsed % 60;
-    clock.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-
-    const target = (activeTimerTask.duration || 30) * 60;
-    const pct = Math.min((elapsed / target) * 100, 100);
-    if (progress) progress.style.width = pct + '%';
-}
-
-function getTimerElapsed() {
-    if (!activeTimerTask || !activeTimerTask.timerStarted) return 0;
-    const now = Date.now();
-    const pauseExtra = timerPaused && timerPauseStart ? (now - timerPauseStart) : 0;
-    return Math.floor((now - activeTimerTask.timerStarted - timerPausedTotal - pauseExtra) / 1000);
-}
-
-function toggleTimerPause() {
-    const btn = document.getElementById('timer-pause-btn');
-    if (timerPaused) {
-        timerPausedTotal += Date.now() - timerPauseStart;
-        timerPauseStart = 0;
-        timerPaused = false;
-        if (btn) btn.textContent = '暂停';
-    } else {
-        timerPauseStart = Date.now();
-        timerPaused = true;
-        if (btn) btn.textContent = '继续';
-    }
-}
-
-function abandonTask() {
-    clearInterval(timerInterval);
-    timerInterval = null;
-    if (activeTimerTask) {
-        activeTimerTask.timerStarted = null;
-        saveGame();
-    }
-    activeTimerTask = null;
-    removeTimerOverlay();
-    addMessage('god', '任务已放弃。');
-    renderTasks();
-}
-
-function finishTask() {
-    clearInterval(timerInterval);
-    timerInterval = null;
-    const elapsed = getTimerElapsed();
-    removeTimerOverlay();
-    showRatingOverlay(elapsed);
-}
-
-function removeTimerOverlay() {
-    const el = document.getElementById('timer-overlay');
-    if (el) el.remove();
-}
-
-function showRatingOverlay(elapsedSeconds) {
-    const task = activeTimerTask;
-    if (!task) return;
-
-    const mins = Math.floor(elapsedSeconds / 60);
-
-    const overlay = document.createElement('div');
-    overlay.id = 'rating-overlay';
-    overlay.className = 'timer-overlay';
-    overlay.innerHTML = `
-        <div class="timer-content">
-            <h2 class="timer-task-name">${task.name}</h2>
-            <p class="timer-target">用时 ${mins} 分钟</p>
-            <p style="margin: 16px 0; color: var(--text-main);">完成质量如何？</p>
-            <div class="rating-stars">
-                <button class="r8-btn r8-btn--secondary" onclick="submitRating(1)">★</button>
-                <button class="r8-btn r8-btn--secondary" onclick="submitRating(2)">★★</button>
-                <button class="r8-btn r8-btn--secondary" onclick="submitRating(3)">★★★</button>
-                <button class="r8-btn r8-btn--secondary" onclick="submitRating(4)">★★★★</button>
-                <button class="r8-btn r8-btn--secondary" onclick="submitRating(5)">★★★★★</button>
-            </div>
-        </div>
-    `;
-    overlay.dataset.elapsed = elapsedSeconds;
-    document.body.appendChild(overlay);
-}
-
-function submitRating(rating) {
-    const overlay = document.getElementById('rating-overlay');
-    const elapsedSeconds = overlay ? parseInt(overlay.dataset.elapsed) : 0;
-    if (overlay) overlay.remove();
-
-    const task = activeTimerTask;
-    if (!task) return;
-
-    const actualMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
-    const result = GameEngine.completeTask(GameState, task, rating, actualMinutes);
-
-    if (!result.success) {
-        addMessage('god', `完成失败：${result.reason}`);
-        activeTimerTask = null;
-        renderTasks();
-        return;
-    }
-
-    const r = result.rewards;
-    let msg = `「${task.name}」完成（${rating}星，${actualMinutes}分钟）。+${r.sawdust}木屑 +${r.flame}火苗 -${r.energyCost}体力`;
-    if (r.spiritCost > 0) msg += ` -${r.spiritCost}精力`;
-    if (r.spiritCost < 0) msg += ` +${Math.abs(r.spiritCost)}精力`;
-    if (result.isBlackDog) msg += ` [黑狗征服者 x${result.combo}]`;
-    addMessage('god', msg);
-
-    if (window.Analytics) Analytics.trackTaskComplete(task.name, actualMinutes, rating, r);
-
-    if (window.GameFeedback) {
-        GameFeedback.onDailyComplete(task, r.sawdust, r.flame, r.energyCost, result.isBlackDog, result.combo);
-    }
-
-    activeTimerTask = null;
-    updateResources();
     saveGame();
     renderTasks();
 }

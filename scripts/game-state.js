@@ -27,6 +27,7 @@ const GameState = {
             60: { status: '战胜黑狗', spirit: 100 },
         },
     },
+    lastPlayedDate: null,
     blackDogCombo: 0,
     blackDogTotalCompleted: 0,
     logs: [],
