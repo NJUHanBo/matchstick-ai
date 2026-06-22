@@ -273,6 +273,29 @@ body {
 
 .res-icon { font-size: 16px; }
 
+.buff-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(255, 200, 60, 0.15);
+    color: #ffcc44;
+    border: 1px solid rgba(255, 200, 60, 0.3);
+    margin-left: 2px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+.buff-tag--perm {
+    background: rgba(100, 200, 255, 0.15);
+    color: #66ccff;
+    border-color: rgba(100, 200, 255, 0.3);
+}
+.buff-tag--vacation {
+    background: rgba(100, 255, 150, 0.15);
+    color: #66ff99;
+    border-color: rgba(100, 255, 150, 0.3);
+}
+
 /* ============ Tile 地图 ============ */
 .map-viewport {
     flex: 1;

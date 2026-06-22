@@ -150,6 +150,19 @@ function updateResources() {
     if (statAsh) statAsh.textContent = s.ash;
     if (statDepression) statDepression.textContent = GameState.depression.status;
     if (statBurning) statBurning.textContent = `燃烧${s.burningDays}天`;
+
+    // 活跃 buff 状态
+    const buffsEl = document.getElementById('active-buffs');
+    if (buffsEl) {
+        const effects = GameState.shop ? GameState.shop.activeEffects : {};
+        const vacation = GameState.vacation;
+        let tags = '';
+        if (effects.fireStarter) tags += '<span class="buff-tag" title="明天火苗不减半">🔥助燃</span>';
+        if (effects.mirror) tags += '<span class="buff-tag" title="今天任务火苗翻倍">🪞镜子</span>';
+        if (effects.oxygenChamber) tags += '<span class="buff-tag buff-tag--perm" title="永久任务火苗翻倍">🫧富氧</span>';
+        if (vacation && vacation.isOnVacation) tags += '<span class="buff-tag buff-tag--vacation" title="度假中，火苗冻结">🏖️度假</span>';
+        buffsEl.innerHTML = tags;
+    }
 }
 
 // ============ Chat system ============
