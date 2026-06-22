@@ -7,6 +7,9 @@ function showScreen(id) {
 
 // ============ Main screen ============
 
+var FLAME_FLOOR = 10;
+var WELCOME_BACK_FLAME = 20;
+
 function checkAutoEndDay() {
     const today = new Date().toISOString().split('T')[0];
     const last = GameState.lastPlayedDate;
@@ -29,42 +32,60 @@ function checkAutoEndDay() {
     for (let i = 0; i < cap; i++) {
         GameEngine.endDay(GameState);
         if (window.TaskSystem) TaskSystem.resetDaily();
+        if (GameState.stats.flame < FLAME_FLOOR) {
+            GameState.stats.flame = FLAME_FLOOR;
+        }
     }
+
+    const flameAfterDecay = GameState.stats.flame;
+    GameState.stats.flame += WELCOME_BACK_FLAME;
 
     GameState.lastPlayedDate = today;
     saveGame();
 
-    const flameAfter = GameState.stats.flame;
-    const flameLost = flameBefore - flameAfter;
-
-    showAutoEndDayNotice(cap, flameBefore, flameAfter, flameLost);
+    showAutoEndDayNotice(cap, flameBefore, flameAfterDecay);
 }
 
-function showAutoEndDayNotice(days, flameBefore, flameAfter, flameLost) {
+function showAutoEndDayNotice(days, flameBefore, flameAfterDecay) {
+    const flameNow = GameState.stats.flame;
+    const name = GameState.character ? GameState.character.name : '旅人';
+
+    let title, subtitle;
+    if (days <= 2) {
+        title = '新的一天';
+        subtitle = name + '，你回来了。火苗还在。';
+    } else if (days <= 7) {
+        title = '你离开了 ' + days + ' 天';
+        subtitle = '火苗变小了，但它一直在等你。';
+    } else {
+        title = '你离开了 ' + days + ' 天';
+        subtitle = '火苗几乎要熄灭了……但它记得你。';
+    }
+
     const overlay = document.createElement('div');
     overlay.id = 'auto-endday-overlay';
     overlay.className = 'timer-overlay';
     overlay.innerHTML = `
         <div class="timer-content endday-content">
-            <h2 class="timer-task-name">你离开了 ${days} 天</h2>
+            <h2 class="timer-task-name">${title}</h2>
+            <p style="color:var(--text-main);margin:8px 0 16px;text-align:center;">${subtitle}</p>
             <div class="endday-stats">
                 <div class="endday-row">
-                    <span>经过天数</span>
-                    <span class="endday-value">${days} 天${days >= 30 ? '（上限30天）' : ''}</span>
-                </div>
-                <div class="endday-row">
                     <span>火苗变化</span>
-                    <span class="endday-value fire-color">${flameBefore} → ${flameAfter}${flameLost > 0 ? '（-' + flameLost + '）' : ''}</span>
+                    <span class="endday-value fire-color">${flameBefore} → ${flameAfterDecay}</span>
                 </div>
                 <div class="endday-row">
-                    <span>当前游戏日</span>
+                    <span>回归之火</span>
+                    <span class="endday-value" style="color:#ffcc44;">+${WELCOME_BACK_FLAME}（当前 ${flameNow}）</span>
+                </div>
+                <div class="endday-row">
+                    <span>游戏日</span>
                     <span class="endday-value">第${GameState.stats.totalDays}天</span>
                 </div>
                 <div class="endday-row">
                     <span>状态</span>
                     <span class="endday-value">${GameState.depression.status}</span>
                 </div>
-                ${flameAfter <= 0 ? '<div class="endday-warning">⚠️ 火苗已熄灭</div>' : ''}
             </div>
             <div class="timer-buttons">
                 <button class="r8-btn r8-btn--primary" onclick="document.getElementById('auto-endday-overlay').remove()">继续</button>
