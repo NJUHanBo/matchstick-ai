@@ -273,6 +273,12 @@ body {
 
 .res-icon { font-size: 16px; }
 
+.res-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-right: 1px;
+}
+
 .buff-tag {
     display: inline-block;
     font-size: 11px;
@@ -2656,6 +2662,7 @@ body {
 
     .resource { gap: 2px; }
     .res-icon { font-size: 13px; }
+    .res-label { font-size: 9px; }
 
     .player-avatar { font-size: 18px; }
     .player-name-display { font-size: 12px; }
@@ -2817,7 +2824,384 @@ body {
 @media (max-width: 400px) {
     .resource-bar { font-size: 11px; }
     .resource { gap: 1px; }
+    .res-label { display: none; }
     .timer-display { font-size: 28px; }
     .msg { font-size: 12px; padding: 6px 8px; }
     .loc-overlay-header { font-size: 11px; }
+}
+
+/* ========== 音频控制面板 ========== */
+
+.audio-toggle-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(10, 10, 16, 0.7);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 16px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s;
+    padding: 0;
+    z-index: 20;
+}
+
+.audio-toggle-btn:hover {
+    border-color: var(--fire-glow);
+    color: var(--text-main);
+}
+
+.audio-panel {
+    position: absolute;
+    top: 40px;
+    right: 6px;
+    z-index: 20;
+    background: rgba(10, 10, 16, 0.94);
+    border: 1px solid var(--border);
+    padding: 12px;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.audio-section-title {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.audio-tracks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.audio-track-btn {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    font-size: 11px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.audio-track-btn:hover {
+    border-color: var(--text-dim);
+}
+
+.audio-track-active {
+    border-color: var(--fire-glow);
+    color: var(--fire-glow);
+}
+
+.audio-amb-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+}
+
+.audio-amb-btn {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 4px 6px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.audio-amb-btn:hover {
+    border-color: var(--text-dim);
+}
+
+.audio-amb-on {
+    border-color: var(--firefly-bright);
+    color: var(--firefly-bright);
+}
+
+.audio-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.audio-slider-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.audio-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+}
+
+.audio-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--fire-glow);
+    cursor: pointer;
+}
+
+.audio-mute-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    transition: border-color 0.2s;
+}
+
+.audio-mute-btn:hover {
+    border-color: var(--text-dim);
+    color: var(--text-main);
+}
+
+/* ========== 商店卡片 ========== */
+
+.shop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.shop-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-main);
+    text-align: left;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.shop-card:hover {
+    border-color: var(--fire-glow);
+    background: rgba(200, 90, 32, 0.06);
+}
+
+.shop-card-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.shop-card-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.shop-card-name {
+    font-size: 11px;
+    color: var(--text-bright);
+}
+
+.shop-card-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+}
+
+.shop-card-cost {
+    font-size: 11px;
+    color: var(--ash-gray);
+    flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+    .shop-grid { grid-template-columns: 1fr; }
+}
+
+/* ========== 自定义 tooltip ========== */
+
+.custom-tooltip {
+    position: fixed;
+    z-index: 10000;
+    background: rgba(10, 10, 16, 0.95);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 8px 12px;
+    max-width: 220px;
+    pointer-events: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ========== 引导对话系统 ========== */
+
+.guide-dialogue {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    pointer-events: none;
+}
+
+.guide-dialogue-box {
+    pointer-events: auto;
+    background: rgba(5, 5, 8, 0.88);
+    border-top: 1px solid var(--border);
+    padding: 14px 18px 12px;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.guide-dialogue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.guide-speaker {
+    font-size: 11px;
+    color: var(--fire-glow);
+    letter-spacing: 1px;
+}
+
+.guide-skip {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 10px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.guide-skip:hover {
+    color: var(--text-main);
+    border-color: var(--text-dim);
+}
+
+.guide-text {
+    color: var(--text-bright);
+    font-size: 13px;
+    line-height: 1.7;
+    min-height: 20px;
+}
+
+.guide-continue {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: var(--fire-glow);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    animation: guide-bounce 1s ease-in-out infinite;
+    font-family: inherit;
+}
+
+@keyframes guide-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+}
+
+/* ========== 守墓者手札（玩法说明）========== */
+
+.lore-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 5, 8, 0.85);
+}
+
+.lore-content {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    max-width: 560px;
+    width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.lore-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.lore-title {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-bright);
+}
+
+.lore-body {
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.lore-section h3 {
+    font-size: 12px;
+    color: var(--fire-glow);
+    margin: 0 0 6px;
+}
+
+.lore-section p {
+    font-size: 12px;
+    color: var(--text-main);
+    line-height: 1.7;
+    margin: 0 0 4px;
+}
+
+.lore-creed {
+    text-align: center;
+    padding: 12px 0 4px;
+    border-top: 1px solid var(--border);
+}
+
+.lore-creed p {
+    color: var(--firefly-bright);
+    font-size: 13px;
+    letter-spacing: 2px;
+}
+
+@media (max-width: 600px) {
+    .guide-dialogue-box { padding: 10px 12px 8px; }
+    .guide-text { font-size: 12px; }
+    .lore-content { width: 95%; max-height: 85vh; }
 }

@@ -76,11 +76,11 @@
                             <span class="r8-badge r8-badge--warning" id="display-day">第1天</span>
                         </div>
                         <div class="resource-bar">
-                            <span class="resource" title="体力"><span class="res-icon">⚡</span><span id="res-energy">100</span></span>
-                            <span class="resource" title="精力"><span class="res-icon">💜</span><span id="res-spirit">50</span></span>
-                            <span class="resource" title="木屑"><span class="res-icon">🪵</span><span id="res-sawdust">100</span></span>
-                            <span class="resource" title="火苗"><span class="res-icon">🔥</span><span id="res-flame">100</span></span>
-                            <span class="resource" title="灰烬"><span class="res-icon">💎</span><span id="res-ash">500</span></span>
+                            <span class="resource" data-tip="体力是你行动的燃料。完成任务、挖掘废墟都需要消耗体力。每天醒来恢复满。">⚡<span class="res-label">体力</span><span id="res-energy">100</span></span>
+                            <span class="resource" data-tip="精力是灵魂的韧性。被黑狗纠缠时恢复得更少。累计燃烧日可以提升上限。">💜<span class="res-label">精力</span><span id="res-spirit">50</span></span>
+                            <span class="resource" data-tip="木屑是你收集的基本资源。完成任务获得木屑，燃烧木屑维持火苗。">🪵<span class="res-label">木屑</span><span id="res-sawdust">100</span></span>
+                            <span class="resource" data-tip="火苗是你的生命。每天结束时减半化为灰烬。归零即死。保持活跃才能维持。">🔥<span class="res-label">火苗</span><span id="res-flame">100</span></span>
+                            <span class="resource" data-tip="灰烬是火苗燃烧后的沉淀，也是你唯一的货币。用它在商店购买补给。">💎<span class="res-label">灰烬</span><span id="res-ash">500</span></span>
                             <span id="active-buffs"></span>
                         </div>
                     </div>
@@ -91,6 +91,20 @@
                     <canvas id="game-canvas"></canvas>
                     <div class="map-hud">
                         <p class="map-hint" id="map-hint">点击地图移动 · 点击地点图标前往并进入</p>
+                        <button class="audio-toggle-btn" onclick="BGMusic.togglePanel()" data-tip="切换背景音乐和环境音效">🎵</button>
+                        <div id="audio-panel" class="audio-panel hidden"></div>
+                    </div>
+
+                    <!-- 引导对话 overlay -->
+                    <div id="guide-dialogue" class="guide-dialogue hidden">
+                        <div class="guide-dialogue-box">
+                            <div class="guide-dialogue-header">
+                                <span class="guide-speaker" id="guide-speaker"></span>
+                                <button class="guide-skip" onclick="GuideTour.skip()">跳过引导</button>
+                            </div>
+                            <div class="guide-text" id="guide-text"></div>
+                            <button class="guide-continue hidden" id="guide-continue" onclick="GuideTour.next()">▼</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -154,18 +168,46 @@
                                 </div>
                                 <div class="r8-panel shop-panel">
                                     <h3 class="panel-title">🏪 商店</h3>
-                                    <div class="shop-quick">
-                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('flameTea')">🍵 火种茶 30</button>
-                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('sparkCandy')">🍬 焰火糖 20</button>
-                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('fireStarter')">🔥 助燃剂 100</button>
-                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="quickBuy('mirror')">🪞 镜子 200</button>
+                                    <div class="shop-grid">
+                                        <button class="shop-card" onclick="quickBuy('flameTea')" data-tip="温热的茶从内部唤醒灵魂的韧性。在最疲惫的时候，一杯足矣。">
+                                            <span class="shop-card-icon">🍵</span>
+                                            <span class="shop-card-info">
+                                                <span class="shop-card-name">火种茶</span>
+                                                <span class="shop-card-desc">精力+10</span>
+                                            </span>
+                                            <span class="shop-card-cost">💎30</span>
+                                        </button>
+                                        <button class="shop-card" onclick="quickBuy('sparkCandy')" data-tip="焰火糖的甜味能唤醒疲惫的身体。先驱们在魔法学院废墟中发现的配方。">
+                                            <span class="shop-card-icon">🍬</span>
+                                            <span class="shop-card-info">
+                                                <span class="shop-card-name">焰火糖</span>
+                                                <span class="shop-card-desc">体力+5</span>
+                                            </span>
+                                            <span class="shop-card-cost">💎20</span>
+                                        </button>
+                                        <button class="shop-card" onclick="quickBuy('fireStarter')" data-tip="古老的助燃剂配方。涂抹后，火苗在夜间不会减半。给你一天喘息的时间。">
+                                            <span class="shop-card-icon">🔥</span>
+                                            <span class="shop-card-info">
+                                                <span class="shop-card-name">助燃剂</span>
+                                                <span class="shop-card-desc">明天火苗不减半</span>
+                                            </span>
+                                            <span class="shop-card-cost">💎100</span>
+                                        </button>
+                                        <button class="shop-card" onclick="quickBuy('mirror')" data-tip="据说是用神光晶体的碎片打磨而成。能映射出任务的真正价值——火苗翻倍。">
+                                            <span class="shop-card-icon">🪞</span>
+                                            <span class="shop-card-info">
+                                                <span class="shop-card-name">镜子</span>
+                                                <span class="shop-card-desc">今天任务火苗×2</span>
+                                            </span>
+                                            <span class="shop-card-cost">💎200</span>
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="r8-panel quick-panel">
                                     <h3 class="panel-title">⚡ 操作</h3>
                                     <div class="quick-actions">
                                         <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="endDay()">🌙 结束一天</button>
-                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="askGod('help')">📖 玩法</button>
+                                        <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="openLoreOverlay()">📖 手札</button>
                                         <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="changeName()">✏️ 改名</button>
                                         <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="exportData()">💾 备份</button>
                                         <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="importData()">📂 导入</button>
@@ -366,6 +408,57 @@
         </div>
     </div>
 
+    <!-- 自定义 tooltip -->
+    <div id="custom-tooltip" class="custom-tooltip hidden"></div>
+
+    <!-- 守墓者手札（玩法说明）-->
+    <div id="lore-overlay" class="lore-overlay hidden">
+        <div class="lore-content">
+            <div class="lore-header">
+                <h2 class="lore-title">📜 守墓者手札</h2>
+                <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="closeLoreOverlay()">✕ 关闭</button>
+            </div>
+            <div class="lore-body">
+                <div class="lore-section">
+                    <h3>你是谁</h3>
+                    <p>你是零——磷火团第四前锋队最后的幸存者。你的战友全部阵亡，是你的指挥失误。三位神使燃尽了自己，将战友化为十九棵幼苗。现在，你是守墓者。</p>
+                </div>
+                <div class="lore-section">
+                    <h3>火苗与灰烬</h3>
+                    <p>火苗是你的生命。每天结束时，火苗减半，化为灰烬。灰烬是你唯一的货币，可用于购买补给。火苗归零即死。保持活跃，完成任务，才能维持火苗。</p>
+                </div>
+                <div class="lore-section">
+                    <h3>任务与资源</h3>
+                    <p>在战友陵墓中立下誓约（创建任务）。完成任务获得木屑和火苗。体力（⚡）用于执行任务，精力（💜）是灵魂的韧性——被黑狗纠缠时恢复更少。木屑（🪵）是基本收集品。</p>
+                </div>
+                <div class="lore-section">
+                    <h3>燃烧日</h3>
+                    <p>当日结束时火苗≥100，记为一个燃烧日。累计燃烧日可以让黑狗逐渐退后——从「黑狗缠身」到「战胜黑狗」，精力上限也会随之提升。</p>
+                </div>
+                <div class="lore-section">
+                    <h3>地点一览</h3>
+                    <p><strong>🔥 营地篝火</strong>——你的据点。查看状态、管理任务、购买道具。</p>
+                    <p><strong>🌱 战友陵墓</strong>——创建日常修行、待办事项和长期远征。</p>
+                    <p><strong>📜 魔法学院废墟</strong>——消耗资源挖掘古老知识碎片。</p>
+                    <p><strong>🐕 森林边缘</strong>——直面黑狗斥候，打字挑战小游戏。</p>
+                    <p><strong>🕯️ 神使残响</strong>——与神使对话，获取引导和建议。</p>
+                    <p><strong>☯ 命火祭坛</strong>——解读命运密码，八字分析。</p>
+                    <p><strong>🌸 种子花园</strong>——在灰烬中埋下种子，与其他幸存者交流。</p>
+                </div>
+                <div class="lore-section">
+                    <h3>商店道具</h3>
+                    <p><strong>🍵 火种茶（30灰烬）</strong>——恢复10精力。温热的茶让灵魂的韧性恢复一些。</p>
+                    <p><strong>🍬 焰火糖（20灰烬）</strong>——恢复5体力。甜味能唤醒疲惫的身体。</p>
+                    <p><strong>🔥 助燃剂（100灰烬）</strong>——明天火苗不减半。争取喘息的时间。</p>
+                    <p><strong>🪞 镜子（200灰烬）</strong>——今天任务火苗翻倍。看清自己的价值。</p>
+                </div>
+                <div class="lore-section lore-creed">
+                    <p>生先死，强护弱，行胜果。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 意见反馈悬浮按钮 -->
     <div id="feedback-fab" class="feedback-fab" onclick="FeedbackUI.open()">?</div>
 
@@ -405,6 +498,7 @@
     <script src="scripts/task-system.js"></script>
     <script src="scripts/tile-map.js"></script>
     <script src="scripts/map-ui.js"></script>
+    <script src="scripts/guide-tour.js"></script>
     <script src="scripts/bgm.js"></script>
     <script src="scripts/app.js"></script>
 </body>

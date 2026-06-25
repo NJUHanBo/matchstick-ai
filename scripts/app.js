@@ -109,13 +109,20 @@ function enterMainScreen() {
     showScreen('screen-main');
 
     if (GameState.chatHistory.length === 0) {
-        showFirstDayGreeting();
+        if (GameState.guideTourCompleted || GameState.stats.totalDays > 1) {
+            showFirstDayGreeting();
+        }
     } else {
         restoreChatHistory();
     }
 
     if (window.TileMap) {
-        requestAnimationFrame(() => TileMap.init());
+        requestAnimationFrame(() => {
+            TileMap.init();
+            if (!GameState.guideTourCompleted && GameState.stats.totalDays === 1 && window.GuideTour) {
+                setTimeout(() => GuideTour.start(), 800);
+            }
+        });
     }
 }
 
@@ -908,6 +915,51 @@ function changeName() {
         saveGame();
         addMessage('god', '好。从现在起，你叫「' + newName.trim() + '」。');
     }
+}
+
+// ============ 自定义 tooltip ============
+
+(function () {
+    var tip = null;
+    function show(e) {
+        if (!tip) tip = document.getElementById('custom-tooltip');
+        if (!tip) return;
+        var text = e.target.closest('[data-tip]');
+        if (!text) return;
+        tip.textContent = text.getAttribute('data-tip');
+        tip.classList.remove('hidden');
+        position(e);
+    }
+    function position(e) {
+        if (!tip) return;
+        var x = e.clientX + 12;
+        var y = e.clientY + 12;
+        if (x + 230 > window.innerWidth) x = e.clientX - 230;
+        if (y + 80 > window.innerHeight) y = e.clientY - 80;
+        tip.style.left = x + 'px';
+        tip.style.top = y + 'px';
+    }
+    function hide() {
+        if (tip) tip.classList.add('hidden');
+    }
+    document.addEventListener('mouseover', show);
+    document.addEventListener('mousemove', position);
+    document.addEventListener('mouseout', function (e) {
+        if (!e.target.closest('[data-tip]')) hide();
+    });
+    document.addEventListener('mouseover', function (e) {
+        if (!e.target.closest('[data-tip]')) hide();
+    });
+})();
+
+// ============ 守墓者手札 ============
+
+function openLoreOverlay() {
+    document.getElementById('lore-overlay').classList.remove('hidden');
+}
+
+function closeLoreOverlay() {
+    document.getElementById('lore-overlay').classList.add('hidden');
 }
 
 // ============ Init ============

@@ -34,6 +34,7 @@ const GameState = {
     chatHistory: [],
     thoughts: [],
     dailyThoughtCompleted: false,
+    guideTourCompleted: false,
     magicAcademy: {
         discoveredParchments: [],
         lastExcavation: null,

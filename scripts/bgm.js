@@ -1,54 +1,68 @@
 /**
- * 背景音乐管理器
- * 循环播放、淡入淡出、场景切换
+ * 背景音乐 + 环境音管理器
+ * 双轨系统：音乐层（单曲循环）+ 环境音层（可叠加多个）
  */
 var BGMusic = (function () {
-    let audio = null;
-    let currentTrack = null;
-    let volume = 0.3;
-    let muted = false;
-    let fadeInterval = null;
+    var audio = null;
+    var currentTrack = null;
+    var volume = 0.3;
+    var muted = false;
+    var fadeInterval = null;
 
-    // 音乐曲目配置（替换为你自己下载的文件路径）
-    const TRACKS = {
-        // 默认/地图探索：暗色 ambient
-        explore: 'audio/explore.mp3',
-        // 营地/对话：温暖 lo-fi
-        camp: 'audio/camp.mp3',
-        // 通用 fallback（如果只有一首就用这个）
-        default: 'audio/main-loop.mp3',
+    var TRACKS = {
+        explore: { src: 'audio/explore.mp3', name: '暗色旷野' },
+        camp:    { src: 'audio/camp.mp3',    name: '温暖篝火' },
+        default: { src: 'audio/main-loop.mp3', name: '萤火虫森林' },
     };
+
+    // --- 环境音层 ---
+    var AMBIENTS = {
+        crickets:  { src: 'audio/amb-crickets.mp3',  name: '虫鸣', icon: '🦗' },
+        campfire:  { src: 'audio/amb-campfire.mp3',  name: '篝火', icon: '🔥' },
+        rain:      { src: 'audio/amb-rain.mp3',      name: '雨声', icon: '🌧️' },
+        wind:      { src: 'audio/amb-wind.mp3',      name: '风声', icon: '🍃' },
+    };
+    var ambientAudios = {};
+    var ambientActive = {};
+    var ambientVolume = 0.25;
 
     function init() {
         audio = new Audio();
         audio.loop = true;
         audio.volume = volume;
 
-        // 从 localStorage 恢复设置
-        const savedVol = localStorage.getItem('matchstick_bgm_vol');
+        var savedVol = localStorage.getItem('matchstick_bgm_vol');
         if (savedVol !== null) volume = parseFloat(savedVol);
 
-        const savedMute = localStorage.getItem('matchstick_bgm_mute');
+        var savedMute = localStorage.getItem('matchstick_bgm_mute');
         if (savedMute === 'true') muted = true;
+
+        var savedAmbVol = localStorage.getItem('matchstick_amb_vol');
+        if (savedAmbVol !== null) ambientVolume = parseFloat(savedAmbVol);
+
+        var savedAmb = localStorage.getItem('matchstick_amb_active');
+        if (savedAmb) {
+            try { ambientActive = JSON.parse(savedAmb); } catch (e) { ambientActive = {}; }
+        }
 
         audio.volume = muted ? 0 : volume;
     }
 
     function play(trackKey) {
         if (!audio) init();
-        const track = TRACKS[trackKey] || TRACKS.default;
+        var t = TRACKS[trackKey] || TRACKS.default;
+        var src = t.src || t;
 
-        if (currentTrack === track) return;
-        currentTrack = track;
+        if (currentTrack === src) return;
+        currentTrack = src;
 
-        // 淡出当前 → 切换 → 淡入
         if (!audio.paused) {
             fadeOut(function () {
-                audio.src = track;
+                audio.src = src;
                 audio.play().then(function () { fadeIn(); }).catch(function () {});
             });
         } else {
-            audio.src = track;
+            audio.src = src;
             audio.volume = 0;
             audio.play().then(function () { fadeIn(); }).catch(function () {});
         }
@@ -64,7 +78,7 @@ var BGMusic = (function () {
 
     function fadeIn() {
         if (fadeInterval) clearInterval(fadeInterval);
-        const target = muted ? 0 : volume;
+        var target = muted ? 0 : volume;
         audio.volume = 0;
         fadeInterval = setInterval(function () {
             if (audio.volume < target - 0.02) {
@@ -100,33 +114,140 @@ var BGMusic = (function () {
     function toggleMute() {
         muted = !muted;
         if (audio) audio.volume = muted ? 0 : volume;
+        Object.keys(ambientAudios).forEach(function (k) {
+            ambientAudios[k].volume = muted ? 0 : (ambientActive[k] ? ambientVolume : 0);
+        });
         localStorage.setItem('matchstick_bgm_mute', muted);
         return muted;
     }
 
-    function isMuted() {
-        return muted;
+    function isMuted() { return muted; }
+
+    // --- 环境音控制 ---
+    function toggleAmbient(key) {
+        if (!AMBIENTS[key]) return;
+
+        if (ambientActive[key]) {
+            ambientActive[key] = false;
+            if (ambientAudios[key]) {
+                ambientAudios[key].pause();
+            }
+        } else {
+            ambientActive[key] = true;
+            if (!ambientAudios[key]) {
+                ambientAudios[key] = new Audio(AMBIENTS[key].src);
+                ambientAudios[key].loop = true;
+            }
+            ambientAudios[key].volume = muted ? 0 : ambientVolume;
+            ambientAudios[key].play().catch(function () {});
+        }
+
+        localStorage.setItem('matchstick_amb_active', JSON.stringify(ambientActive));
     }
 
-    // 首次用户交互后才能播放（浏览器策略）
+    function setAmbientVolume(v) {
+        ambientVolume = Math.max(0, Math.min(1, v));
+        Object.keys(ambientAudios).forEach(function (k) {
+            if (ambientActive[k] && !muted) {
+                ambientAudios[k].volume = ambientVolume;
+            }
+        });
+        localStorage.setItem('matchstick_amb_vol', ambientVolume);
+    }
+
+    function restoreAmbients() {
+        Object.keys(ambientActive).forEach(function (k) {
+            if (ambientActive[k] && AMBIENTS[k]) {
+                if (!ambientAudios[k]) {
+                    ambientAudios[k] = new Audio(AMBIENTS[k].src);
+                    ambientAudios[k].loop = true;
+                }
+                ambientAudios[k].volume = muted ? 0 : ambientVolume;
+                ambientAudios[k].play().catch(function () {});
+            }
+        });
+    }
+
     function tryAutoplay() {
         if (!audio) init();
         document.addEventListener('click', function handler() {
             if (!currentTrack) {
                 play('default');
             }
+            restoreAmbients();
             document.removeEventListener('click', handler);
         }, { once: true });
     }
 
+    // --- 控制面板 UI ---
+    function renderPanel() {
+        var panel = document.getElementById('audio-panel');
+        if (!panel) return;
+
+        var musicHtml = '<div class="audio-section">' +
+            '<div class="audio-section-title">音乐</div>' +
+            '<div class="audio-tracks">';
+        Object.keys(TRACKS).forEach(function (k) {
+            var t = TRACKS[k];
+            var isActive = currentTrack === t.src;
+            musicHtml += '<button class="audio-track-btn' + (isActive ? ' audio-track-active' : '') +
+                '" onclick="BGMusic.play(\'' + k + '\');BGMusic.renderPanel()">' + t.name + '</button>';
+        });
+        musicHtml += '</div>' +
+            '<div class="audio-slider-row">' +
+            '<span class="audio-slider-label">音量</span>' +
+            '<input type="range" class="audio-slider" min="0" max="100" value="' + Math.round(volume * 100) +
+            '" oninput="BGMusic.setVolume(this.value/100)">' +
+            '</div></div>';
+
+        var ambHtml = '<div class="audio-section">' +
+            '<div class="audio-section-title">环境音</div>' +
+            '<div class="audio-amb-grid">';
+        Object.keys(AMBIENTS).forEach(function (k) {
+            var a = AMBIENTS[k];
+            var isOn = !!ambientActive[k];
+            ambHtml += '<button class="audio-amb-btn' + (isOn ? ' audio-amb-on' : '') +
+                '" onclick="BGMusic.toggleAmbient(\'' + k + '\');BGMusic.renderPanel()">' +
+                a.icon + ' ' + a.name + '</button>';
+        });
+        ambHtml += '</div>' +
+            '<div class="audio-slider-row">' +
+            '<span class="audio-slider-label">音量</span>' +
+            '<input type="range" class="audio-slider" min="0" max="100" value="' + Math.round(ambientVolume * 100) +
+            '" oninput="BGMusic.setAmbientVolume(this.value/100)">' +
+            '</div></div>';
+
+        var muteHtml = '<button class="audio-mute-btn" onclick="BGMusic.toggleMute();BGMusic.renderPanel()">' +
+            (muted ? '🔇 已静音' : '🔊 静音') + '</button>';
+
+        panel.innerHTML = musicHtml + ambHtml + muteHtml;
+    }
+
+    function togglePanel() {
+        var panel = document.getElementById('audio-panel');
+        if (!panel) return;
+        if (panel.classList.contains('hidden')) {
+            renderPanel();
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+    }
+
     return {
-        init,
-        play,
-        stop,
-        setVolume,
-        toggleMute,
-        isMuted,
-        tryAutoplay,
+        init: init,
+        play: play,
+        stop: stop,
+        setVolume: setVolume,
+        toggleMute: toggleMute,
+        isMuted: isMuted,
+        tryAutoplay: tryAutoplay,
+        toggleAmbient: toggleAmbient,
+        setAmbientVolume: setAmbientVolume,
+        renderPanel: renderPanel,
+        togglePanel: togglePanel,
+        TRACKS: TRACKS,
+        AMBIENTS: AMBIENTS,
     };
 })();
 

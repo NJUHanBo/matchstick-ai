@@ -243,9 +243,11 @@
             this.player = { tx: 12, ty: 9, path: [], pendingLocation: null };
             this.fireflies = [];
             this.paused = false;
+            this.inputLocked = false;
             this.hoverTile = null;
             this.nearLocation = null;
             this.campfirePhase = 0;
+            this.guideNpc = null;
             this._bindEvents();
             this._initFireflies();
             this._resize();
@@ -289,7 +291,7 @@
                 if (t) this._onClick(t);
             }, { passive: false });
             window.addEventListener('keydown', (e) => {
-                if (this.paused) return;
+                if (this.paused || this.inputLocked) return;
                 if (e.key === 'Enter' && this.nearLocation) {
                     MapUI.open(this.nearLocation.id);
                     return;
@@ -380,7 +382,7 @@
         }
 
         _onClick(e) {
-            if (this.paused || this.player.path.length) return;
+            if (this.paused || this.inputLocked || this.player.path.length) return;
             const { tx, ty, px, py } = this._screenToTile(e);
 
             // 点击地点标记
@@ -455,6 +457,7 @@
                     lastStep = ts;
                 }
                 this._animateFireflies();
+                this._updateGuideNpc();
                 this._draw();
             };
             this._raf = requestAnimationFrame(loop);
@@ -534,8 +537,74 @@
                 ctx.fillText(loc.icon, sx, sy);
             });
 
+            // 引导 NPC（飘荡火焰）
+            if (this.guideNpc) {
+                this._drawGuideNpc();
+            }
+
             // 玩家（火柴人）
             this._drawPlayer(this.player.tx * TILE + TILE / 2, this.player.ty * TILE + TILE - 2);
+        }
+
+        _drawGuideNpc() {
+            const npc = this.guideNpc;
+            const ctx = this.ctx;
+            const cx = npc.renderX;
+            const cy = npc.renderY;
+            const phase = this.campfirePhase;
+
+            // 光晕
+            const glowR = 28 + Math.sin(phase * 1.2) * 6;
+            const glowA = 0.12 + Math.sin(phase * 0.8) * 0.05;
+            const grd = ctx.createRadialGradient(cx, cy - 4, 1, cx, cy - 4, glowR);
+            grd.addColorStop(0, 'rgba(200, 90, 32, ' + (glowA + 0.08) + ')');
+            grd.addColorStop(0.5, 'rgba(200, 90, 32, ' + glowA + ')');
+            grd.addColorStop(1, 'rgba(200, 90, 32, 0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(cx - glowR, cy - 4 - glowR, glowR * 2, glowR * 2);
+
+            // 火焰主体（三层，由外到内越亮）
+            const bob = Math.sin(phase * 1.5) * 1.5;
+            const flicker = Math.sin(phase * 3) * 0.5;
+
+            ctx.fillStyle = 'rgba(138, 56, 16, 0.7)';
+            ctx.fillRect(cx - 3, cy - 6 + bob, 6, 4);
+
+            ctx.fillStyle = 'rgba(200, 90, 32, 0.85)';
+            ctx.fillRect(cx - 2, cy - 8 + bob + flicker, 4, 5);
+
+            ctx.fillStyle = 'rgba(232, 112, 48, 0.95)';
+            ctx.fillRect(cx - 1, cy - 10 + bob, 2, 5);
+
+            // 火尖
+            ctx.fillStyle = 'rgba(255, 209, 102, 0.8)';
+            ctx.fillRect(cx, cy - 11 + bob - flicker, 1, 2);
+        }
+
+        _updateGuideNpc() {
+            const npc = this.guideNpc;
+            if (!npc) return;
+
+            const targetRX = npc.targetTx * TILE + TILE / 2;
+            const targetRY = npc.targetTy * TILE + TILE / 2;
+
+            const dx = targetRX - npc.renderX;
+            const dy = targetRY - npc.renderY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 1) {
+                npc.renderX = targetRX;
+                npc.renderY = targetRY;
+                if (npc.onArrive) {
+                    const cb = npc.onArrive;
+                    npc.onArrive = null;
+                    cb();
+                }
+            } else {
+                const speed = Math.min(dist, 1.2);
+                npc.renderX += (dx / dist) * speed;
+                npc.renderY += (dy / dist) * speed;
+            }
         }
 
         _drawPlayer(cx, footY) {
@@ -563,5 +632,46 @@
         },
         pause() { if (instance) instance.pause(); },
         resume() { if (instance) instance.resume(); },
+        lockInput() { if (instance) instance.inputLocked = true; },
+        unlockInput() { if (instance) instance.inputLocked = false; },
+        setGuideNpc(tx, ty, onArrive) {
+            if (!instance) return;
+            if (!instance.guideNpc) {
+                instance.guideNpc = {
+                    targetTx: tx, targetTy: ty,
+                    renderX: tx * TILE + TILE / 2,
+                    renderY: ty * TILE + TILE / 2,
+                    onArrive: onArrive || null,
+                };
+            } else {
+                instance.guideNpc.targetTx = tx;
+                instance.guideNpc.targetTy = ty;
+                instance.guideNpc.onArrive = onArrive || null;
+            }
+        },
+        moveGuideNpc(tx, ty, onArrive) {
+            if (!instance || !instance.guideNpc) return;
+            instance.guideNpc.targetTx = tx;
+            instance.guideNpc.targetTy = ty;
+            instance.guideNpc.onArrive = onArrive || null;
+        },
+        removeGuideNpc() {
+            if (instance) instance.guideNpc = null;
+        },
+        autoWalkTo(tx, ty, callback) {
+            if (!instance) return;
+            const dest = instance._nearestWalkableTo({ tx, ty });
+            if (!dest) { if (callback) callback(); return; }
+            instance._goToTile(dest.tx, dest.ty, callback);
+        },
+        getPlayerPos() {
+            if (!instance) return { tx: 12, ty: 9 };
+            return { tx: instance.player.tx, ty: instance.player.ty };
+        },
+        _overrideNpcRender(tx, ty) {
+            if (!instance || !instance.guideNpc) return;
+            instance.guideNpc.renderX = tx * TILE + TILE / 2;
+            instance.guideNpc.renderY = ty * TILE + TILE / 2;
+        },
     };
 })();
