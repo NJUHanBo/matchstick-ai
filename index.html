@@ -40,6 +40,7 @@
                     </div>
                     <button class="r8-btn r8-btn--secondary auth-btn" style="margin-top:4px;font-size:11px;opacity:0.7;" onclick="AuthUI.resetPassword()">忘记密码 / 首次设置密码</button>
                     <button class="r8-btn r8-btn--secondary auth-btn" onclick="AuthUI.skipLogin()">跳过，匿名体验</button>
+                    <a id="auth-download-link" class="auth-download-link hidden" href="#" target="_blank">下载桌面版</a>
                 </div>
 
                 <div id="auth-waiting-step" class="auth-step hidden">
@@ -472,6 +473,9 @@
     <!-- 音频控制悬浮按钮 -->
     <div class="audio-fab" onclick="BGMusic.togglePanel()" data-tip="背景音乐与环境音">🎵</div>
     <div id="audio-panel" class="audio-panel hidden"></div>
+
+    <!-- 下载桌面版悬浮按钮（仅网页端显示） -->
+    <a id="download-fab" class="download-fab hidden" href="#" target="_blank" title="下载桌面版">⬇</a>
 
     <!-- 意见反馈悬浮按钮 -->
     <div id="feedback-fab" class="feedback-fab" onclick="FeedbackUI.open()">?</div>

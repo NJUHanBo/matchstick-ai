@@ -962,6 +962,19 @@ function closeLoreOverlay() {
     document.getElementById('lore-overlay').classList.add('hidden');
 }
 
+// ============ Desktop download ============
+
+var DESKTOP_DOWNLOAD_URL = ''; // 填入 .dmg 下载地址后自动显示按钮
+
+function initDownloadButton() {
+    if (!DESKTOP_DOWNLOAD_URL) return;
+    if (window.location.hostname === '127.0.0.1') return;
+    var fab = document.getElementById('download-fab');
+    if (fab) { fab.href = DESKTOP_DOWNLOAD_URL; fab.classList.remove('hidden'); }
+    var authLink = document.getElementById('auth-download-link');
+    if (authLink) { authLink.href = DESKTOP_DOWNLOAD_URL; authLink.classList.remove('hidden'); }
+}
+
 // ============ Init ============
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -970,6 +983,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 显示同意条幅（如果首次）
     if (window.ConsentManager) ConsentManager.init();
+
+    // 下载桌面版按钮
+    initDownloadButton();
 
     // 初始化 Analytics
     if (window.Analytics) Analytics.init();

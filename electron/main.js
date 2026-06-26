@@ -22,6 +22,8 @@ const MIME = {
     '.ttf': 'font/ttf',
 };
 
+const LOCAL_PORT = 17280;
+
 function startLocalServer(rootDir) {
     return new Promise((resolve) => {
         const server = http.createServer((req, res) => {
@@ -31,7 +33,7 @@ function startLocalServer(rootDir) {
             }
             serveStatic(rootDir, req, res);
         });
-        server.listen(0, '127.0.0.1', () => resolve(server));
+        server.listen(LOCAL_PORT, '127.0.0.1', () => resolve(server));
     });
 }
 
@@ -92,7 +94,16 @@ let mainWindow;
 let server;
 let serverPort;
 
+app.setName('火柴人的时光管理');
 app.setAsDefaultProtocolClient('matchstick-ai');
+
+const iconPath = path.join(__dirname, '..', 'build', 'icon.png');
+app.whenReady().then(() => {
+    if (app.dock && fs.existsSync(iconPath)) {
+        const { nativeImage } = require('electron');
+        app.dock.setIcon(nativeImage.createFromPath(iconPath));
+    }
+});
 
 app.on('open-url', (event, url) => {
     event.preventDefault();

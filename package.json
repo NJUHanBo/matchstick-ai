@@ -34,16 +34,15 @@
       "index.html",
       "!node_modules/retro8-ui/README.md"
     ],
+    "icon": "build/icon.icns",
+    "electronDist": "node_modules/electron/dist",
     "mac": {
       "category": "public.app-category.games",
+      "icon": "build/icon.icns",
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal"]
-        },
-        {
-          "target": "zip",
-          "arch": ["universal"]
+          "arch": ["arm64"]
         }
       ]
     },
