@@ -964,7 +964,7 @@ function closeLoreOverlay() {
 
 // ============ Desktop download ============
 
-var DESKTOP_DOWNLOAD_URL = 'https://github.com/NJUHanBo/matchstick-ai/releases/download/v1.0.0/%E7%81%AB%E6%9F%B4%E4%BA%BA%E7%9A%84%E6%97%B6%E5%85%89%E7%AE%A1%E7%90%86-1.0.0-arm64.dmg';
+var DESKTOP_DOWNLOAD_URL = 'https://github.com/NJUHanBo/matchstick-ai/releases/download/v1.0.0/-1.0.0-arm64.dmg';
 
 function initDownloadButton() {
     if (!DESKTOP_DOWNLOAD_URL) return;
