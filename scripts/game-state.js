@@ -35,6 +35,7 @@ const GameState = {
     thoughts: [],
     dailyThoughtCompleted: false,
     guideTourCompleted: false,
+    crystalChapterUnlocked: false,
     magicAcademy: {
         discoveredParchments: [],
         lastExcavation: null,
