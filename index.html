@@ -33,14 +33,26 @@
 
                 <div id="auth-email-step" class="auth-step">
                     <input type="email" id="auth-email" class="r8-input auth-input" placeholder="your@email.com">
-                    <button class="r8-btn r8-btn--primary auth-btn" onclick="AuthUI.sendMagicLink()">发送验证邮件</button>
+                    <input type="password" id="auth-password" class="r8-input auth-input" placeholder="密码" style="margin-top:8px;">
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="r8-btn r8-btn--primary auth-btn" style="flex:1" onclick="AuthUI.loginWithPassword()">登录</button>
+                        <button class="r8-btn r8-btn--secondary auth-btn" style="flex:1" onclick="AuthUI.registerWithPassword()">注册</button>
+                    </div>
+                    <button class="r8-btn r8-btn--secondary auth-btn" style="margin-top:4px;font-size:11px;opacity:0.7;" onclick="AuthUI.resetPassword()">忘记密码 / 首次设置密码</button>
                     <button class="r8-btn r8-btn--secondary auth-btn" onclick="AuthUI.skipLogin()">跳过，匿名体验</button>
                 </div>
 
                 <div id="auth-waiting-step" class="auth-step hidden">
-                    <p class="auth-waiting-text">验证邮件已发送，请查收邮箱并点击链接。</p>
-                    <p class="auth-waiting-hint">点击邮件中的链接后会自动跳转回来。</p>
-                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="AuthUI.backToEmail()">重新输入邮箱</button>
+                    <p class="auth-waiting-text">邮件已发送，请查收邮箱并点击链接。</p>
+                    <p class="auth-waiting-hint">点击链接后会自动跳转回来。</p>
+                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="AuthUI.backToEmail()">返回</button>
+                </div>
+
+                <div id="auth-recovery-step" class="auth-step hidden">
+                    <p class="auth-subtitle">设置新密码</p>
+                    <input type="password" id="auth-new-password" class="r8-input auth-input" placeholder="输入新密码（至少6位）">
+                    <input type="password" id="auth-confirm-password" class="r8-input auth-input" placeholder="确认密码" style="margin-top:8px;">
+                    <button class="r8-btn r8-btn--primary auth-btn" style="margin-top:8px;" onclick="AuthUI.setNewPassword()">确认设置</button>
                 </div>
 
                 <div id="auth-error" class="auth-error hidden"></div>

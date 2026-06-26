@@ -38,7 +38,6 @@ var ConsentManager = (function () {
 var AuthUI = (function () {
 
     function init() {
-        // 检查 URL 中是否有 Supabase Auth 回调（magic link 点击后跳转回来）
         handleAuthCallback();
     }
 
@@ -46,11 +45,11 @@ var AuthUI = (function () {
         if (!SupabaseClient.isReady()) return;
         const db = SupabaseClient.getClient();
 
-        // Supabase 会在 URL hash 中带回 access_token
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const authError = hashParams.get('error') || hashParams.get('error_code');
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
+        const authType = hashParams.get('type');
 
         if (authError) {
             window.history.replaceState(null, '', window.location.pathname);
@@ -66,38 +65,154 @@ var AuthUI = (function () {
             });
 
             if (!error && data.session) {
-                // 清理 URL hash
                 window.history.replaceState(null, '', window.location.pathname);
+                if (authType === 'recovery') {
+                    showRecoveryScreen(data.session.user);
+                    return;
+                }
                 onLoginSuccess(data.session.user);
                 return;
             }
 
             window.history.replaceState(null, '', window.location.pathname);
             showAuthScreen();
-            showAuthError('登录状态保存失败，请重新发送验证邮件。');
+            showAuthError('登录失败，请重试。');
             return;
         }
 
-        // 检查是否已有 session
         const { data: { session } } = await db.auth.getSession();
         if (session) {
             onLoginSuccess(session.user);
             return;
         }
 
-        // 没有登录，检查是否有匿名跳过记录
         if (localStorage.getItem('matchstick_auth_skip')) {
             proceedToGame();
             return;
         }
 
-        // 显示登录屏幕
         showAuthScreen();
     }
+
+    // ========== 密码登录 ==========
+
+    async function loginWithPassword() {
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        hideError();
+
+        if (!email || !email.includes('@')) { showAuthError('请输入有效邮箱'); return; }
+        if (!password || password.length < 6) { showAuthError('密码至少6位'); return; }
+        if (!SupabaseClient.isReady()) { showAuthError('网络未就绪'); return; }
+
+        const db = SupabaseClient.getClient();
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            if (error.message.includes('Invalid login credentials')) {
+                showAuthError('邮箱或密码错误。如果还没设置密码，点"首次设置密码"。');
+            } else {
+                showAuthError('登录失败：' + error.message);
+            }
+            return;
+        }
+
+        onLoginSuccess(data.user);
+    }
+
+    async function registerWithPassword() {
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        hideError();
+
+        if (!email || !email.includes('@')) { showAuthError('请输入有效邮箱'); return; }
+        if (!password || password.length < 6) { showAuthError('密码至少6位'); return; }
+        if (!SupabaseClient.isReady()) { showAuthError('网络未就绪'); return; }
+
+        const db = SupabaseClient.getClient();
+        const { data, error } = await db.auth.signUp({ email, password });
+
+        if (error) {
+            if (error.message.includes('already registered')) {
+                showAuthError('该邮箱已注册。请直接登录，或点"首次设置密码"。');
+            } else {
+                showAuthError('注册失败：' + error.message);
+            }
+            return;
+        }
+
+        if (data.user && data.session) {
+            onLoginSuccess(data.user);
+        } else {
+            showAuthError('注册成功！请查收确认邮件后再登录。');
+        }
+    }
+
+    // ========== 重置 / 首次设置密码 ==========
+
+    async function resetPassword() {
+        const email = document.getElementById('auth-email').value.trim();
+        hideError();
+
+        if (!email || !email.includes('@')) { showAuthError('请先输入邮箱'); return; }
+        if (!SupabaseClient.isReady()) { showAuthError('网络未就绪'); return; }
+
+        const db = SupabaseClient.getClient();
+        const redirectUrl = window.location.origin + window.location.pathname;
+
+        const { error } = await db.auth.resetPasswordForEmail(email, {
+            redirectTo: redirectUrl,
+        });
+
+        if (error) {
+            showAuthError('发送失败：' + error.message);
+            return;
+        }
+
+        document.getElementById('auth-email-step').classList.add('hidden');
+        document.getElementById('auth-waiting-step').classList.remove('hidden');
+    }
+
+    function showRecoveryScreen(user) {
+        if (window.SupabaseClient) SupabaseClient.setAuthUser(user);
+        document.getElementById('auth-email-step').classList.add('hidden');
+        document.getElementById('auth-waiting-step').classList.add('hidden');
+        document.getElementById('auth-recovery-step').classList.remove('hidden');
+        document.getElementById('screen-auth').classList.remove('hidden');
+        document.getElementById('screen-auth').classList.add('active');
+    }
+
+    async function setNewPassword() {
+        const pw = document.getElementById('auth-new-password').value;
+        const pw2 = document.getElementById('auth-confirm-password').value;
+        hideError();
+
+        if (!pw || pw.length < 6) { showAuthError('密码至少6位'); return; }
+        if (pw !== pw2) { showAuthError('两次密码不一致'); return; }
+
+        const db = SupabaseClient.getClient();
+        const { error } = await db.auth.updateUser({ password: pw });
+
+        if (error) {
+            showAuthError('设置失败：' + error.message);
+            return;
+        }
+
+        const { data: { session } } = await db.auth.getSession();
+        if (session) {
+            onLoginSuccess(session.user);
+        } else {
+            showAuthScreen();
+            showAuthError('密码已设置，请用新密码登录。');
+        }
+    }
+
+    // ========== UI helpers ==========
 
     function showAuthScreen() {
         document.getElementById('auth-email-step').classList.remove('hidden');
         document.getElementById('auth-waiting-step').classList.add('hidden');
+        document.getElementById('auth-recovery-step').classList.add('hidden');
         document.getElementById('screen-auth').classList.remove('hidden');
         document.getElementById('screen-auth').classList.add('active');
     }
@@ -108,66 +223,26 @@ var AuthUI = (function () {
     }
 
     function showAuthError(message) {
-        const errorEl = document.getElementById('auth-error');
-        errorEl.textContent = message;
-        errorEl.classList.remove('hidden');
+        var el = document.getElementById('auth-error');
+        el.textContent = message;
+        el.classList.remove('hidden');
+    }
+
+    function hideError() {
+        document.getElementById('auth-error').classList.add('hidden');
     }
 
     function getAuthErrorMessage(hashParams) {
-        const errorCode = hashParams.get('error_code');
-        const description = hashParams.get('error_description');
-
-        if (errorCode === 'otp_expired') {
-            return '验证链接已过期或已被使用，请重新发送验证邮件。';
-        }
-
-        if (description) {
-            return '登录验证失败：' + description;
-        }
-
-        return '登录验证失败，请重新发送验证邮件。';
-    }
-
-    async function sendMagicLink() {
-        const emailInput = document.getElementById('auth-email');
-        const email = emailInput.value.trim();
-        const errorEl = document.getElementById('auth-error');
-
-        if (!email || !email.includes('@')) {
-            showAuthError('请输入有效邮箱地址');
-            return;
-        }
-
-        errorEl.classList.add('hidden');
-
-        if (!SupabaseClient.isReady()) {
-            showAuthError('网络未就绪，请稍后重试');
-            return;
-        }
-
-        const db = SupabaseClient.getClient();
-        const isElectron = window.location.hostname === '127.0.0.1';
-        const redirectUrl = isElectron
-            ? 'matchstick-ai://auth-callback'
-            : window.location.origin + window.location.pathname;
-
-        const { error } = await db.auth.signInWithOtp({
-            email: email,
-            options: { emailRedirectTo: redirectUrl },
-        });
-
-        if (error) {
-            showAuthError('发送失败：' + error.message);
-            return;
-        }
-
-        // 切换到等待步骤
-        document.getElementById('auth-email-step').classList.add('hidden');
-        document.getElementById('auth-waiting-step').classList.remove('hidden');
+        var code = hashParams.get('error_code');
+        var desc = hashParams.get('error_description');
+        if (code === 'otp_expired') return '链接已过期，请重新操作。';
+        if (desc) return '验证失败：' + desc;
+        return '验证失败，请重试。';
     }
 
     function backToEmail() {
         document.getElementById('auth-waiting-step').classList.add('hidden');
+        document.getElementById('auth-recovery-step').classList.add('hidden');
         document.getElementById('auth-email-step').classList.remove('hidden');
     }
 
@@ -177,24 +252,21 @@ var AuthUI = (function () {
     }
 
     function onLoginSuccess(user) {
-        // 更新 SupabaseClient 的 userId
-        if (window.SupabaseClient) {
-            SupabaseClient.setAuthUser(user);
-        }
+        if (window.SupabaseClient) SupabaseClient.setAuthUser(user);
         proceedToGame();
     }
 
     function proceedToGame() {
         hideAuthScreen();
-        // 触发正常的游戏初始化
-        if (typeof startGameAfterAuth === 'function') {
-            startGameAfterAuth();
-        }
+        if (typeof startGameAfterAuth === 'function') startGameAfterAuth();
     }
 
     return {
         init,
-        sendMagicLink,
+        loginWithPassword,
+        registerWithPassword,
+        resetPassword,
+        setNewPassword,
         backToEmail,
         skipLogin,
         showAuthScreen,
