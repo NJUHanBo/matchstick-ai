@@ -165,6 +165,17 @@ var BGMusic = (function () {
         });
     }
 
+    function toggleTrack(trackKey) {
+        if (!audio) init();
+        var t = TRACKS[trackKey] || TRACKS.default;
+        var src = t.src || t;
+        if (currentTrack === src && !audio.paused) {
+            stop();
+        } else {
+            play(trackKey);
+        }
+    }
+
     function tryAutoplay() {
         if (!audio) init();
         document.addEventListener('click', function handler() {
@@ -181,14 +192,15 @@ var BGMusic = (function () {
         var panel = document.getElementById('audio-panel');
         if (!panel) return;
 
+        var musicPlaying = currentTrack && audio && !audio.paused;
         var musicHtml = '<div class="audio-section">' +
             '<div class="audio-section-title">音乐</div>' +
             '<div class="audio-tracks">';
         Object.keys(TRACKS).forEach(function (k) {
             var t = TRACKS[k];
-            var isActive = currentTrack === t.src;
+            var isActive = currentTrack === t.src && musicPlaying;
             musicHtml += '<button class="audio-track-btn' + (isActive ? ' audio-track-active' : '') +
-                '" onclick="BGMusic.play(\'' + k + '\');BGMusic.renderPanel()">' + t.name + '</button>';
+                '" onclick="BGMusic.toggleTrack(\'' + k + '\');BGMusic.renderPanel()">' + t.name + '</button>';
         });
         musicHtml += '</div>' +
             '<div class="audio-slider-row">' +
@@ -239,6 +251,7 @@ var BGMusic = (function () {
         toggleMute: toggleMute,
         isMuted: isMuted,
         tryAutoplay: tryAutoplay,
+        toggleTrack: toggleTrack,
         toggleAmbient: toggleAmbient,
         setAmbientVolume: setAmbientVolume,
         renderPanel: renderPanel,
