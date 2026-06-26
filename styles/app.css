@@ -3279,8 +3279,8 @@ body {
 /* 下载桌面版 */
 .download-fab {
     position: fixed;
-    bottom: 70px;
-    right: 16px;
+    bottom: 116px;
+    right: 20px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
