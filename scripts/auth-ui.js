@@ -261,12 +261,72 @@ var AuthUI = (function () {
         if (typeof startGameAfterAuth === 'function') startGameAfterAuth();
     }
 
+    // ========== 游戏内设置密码提示 ==========
+
+    function maybeShowPasswordPrompt() {
+        if (!window.SupabaseClient || !SupabaseClient.isLoggedIn()) return;
+        if (localStorage.getItem('matchstick_password_set')) return;
+        if (localStorage.getItem('matchstick_password_prompt_dismissed')) return;
+
+        var user = SupabaseClient.getAuthUser();
+        if (user && user.user_metadata && user.user_metadata.password_set) {
+            localStorage.setItem('matchstick_password_set', 'true');
+            return;
+        }
+
+        setTimeout(function () {
+            var el = document.getElementById('password-prompt');
+            if (el) el.classList.remove('hidden');
+        }, 3000);
+    }
+
+    async function setPasswordFromPrompt() {
+        var pw = document.getElementById('prompt-password').value;
+        var pw2 = document.getElementById('prompt-password2').value;
+        var msgEl = document.getElementById('password-prompt-msg');
+        msgEl.classList.add('hidden');
+        msgEl.classList.remove('success');
+
+        if (!pw || pw.length < 6) { msgEl.textContent = '密码至少6位'; msgEl.classList.remove('hidden'); return; }
+        if (pw !== pw2) { msgEl.textContent = '两次密码不一致'; msgEl.classList.remove('hidden'); return; }
+
+        var db = SupabaseClient.getClient();
+        var { error } = await db.auth.updateUser({
+            password: pw,
+            data: { password_set: true },
+        });
+
+        if (error) {
+            msgEl.textContent = '设置失败：' + error.message;
+            msgEl.classList.remove('hidden');
+            return;
+        }
+
+        localStorage.setItem('matchstick_password_set', 'true');
+        msgEl.textContent = '密码已设置！';
+        msgEl.classList.remove('hidden');
+        msgEl.classList.add('success');
+        setTimeout(function () {
+            var el = document.getElementById('password-prompt');
+            if (el) el.classList.add('hidden');
+        }, 2000);
+    }
+
+    function dismissPasswordPrompt() {
+        localStorage.setItem('matchstick_password_prompt_dismissed', 'true');
+        var el = document.getElementById('password-prompt');
+        if (el) el.classList.add('hidden');
+    }
+
     return {
         init,
         loginWithPassword,
         registerWithPassword,
         resetPassword,
         setNewPassword,
+        setPasswordFromPrompt,
+        dismissPasswordPrompt,
+        maybeShowPasswordPrompt,
         backToEmail,
         skipLogin,
         showAuthScreen,

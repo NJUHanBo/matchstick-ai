@@ -476,6 +476,22 @@
     <!-- 意见反馈悬浮按钮 -->
     <div id="feedback-fab" class="feedback-fab" onclick="FeedbackUI.open()">?</div>
 
+    <!-- 设置密码提示 -->
+    <div id="password-prompt" class="password-prompt hidden">
+        <div class="password-prompt-content">
+            <p class="password-prompt-text">设置密码后可在桌面端或其他设备用密码登录</p>
+            <div id="password-prompt-form" class="password-prompt-form">
+                <input type="password" id="prompt-password" class="r8-input" placeholder="设置密码（至少6位）" style="font-size:13px;">
+                <input type="password" id="prompt-password2" class="r8-input" placeholder="确认密码" style="font-size:13px;margin-top:4px;">
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <button class="r8-btn r8-btn--primary r8-btn--sm" onclick="AuthUI.setPasswordFromPrompt()">确认</button>
+                    <button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="AuthUI.dismissPasswordPrompt()">以后再说</button>
+                </div>
+            </div>
+            <p id="password-prompt-msg" class="password-prompt-msg hidden"></p>
+        </div>
+    </div>
+
     <!-- 反馈弹窗 -->
     <div id="feedback-modal" class="feedback-modal hidden">
         <div class="feedback-box">

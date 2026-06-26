@@ -1011,6 +1011,7 @@ async function startGameAfterAuth() {
 
     if (GameState.character) {
         enterMainScreen();
+        if (window.AuthUI) AuthUI.maybeShowPasswordPrompt();
     } else {
         Opening.start();
     }
