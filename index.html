@@ -91,8 +91,6 @@
                     <canvas id="game-canvas"></canvas>
                     <div class="map-hud">
                         <p class="map-hint" id="map-hint">点击地图移动 · 点击地点图标前往并进入</p>
-                        <button class="audio-toggle-btn" onclick="BGMusic.togglePanel()" data-tip="切换背景音乐和环境音效">🎵</button>
-                        <div id="audio-panel" class="audio-panel hidden"></div>
                     </div>
 
                     <!-- 引导对话 overlay -->
@@ -458,6 +456,10 @@
             </div>
         </div>
     </div>
+
+    <!-- 音频控制悬浮按钮 -->
+    <div class="audio-fab" onclick="BGMusic.togglePanel()" data-tip="背景音乐与环境音">🎵</div>
+    <div id="audio-panel" class="audio-panel hidden"></div>
 
     <!-- 意见反馈悬浮按钮 -->
     <div id="feedback-fab" class="feedback-fab" onclick="FeedbackUI.open()">?</div>

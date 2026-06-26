@@ -19,7 +19,6 @@ var BGMusic = (function () {
     var AMBIENTS = {
         crickets:  { src: 'audio/amb-crickets.mp3',  name: '虫鸣', icon: '🦗' },
         campfire:  { src: 'audio/amb-campfire.mp3',  name: '篝火', icon: '🔥' },
-        rain:      { src: 'audio/amb-rain.mp3',      name: '雨声', icon: '🌧️' },
         wind:      { src: 'audio/amb-wind.mp3',      name: '风声', icon: '🍃' },
     };
     var ambientAudios = {};

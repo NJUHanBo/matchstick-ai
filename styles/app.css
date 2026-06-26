@@ -2812,8 +2812,10 @@ body {
     .garden-tabs { flex-wrap: wrap; }
     .seed-content { font-size: 12px; }
 
-    /* --- 反馈按钮 --- */
+    /* --- 悬浮按钮 --- */
     .feedback-fab { bottom: 12px; right: 12px; width: 36px; height: 36px; font-size: 16px; }
+    .audio-fab { bottom: 56px; right: 12px; width: 36px; height: 36px; font-size: 15px; }
+    .audio-panel { bottom: 98px; right: 12px; min-width: 180px; }
 
     /* --- 通用按钮触摸优化 --- */
     .r8-btn--sm { min-height: 32px; min-width: 32px; }
@@ -2832,35 +2834,35 @@ body {
 
 /* ========== 音频控制面板 ========== */
 
-.audio-toggle-btn {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    background: rgba(10, 10, 16, 0.7);
+.audio-fab {
+    position: fixed;
+    bottom: 68px;
+    right: 20px;
+    z-index: 900;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    font-size: 16px;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.2s;
-    padding: 0;
-    z-index: 20;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
 }
 
-.audio-toggle-btn:hover {
+.audio-fab:hover {
     border-color: var(--fire-glow);
     color: var(--text-main);
 }
 
 .audio-panel {
-    position: absolute;
-    top: 40px;
-    right: 6px;
-    z-index: 20;
+    position: fixed;
+    bottom: 114px;
+    right: 20px;
+    z-index: 910;
     background: rgba(10, 10, 16, 0.94);
     border: 1px solid var(--border);
     padding: 12px;
