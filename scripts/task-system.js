@@ -302,7 +302,7 @@ var TaskSystem = (function () {
             var isProjectComplete = s.project.currentMilestone >= s.project.milestones.length;
             if (isProjectComplete) s.project.completed = true;
 
-            var sawdust = isProjectComplete ? 200 : 60;
+            var sawdust = isProjectComplete ? 300 : 100;
             var flame = applyFlameModifiers(isProjectComplete ? 100 : 40);
             var bd = applyBlackDogBonus(sawdust, flame, s.project);
             sawdust = bd.sawdust; flame = bd.flame; var blackDog = bd.blackDog;
@@ -329,7 +329,7 @@ var TaskSystem = (function () {
                 }
             }
         } else {
-            var reward = Math.round(progressDelta * 0.5);
+            var reward = Math.round(progressDelta * 0.8);
             var flameReward = applyFlameModifiers(Math.round(progressDelta * 0.3));
             GameState.stats.sawdust += reward;
             GameState.stats.flame += flameReward;
@@ -465,7 +465,7 @@ var TaskSystem = (function () {
         task.completed = true;
 
         var sawdust = calcDailyReward(task, minutes, rating);
-        var flame = applyFlameModifiers(Math.round(sawdust * 0.5));
+        var flame = applyFlameModifiers(Math.round(sawdust * 0.6));
         var bd = applyBlackDogBonus(sawdust, flame, task);
         sawdust = bd.sawdust; flame = bd.flame; var blackDog = bd.blackDog;
 
@@ -494,7 +494,7 @@ var TaskSystem = (function () {
 
         var baseFlame = 10;
         var flame = applyFlameModifiers(Math.round(baseFlame * (rating / 3)));
-        var sawdust = Math.round(flame * 1.5);
+        var sawdust = Math.round(flame * 0.5);
         var bd = applyBlackDogBonus(sawdust, flame, todo);
         sawdust = bd.sawdust; flame = bd.flame; var blackDog = bd.blackDog;
 
