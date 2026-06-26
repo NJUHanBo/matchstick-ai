@@ -146,7 +146,10 @@ var AuthUI = (function () {
         }
 
         const db = SupabaseClient.getClient();
-        const redirectUrl = window.location.origin + window.location.pathname;
+        const isElectron = window.location.hostname === '127.0.0.1';
+        const redirectUrl = isElectron
+            ? 'matchstick-ai://auth-callback'
+            : window.location.origin + window.location.pathname;
 
         const { error } = await db.auth.signInWithOtp({
             email: email,

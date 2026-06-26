@@ -1,16 +1,58 @@
 {
   "name": "matchstick-ai",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "火柴人的时光管理",
+  "main": "electron/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:mac:dmg": "electron-builder --mac dmg",
+    "build:mac:zip": "electron-builder --mac zip"
   },
-  "keywords": [],
-  "author": "",
+  "author": "NJUHanBo",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "retro8-ui": "^0.4.0"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "xyz.matchstick-ai.app",
+    "productName": "火柴人的时光管理",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "scripts/**/*",
+      "styles/**/*",
+      "data/**/*",
+      "audio/**/*",
+      "index.html",
+      "!node_modules/retro8-ui/README.md"
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        },
+        {
+          "target": "zip",
+          "arch": ["universal"]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "火柴人的时光管理",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    }
   }
 }

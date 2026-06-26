@@ -48,8 +48,68 @@ const GOD_INFO = {
     rich: { name: '首富', icon: '⚗️', title: '⚗️ 首富的残响', persona: '效率与价值' },
 };
 
+var _cloudSaveTimer = null;
+
 function saveGame() {
+    GameState._savedAt = Date.now();
     localStorage.setItem('matchstick-ai-state', JSON.stringify(GameState));
+    _scheduleCloudSave();
+}
+
+function _scheduleCloudSave() {
+    if (!window.SupabaseClient || !SupabaseClient.isLoggedIn()) return;
+    clearTimeout(_cloudSaveTimer);
+    _cloudSaveTimer = setTimeout(_pushToCloud, 5000);
+}
+
+async function _pushToCloud() {
+    if (!window.SupabaseClient || !SupabaseClient.isReady() || !SupabaseClient.isLoggedIn()) return;
+    try {
+        var db = SupabaseClient.getClient();
+        var saveData = JSON.parse(JSON.stringify(GameState));
+        delete saveData._savedAt;
+        await db.from('game_saves').upsert({
+            user_id: SupabaseClient.getUserId(),
+            save_data: saveData,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+    } catch (e) {
+        console.error('Cloud save failed:', e);
+    }
+}
+
+async function syncFromCloud() {
+    if (!window.SupabaseClient || !SupabaseClient.isReady() || !SupabaseClient.isLoggedIn()) return false;
+    try {
+        var db = SupabaseClient.getClient();
+        var result = await db
+            .from('game_saves')
+            .select('save_data, updated_at')
+            .eq('user_id', SupabaseClient.getUserId())
+            .maybeSingle();
+
+        var data = result.data;
+        if (!data || !data.save_data || !data.save_data.character) {
+            if (GameState.character) _pushToCloud();
+            return false;
+        }
+
+        var cloudTime = new Date(data.updated_at).getTime();
+        var localTime = GameState._savedAt || 0;
+
+        if (!GameState.character || cloudTime > localTime) {
+            Object.assign(GameState, data.save_data);
+            GameState._savedAt = cloudTime;
+            localStorage.setItem('matchstick-ai-state', JSON.stringify(GameState));
+            return true;
+        }
+
+        _pushToCloud();
+        return false;
+    } catch (e) {
+        console.error('Cloud sync failed:', e);
+        return false;
+    }
 }
 
 function loadGame() {
@@ -63,5 +123,9 @@ function loadGame() {
 
 function resetGame() {
     localStorage.removeItem('matchstick-ai-state');
+    if (window.SupabaseClient && SupabaseClient.isLoggedIn()) {
+        var db = SupabaseClient.getClient();
+        db.from('game_saves').delete().eq('user_id', SupabaseClient.getUserId()).then(function(){}).catch(function(){});
+    }
     location.reload();
 }

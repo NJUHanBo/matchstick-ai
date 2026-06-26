@@ -982,7 +982,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function startGameAfterAuth() {
+async function startGameAfterAuth() {
     if (window.Analytics && SupabaseClient.isLoggedIn()) {
         Analytics.trackLogin('email');
     }
@@ -998,7 +998,18 @@ function startGameAfterAuth() {
         BGMusic.tryAutoplay();
     }
 
-    if (loadGame() && GameState.character) {
+    loadGame();
+
+    // 登录用户尝试云存档同步
+    if (window.SupabaseClient && SupabaseClient.isLoggedIn()) {
+        try {
+            await syncFromCloud();
+        } catch (e) {
+            console.error('Cloud sync error:', e);
+        }
+    }
+
+    if (GameState.character) {
         enterMainScreen();
     } else {
         Opening.start();
