@@ -10,8 +10,6 @@ var BGMusic = (function () {
     var fadeInterval = null;
 
     var TRACKS = {
-        explore: { src: 'audio/explore.mp3', name: '暗色旷野' },
-        camp:    { src: 'audio/camp.mp3',    name: '温暖篝火' },
         default: { src: 'audio/main-loop.mp3', name: '萤火虫森林' },
     };
 
