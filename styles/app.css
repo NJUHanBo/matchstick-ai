@@ -2581,10 +2581,23 @@ body {
     margin-top: 6px;
 }
 
+.reward-multiplier {
+    font-size: 10px;
+    color: var(--firefly-bright);
+    margin-top: 6px;
+    text-align: center;
+}
+
+.reward-item--ash .reward-num { color: var(--ash-gray); }
+
 .reward-cost {
     font-size: 10px;
     color: var(--text-dim);
     margin-top: 8px;
+}
+
+.reward-cost--burn {
+    color: #c85a20;
 }
 
 /* 粒子飞散 */

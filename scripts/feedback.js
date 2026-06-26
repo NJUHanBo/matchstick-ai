@@ -97,7 +97,16 @@ var GameFeedback = (function () {
         if (opts.flame) {
             rewardsHtml += '<div class="reward-item reward-item--flame"><span class="reward-icon">🔥</span><span class="reward-num">+' + opts.flame + '</span></div>';
         }
+        if (opts.ashBonus) {
+            rewardsHtml += '<div class="reward-item reward-item--ash"><span class="reward-icon">💎</span><span class="reward-num">+' + opts.ashBonus + '</span></div>';
+        }
         rewardsHtml += '</div>';
+
+        // 木屑加成倍率
+        if (opts.sawdustMultiplier && opts.sawdustMultiplier > 1.01) {
+            rewardsHtml += '<div class="reward-multiplier">🪵 木屑加成 ×' + opts.sawdustMultiplier.toFixed(2) + '</div>';
+        }
+
         card.innerHTML += rewardsHtml;
 
         if (opts.isBlackDog && opts.combo) {
@@ -108,6 +117,10 @@ var GameFeedback = (function () {
 
         if (opts.streak && opts.streak > 1) {
             card.innerHTML += '<div class="reward-streak">🔥 连续 ' + opts.streak + ' 天</div>';
+        }
+
+        if (opts.exhaustion && opts.exhaustion.sawdustBurned > 0) {
+            card.innerHTML += '<div class="reward-cost reward-cost--burn">🔥 燃烧木屑 -' + opts.exhaustion.sawdustBurned + '</div>';
         }
 
         if (opts.energyCost) {
@@ -183,41 +196,56 @@ var GameFeedback = (function () {
 
     // ========== 对外接口 ==========
 
-    function onDailyComplete(task, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
+    function getSawdustMultiplier() {
+        if (typeof TaskSystem !== 'undefined' && TaskSystem._sawdustMultiplier) return TaskSystem._sawdustMultiplier();
+        var s = GameState.stats.sawdust;
+        if (s <= 0) return 1;
+        return Math.min(5, 1 + Math.pow(s / 500, 1.8) * 0.15);
+    }
+
+    function onDailyComplete(task, sawdust, flame, energyCost, spiritChange, isBlackDog, combo, exhaustion) {
         if (isBlackDog) sfxBlackDog(combo);
         else sfxComplete();
 
+        var bd = isBlackDog ? { ashBonus: 30 + Math.min(combo * 10, 50) } : {};
         showRewardBurst({
             title: '「' + task.name + '」',
             sawdust: sawdust,
             flame: flame,
+            ashBonus: bd.ashBonus || 0,
             energyCost: energyCost,
             spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
             streak: task.streak,
+            sawdustMultiplier: getSawdustMultiplier(),
+            exhaustion: exhaustion,
         });
 
         if (isBlackDog && combo >= 2) screenShake('light');
     }
 
-    function onTodoComplete(todo, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
+    function onTodoComplete(todo, sawdust, flame, energyCost, spiritChange, isBlackDog, combo, exhaustion) {
         if (isBlackDog) sfxBlackDog(combo);
         else sfxComplete();
 
+        var bd = isBlackDog ? { ashBonus: 30 + Math.min(combo * 10, 50) } : {};
         showRewardBurst({
             title: '「' + todo.name + '」',
             subtitle: '待办完成',
             sawdust: sawdust,
             flame: flame,
+            ashBonus: bd.ashBonus || 0,
             energyCost: energyCost,
             spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
+            sawdustMultiplier: getSawdustMultiplier(),
+            exhaustion: exhaustion,
         });
     }
 
-    function onMilestoneProgress(project, ms, sawdust, flame, energyCost, spiritChange, oldProgress, newProgress) {
+    function onMilestoneProgress(project, ms, sawdust, flame, energyCost, spiritChange, oldProgress, newProgress, exhaustion) {
         sfxComplete();
 
         showRewardBurst({
@@ -227,39 +255,49 @@ var GameFeedback = (function () {
             flame: flame,
             energyCost: energyCost,
             spiritChange: spiritChange,
+            sawdustMultiplier: getSawdustMultiplier(),
+            exhaustion: exhaustion,
         });
     }
 
-    function onMilestoneComplete(project, ms, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
+    function onMilestoneComplete(project, ms, sawdust, flame, energyCost, spiritChange, isBlackDog, combo, exhaustion) {
         sfxMilestone();
         screenShake('light');
 
+        var bd = isBlackDog ? { ashBonus: 30 + Math.min(combo * 10, 50) } : {};
         showRewardBurst({
             title: '里程碑达成',
             subtitle: '「' + project.name + '」· ' + ms.name,
             sawdust: sawdust,
             flame: flame,
+            ashBonus: bd.ashBonus || 0,
             energyCost: energyCost,
             spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
+            sawdustMultiplier: getSawdustMultiplier(),
+            exhaustion: exhaustion,
         });
     }
 
-    function onProjectComplete(project, sawdust, flame, energyCost, spiritChange, isBlackDog, combo) {
+    function onProjectComplete(project, sawdust, flame, energyCost, spiritChange, isBlackDog, combo, exhaustion) {
         sfxProject();
         screenShake('heavy');
 
+        var bd = isBlackDog ? { ashBonus: 30 + Math.min(combo * 10, 50) } : {};
         showRewardBurst({
             title: '🏆 项目完成',
             subtitle: '「' + project.name + '」',
             sawdust: sawdust,
             flame: flame,
+            ashBonus: bd.ashBonus || 0,
             energyCost: energyCost,
             spiritChange: spiritChange,
             isBlackDog: isBlackDog,
             combo: combo,
             isProject: true,
+            sawdustMultiplier: getSawdustMultiplier(),
+            exhaustion: exhaustion,
         });
     }
 
