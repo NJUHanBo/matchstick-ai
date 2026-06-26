@@ -229,7 +229,10 @@ var TaskSystem = (function () {
             '<button class="r8-btn r8-btn--secondary r8-btn--sm qc-selected" onclick="TaskSystem._setMsMinutes(30)">30</button>' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsMinutes(60)">60</button>' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsMinutes(120)">120</button>' +
-            '</div></div>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setMsMinutes(240)">240</button>' +
+            '</div>' +
+            '<input type="number" id="ms-minutes-custom" class="r8-input" style="margin-top:6px;width:120px;" min="1" max="960" placeholder="自定义分钟数" oninput="TaskSystem._setMsMinutesCustom(this.value)">' +
+            '</div>' +
             '</div>' +
             '<div class="timer-buttons">' +
             '<button class="r8-btn r8-btn--secondary" onclick="TaskSystem._cancelMsProgress()">取消</button>' +
@@ -249,6 +252,16 @@ var TaskSystem = (function () {
         var btns = document.querySelectorAll('#milestone-progress-overlay .qc-duration-btns:last-of-type .r8-btn');
         btns.forEach(function (b) { b.classList.remove('qc-selected'); });
         btns.forEach(function (b) { if (b.textContent.trim() === String(val)) b.classList.add('qc-selected'); });
+        var custom = document.getElementById('ms-minutes-custom');
+        if (custom) custom.value = '';
+    }
+
+    function _setMsMinutesCustom(val) {
+        var v = parseInt(val);
+        if (!v || v < 1) return;
+        if (window._msState) window._msState.minutes = v;
+        var btns = document.querySelectorAll('#milestone-progress-overlay .qc-duration-btns:last-of-type .r8-btn');
+        btns.forEach(function (b) { b.classList.remove('qc-selected'); });
     }
 
     function _cancelMsProgress() {
@@ -368,12 +381,14 @@ var TaskSystem = (function () {
             '<div class="quick-complete-form">' +
             '<div class="qc-field"><label>实际用时（分钟）</label>' +
             '<div class="qc-duration-btns">' +
-            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setQc(\'duration\',5)">5</button>' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setQc(\'duration\',15)">15</button>' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm qc-selected" onclick="TaskSystem._setQc(\'duration\',30)">30</button>' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setQc(\'duration\',60)">60</button>' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setQc(\'duration\',120)">120</button>' +
-            '</div></div>' +
+            '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setQc(\'duration\',240)">240</button>' +
+            '</div>' +
+            '<input type="number" id="qc-duration-custom" class="r8-input" style="margin-top:6px;width:120px;" min="1" max="960" placeholder="自定义分钟数" oninput="TaskSystem._setQcCustom(this.value)">' +
+            '</div>' +
             '<div class="qc-field"><label>完成质量</label>' +
             '<div class="qc-rating-btns">' +
             '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem._setQc(\'rating\',1)">★</button>' +
@@ -403,6 +418,19 @@ var TaskSystem = (function () {
                 b.classList.toggle('qc-selected', i + 1 === val);
             }
         });
+        if (field === 'duration') {
+            var custom = document.getElementById('qc-duration-custom');
+            if (custom) custom.value = '';
+        }
+    }
+
+    function _setQcCustom(val) {
+        var v = parseInt(val);
+        if (!v || v < 1) return;
+        if (!window._qcState) return;
+        window._qcState.duration = v;
+        var btns = document.querySelectorAll('.qc-duration-btns .r8-btn');
+        btns.forEach(function (b) { b.classList.remove('qc-selected'); });
     }
 
     function _cancelComplete() {
@@ -1047,6 +1075,8 @@ var TaskSystem = (function () {
         _submitForm: _submitForm,
         _setMsProgress: _setMsProgress,
         _setMsMinutes: _setMsMinutes,
+        _setMsMinutesCustom: _setMsMinutesCustom,
+        _setQcCustom: _setQcCustom,
         _cancelMsProgress: _cancelMsProgress,
         _confirmMsProgress: _confirmMsProgress,
         _editOpt: _editOpt,
