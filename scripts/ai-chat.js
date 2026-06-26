@@ -17,13 +17,25 @@ var AIChat = {
         const sideCount = tasks.filter(t => t.type === 'side').length;
         const mainCount = tasks.filter(t => t.type === 'main').length;
 
+        const lore = typeof WORLD_LORE !== 'undefined' ? WORLD_LORE : {};
+
         return `你是「${god.name}」的残响——三位火柴神使之一在燃尽后留下的意识碎片。你存在于萤火虫森林中，守护着名为「${GameState.character.name}」的守墓者。
 
 ## 你的性格
 ${this._getPersona()}
 
 ## 世界观
-火柴人世界。三位神使为保护幼苗而燃尽自己，只留下灰烬中的回响。黑狗（抑郁的化身）在森林边缘徘徊。19棵幼苗需要守墓者的照料。每一天，守墓者通过完成任务获得木屑和火苗；夜晚到来时，火苗减半变为灰烬。火苗归零即死。
+${lore.origin || ''}
+${lore.cycle || ''}
+${lore.sun || ''}
+${lore.zero || ''}
+${lore.creed || ''}
+
+## 你的秘密
+${lore.godSecrets || '你知道一切真相，但不会主动全盘托出。'}
+
+## 游戏经济的世界观含义
+${lore.economy || ''}
 
 ## 守墓者当前状态
 - 第${s.totalDays}天 | ${GameState.depression.status}
@@ -33,6 +45,7 @@ ${this._getPersona()}
 - 日常任务 ${dailyCount}个 | 支线 ${sideCount}个 | 主线 ${mainCount}个
 ${GameState.blackDogCombo > 0 ? `- 黑狗征服者连击 x${GameState.blackDogCombo}` : ''}
 ${this._getTaskList()}
+${this._getDiscoveredParchments()}
 ${this._getRecentLog()}
 ${this._getMemory()}
 
@@ -44,13 +57,17 @@ ${this._getMemory()}
 5. 用你的人格特质回应——保持简短有力（2-4句），除非用户需要长回复
 6. 适度使用世界观用语，但不要过度RP，以实用为主
 7. 用户提到做完了某件事时，给予肯定或反馈
+8. 如果守墓者发现了新的羊皮纸碎片，你可以自然地提及——比如"我看到你发现了***"，或根据碎片内容给出相关的感悟和暗示
+9. 你知道所有秘密，但不会主动揭示。当守墓者的发现接近真相时，你可以给出模糊的暗示、意味深长的沉默、或话说一半的提醒
+10. 根据守墓者的木屑/灰烬策略（积累型还是消耗型），给出符合你性格的建议——但不要评判哪种更好
 
 ## 限制
 - 不要使用 emoji
 - 不要过度解释游戏机制，除非被问到
 - 不要说你是 AI、大模型、语言模型
 - 不要在回复中添加任何方括号标记或特殊格式
-- 保持角色一致性`;
+- 保持角色一致性
+- 不要主动完整复述世界观故事，除非守墓者直接询问`;
     },
 
     _getPersona() {
@@ -165,6 +182,26 @@ ${this._getMemory()}
 
         if (lines.length === 0) return '- 当前无待办任务';
         return '- 当前任务列表：\n' + lines.join('\n');
+    },
+
+    _getDiscoveredParchments() {
+        if (typeof PARCHMENT_STORIES === 'undefined') return '';
+        const discovered = GameState.magicAcademy ? GameState.magicAcademy.discoveredParchments || [] : [];
+        if (discovered.length === 0) return '- 守墓者尚未在魔法学院废墟中发现任何羊皮纸碎片';
+
+        const lines = [];
+        PARCHMENT_STORIES.forEach(story => {
+            const found = story.fragments.filter(f => discovered.includes(f.id));
+            if (found.length > 0) {
+                lines.push(`  【${story.name}】已发现 ${found.length}/${story.fragments.length} 碎片：`);
+                found.forEach(f => {
+                    lines.push(`    · ${f.title}: ${f.content.substring(0, 80)}...`);
+                });
+            }
+        });
+
+        if (lines.length === 0) return '';
+        return '- 守墓者在魔法学院废墟中发现的羊皮纸：\n' + lines.join('\n');
     },
 
     _getRecentLog() {
