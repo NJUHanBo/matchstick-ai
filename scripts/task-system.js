@@ -188,7 +188,7 @@ var TaskSystem = (function () {
 
     function completeDaily(id) {
         var task = GameState.dailyTasks.find(function (t) { return t.id === id; });
-        if (!task || task.completed) return;
+        if (!task) return;
         showCompleteOverlay(task, 'daily');
     }
 
@@ -667,7 +667,7 @@ var TaskSystem = (function () {
                 '</div>' +
                 '<div class="tomb-task-meta">' + t.duration + '分钟/天</div>' +
                 '<div class="tomb-task-actions">' +
-                (!t.completed ? '<button class="r8-btn r8-btn--primary r8-btn--sm" onclick="TaskSystem.completeDaily(' + t.id + ')">完成</button>' : '') +
+                '<button class="r8-btn r8-btn--' + (t.completed ? 'secondary' : 'primary') + ' r8-btn--sm" onclick="TaskSystem.completeDaily(' + t.id + ')">' + (t.completed ? '再做一次' : '完成') + '</button>' +
                 '<button class="r8-btn r8-btn--secondary r8-btn--sm" onclick="TaskSystem.editDaily(' + t.id + ')">编辑</button>' +
                 '<button class="r8-btn r8-btn--danger r8-btn--sm tomb-del-btn" onclick="TaskSystem.removeDaily(' + t.id + ')">✕</button>' +
                 '</div></div>';

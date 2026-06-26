@@ -515,10 +515,10 @@ function renderCampTaskList(containerId, tasks, hint) {
         }
 
         let actionHtml = '';
-        if (!isDone(t)) {
-            if (t.type === 'daily') {
-                actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeDaily(${t.id})">✓</span>`;
-            } else if (t.type === 'todo') {
+        if (t.type === 'daily') {
+            actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeDaily(${t.id})">${isDone(t) ? '↻' : '✓'}</span>`;
+        } else if (!isDone(t)) {
+            if (t.type === 'todo') {
                 actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeTodo(${t.id})">✓</span>`;
             } else if (t.type === 'project') {
                 actionHtml = `<span class="task-action" onclick="event.stopPropagation(); TaskSystem.completeMilestone(${t.id})">⬆</span>`;
