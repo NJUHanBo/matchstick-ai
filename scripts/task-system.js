@@ -287,21 +287,13 @@ var TaskSystem = (function () {
 
         var minutes = s.minutes || 30;
         var energyCost = calcEnergyCost(minutes);
-        if (GameState.stats.energy < energyCost) {
-            showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
-            return;
-        }
         var spiritChange = calcSpiritChange(s.project.interest, minutes);
-        if (spiritChange < 0 && GameState.stats.spirit < Math.abs(spiritChange)) {
-            showResourceWarning('精力不足', Math.abs(spiritChange), GameState.stats.spirit, '精力');
-            return;
-        }
+        var exhaustion = payResourceOrSawdust(energyCost, spiritChange);
 
         var oldProgress = s.ms.progress || 0;
         s.ms.progress = newProgress;
         var progressDelta = newProgress - oldProgress;
 
-        // 里程碑完成
         if (newProgress >= 100) {
             s.ms.completed = true;
             s.ms.completedAt = new Date().toISOString();
@@ -317,12 +309,11 @@ var TaskSystem = (function () {
 
             GameState.stats.sawdust += sawdust;
             GameState.stats.flame += flame;
-            GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
-            GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, s.project.interest, minutes);
 
             var logText = isProjectComplete
                 ? '完成项目「' + s.project.name + '」！+' + sawdust + '木屑 +' + flame + '火苗'
                 : '完成里程碑「' + s.ms.name + '」+' + sawdust + '木屑 +' + flame + '火苗';
+            if (exhaustion.sawdustBurned > 0) logText += ' [燃烧木屑' + exhaustion.sawdustBurned + ']';
             addLog(logText);
 
             saveGame();
@@ -332,21 +323,20 @@ var TaskSystem = (function () {
 
             if (window.GameFeedback) {
                 if (isProjectComplete) {
-                    GameFeedback.onProjectComplete(s.project, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0);
+                    GameFeedback.onProjectComplete(s.project, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0, exhaustion);
                 } else {
-                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0);
+                    GameFeedback.onMilestoneComplete(s.project, s.ms, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0, exhaustion);
                 }
             }
         } else {
-            // 未完成，给予进度奖励
             var reward = Math.round(progressDelta * 0.5);
             var flameReward = applyFlameModifiers(Math.round(progressDelta * 0.3));
             GameState.stats.sawdust += reward;
             GameState.stats.flame += flameReward;
-            GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
-            GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, s.project.interest, minutes);
 
-            addLog('推进「' + s.project.name + '」里程碑「' + s.ms.name + '」进度 ' + oldProgress + '%→' + newProgress + '% +' + reward + '木屑 +' + flameReward + '火苗');
+            var progressLog = '推进「' + s.project.name + '」里程碑「' + s.ms.name + '」进度 ' + oldProgress + '%→' + newProgress + '% +' + reward + '木屑 +' + flameReward + '火苗';
+            if (exhaustion.sawdustBurned > 0) progressLog += ' [燃烧木屑' + exhaustion.sawdustBurned + ']';
+            addLog(progressLog);
 
             saveGame();
             updateResources();
@@ -354,7 +344,7 @@ var TaskSystem = (function () {
             renderTasks();
 
             if (window.GameFeedback) {
-                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, energyCost, spiritChange, oldProgress, newProgress);
+                GameFeedback.onMilestoneProgress(s.project, s.ms, reward, flameReward, energyCost, spiritChange, oldProgress, newProgress, exhaustion);
             }
         }
     }
@@ -460,15 +450,8 @@ var TaskSystem = (function () {
 
     function finishDaily(task, minutes, rating) {
         var energyCost = calcEnergyCost(minutes);
-        if (GameState.stats.energy < energyCost) {
-            showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
-            return;
-        }
         var spiritChange = calcSpiritChange(task.interest, minutes);
-        if (spiritChange < 0 && GameState.stats.spirit < Math.abs(spiritChange)) {
-            showResourceWarning('精力不足', Math.abs(spiritChange), GameState.stats.spirit, '精力');
-            return;
-        }
+        var exhaustion = payResourceOrSawdust(energyCost, spiritChange);
 
         var today = new Date().toISOString().split('T')[0];
         var yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -488,31 +471,23 @@ var TaskSystem = (function () {
 
         GameState.stats.sawdust += sawdust;
         GameState.stats.flame += flame;
-        GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
-        GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, task.interest, minutes);
 
-        addLog('完成日常「' + task.name + '」' + minutes + '分钟 ' + rating + '星 +' + sawdust + '木屑 +' + flame + '火苗' + (blackDog ? ' [黑狗征服者x' + GameState.blackDogCombo + ']' : ''));
+        var exhaustLabel = exhaustion.sawdustBurned > 0 ? ' [燃烧木屑' + exhaustion.sawdustBurned + ']' : '';
+        addLog('完成日常「' + task.name + '」' + minutes + '分钟 ' + rating + '星 +' + sawdust + '木屑 +' + flame + '火苗' + (blackDog ? ' [黑狗征服者x' + GameState.blackDogCombo + ']' : '') + exhaustLabel);
         saveGame();
         updateResources();
         render();
         renderTasks();
 
         if (window.GameFeedback) {
-            GameFeedback.onDailyComplete(task, sawdust, flame, calcEnergyCost(minutes), spiritChange, blackDog, GameState.blackDogCombo || 0);
+            GameFeedback.onDailyComplete(task, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0, exhaustion);
         }
     }
 
     function finishTodo(todo, minutes, rating) {
         var energyCost = calcEnergyCost(minutes);
-        if (GameState.stats.energy < energyCost) {
-            showResourceWarning('体力不足', energyCost, GameState.stats.energy, '体力');
-            return;
-        }
         var spiritChange = calcSpiritChange(todo.interest, minutes);
-        if (spiritChange < 0 && GameState.stats.spirit < Math.abs(spiritChange)) {
-            showResourceWarning('精力不足', Math.abs(spiritChange), GameState.stats.spirit, '精力');
-            return;
-        }
+        var exhaustion = payResourceOrSawdust(energyCost, spiritChange);
 
         todo.completed = true;
         todo.completedAt = new Date().toISOString();
@@ -525,20 +500,54 @@ var TaskSystem = (function () {
 
         GameState.stats.sawdust += sawdust;
         GameState.stats.flame += flame;
-        GameState.stats.energy = Math.max(0, GameState.stats.energy - calcEnergyCost(minutes));
-        GameState.stats.spirit = adjustSpirit(GameState.stats.spirit, todo.interest, minutes);
 
-        addLog('完成待办「' + todo.name + '」+' + sawdust + '木屑 +' + flame + '火苗' + (blackDog ? ' [黑狗征服者]' : ''));
+        var exhaustLabel = exhaustion.sawdustBurned > 0 ? ' [燃烧木屑' + exhaustion.sawdustBurned + ']' : '';
+        addLog('完成待办「' + todo.name + '」+' + sawdust + '木屑 +' + flame + '火苗' + (blackDog ? ' [黑狗征服者]' : '') + exhaustLabel);
         saveGame();
         updateResources();
         render();
 
         if (window.GameFeedback) {
-            GameFeedback.onTodoComplete(todo, sawdust, flame, calcEnergyCost(minutes), spiritChange, blackDog, GameState.blackDogCombo || 0);
+            GameFeedback.onTodoComplete(todo, sawdust, flame, energyCost, spiritChange, blackDog, GameState.blackDogCombo || 0, exhaustion);
         }
     }
 
     // ========== 计算工具 ==========
+
+    // 体力/精力不足时消耗木屑代替，不再拦截
+    function payResourceOrSawdust(energyCost, spiritChange) {
+        var s = GameState.stats;
+        var sawdustBurned = 0;
+
+        // 体力结算
+        if (s.energy >= energyCost) {
+            s.energy -= energyCost;
+        } else {
+            var energyShortfall = energyCost - s.energy;
+            s.energy = 0;
+            var sawdustForEnergy = energyShortfall * 2;
+            s.sawdust -= sawdustForEnergy;
+            sawdustBurned += sawdustForEnergy;
+        }
+
+        // 精力结算（仅低兴趣任务消耗精力）
+        if (spiritChange < 0) {
+            var spiritCost = Math.abs(spiritChange);
+            if (s.spirit >= spiritCost) {
+                s.spirit -= spiritCost;
+            } else {
+                var spiritShortfall = spiritCost - s.spirit;
+                s.spirit = 0;
+                var sawdustForSpirit = spiritShortfall * 2;
+                s.sawdust -= sawdustForSpirit;
+                sawdustBurned += sawdustForSpirit;
+            }
+        } else if (spiritChange > 0) {
+            s.spirit = Math.min(100, s.spirit + spiritChange);
+        }
+
+        return { sawdustBurned: sawdustBurned };
+    }
 
     function showResourceWarning(title, required, current, label) {
         var overlay = document.createElement('div');
@@ -555,8 +564,16 @@ var TaskSystem = (function () {
         document.body.appendChild(overlay);
     }
 
+    function sawdustMultiplier() {
+        var s = GameState.stats.sawdust;
+        if (s <= 0) return 1;
+        // 凸曲线：早期木屑加成微小，后期加速增长，封顶5倍
+        return Math.min(5, 1 + Math.pow(s / 500, 1.8) * 0.15);
+    }
+
     function applyFlameModifiers(flame) {
         if (GameState.vacation && GameState.vacation.isOnVacation) return 0;
+        flame = Math.round(flame * sawdustMultiplier());
         if (GameState.shop && GameState.shop.activeEffects.mirror) flame *= 2;
         if (GameState.shop && GameState.shop.activeEffects.oxygenChamber) flame *= 2;
         return Math.round(flame);
@@ -565,7 +582,7 @@ var TaskSystem = (function () {
     function applyBlackDogBonus(sawdust, flame, task) {
         if (!isBlackDogTask(task)) {
             GameState.blackDogCombo = 0;
-            return { sawdust: sawdust, flame: flame, blackDog: false };
+            return { sawdust: sawdust, flame: flame, ashBonus: 0, blackDog: false };
         }
         GameState.blackDogCombo = (GameState.blackDogCombo || 0) + 1;
         GameState.blackDogTotalCompleted = (GameState.blackDogTotalCompleted || 0) + 1;
@@ -573,7 +590,10 @@ var TaskSystem = (function () {
         flame *= 2;
         var comboBonus = Math.min((GameState.blackDogCombo - 1) * 0.25, 0.75);
         flame = Math.round(flame * (1 + comboBonus));
-        return { sawdust: sawdust, flame: flame, blackDog: true };
+        // 黑狗任务额外灰烬奖励：基础30 + 连击加成
+        var ashBonus = 30 + Math.min(GameState.blackDogCombo * 10, 50);
+        GameState.stats.ash += ashBonus;
+        return { sawdust: sawdust, flame: flame, ashBonus: ashBonus, blackDog: true };
     }
 
     function isBlackDogTask(task) {
