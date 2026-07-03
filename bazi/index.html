@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>八字排盘 · 干支关系分析</title>
+<style>
+:root {
+  --bg: #f5f3ef; --card: #fff; --text: #1e1e1e; --text2: #6b6b6b;
+  --border: #e5e2dc; --accent: #8b6914; --accent-light: #f5ecd9;
+  --wx-wood: #2d9a4e; --wx-fire: #d94030; --wx-earth: #c9a53a;
+  --wx-metal: #7a7a7a; --wx-water: #2e78c4;
+  --rel-he: #2d8a42; --rel-chong: #c9302c; --rel-xing: #d4742a;
+  --rel-hai: #7b3fa0; --rel-po: #888; --rel-ke: #a83232;
+  --rel-banhe: #5fa078;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px;
+}
+.container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.subtitle { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+.card {
+  background: var(--card); border-radius: 10px; padding: 20px;
+  margin-bottom: 16px; border: 1px solid var(--border);
+}
+.card-title {
+  font-size: 14px; font-weight: 600; color: var(--accent);
+  margin-bottom: 14px; letter-spacing: 0.5px;
+}
+
+/* Input form */
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 12px; color: var(--text2); font-weight: 500; }
+.form-group input, .form-group select {
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; background: var(--card); color: var(--text);
+  font-family: inherit;
+}
+.date-inputs { display: flex; align-items: center; gap: 2px; }
+.date-inputs input[type="number"] {
+  width: 56px; text-align: center; padding: 8px 4px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; background: var(--card); color: var(--text); font-family: inherit;
+  -moz-appearance: textfield;
+}
+.date-inputs input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.date-inputs input.year-input { width: 68px; }
+.date-inputs span { font-size: 13px; color: var(--text2); margin: 0 1px; }
+.form-group input:focus, .form-group select:focus {
+  outline: none; border-color: var(--accent);
+}
+.btn {
+  padding: 8px 24px; background: var(--accent); color: #fff; border: none;
+  border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600;
+  font-family: inherit; transition: opacity .2s;
+}
+.btn:hover { opacity: .85; }
+.gender-group { display: flex; gap: 8px; align-items: center; }
+.gender-group label { font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+.gender-group input[type="radio"] { accent-color: var(--accent); }
+
+/* Results */
+#results { display: none; }
+
+/* Four Pillars */
+.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pillar {
+  text-align: center; padding: 12px 8px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.pillar-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+.pillar-gz { font-size: 26px; font-weight: 700; letter-spacing: 2px; line-height: 1.3; }
+.pillar-wx { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.pillar-canggan { font-size: 11px; color: var(--text2); margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
+.pillar-shishen { font-size: 12px; color: var(--accent); margin-top: 2px; font-weight: 500; }
+.pillar .stem-char { display: inline; }
+.pillar .branch-char { display: inline; }
+.wx-wood { color: var(--wx-wood); } .wx-fire { color: var(--wx-fire); }
+.wx-earth { color: var(--wx-earth); } .wx-metal { color: var(--wx-metal); }
+.wx-water { color: var(--wx-water); }
+
+/* Five Elements Energy */
+.wx-bars { display: flex; flex-direction: column; gap: 8px; }
+.wx-bar-row { display: flex; align-items: center; gap: 10px; }
+.wx-bar-label { width: 24px; font-weight: 700; font-size: 16px; text-align: center; }
+.wx-bar-track { flex: 1; height: 22px; background: var(--bg); border-radius: 4px; overflow: hidden; position: relative; }
+.wx-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; min-width: 2px; }
+.wx-bar-val { width: 42px; font-size: 13px; color: var(--text2); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Relationships */
+.rel-toolbar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.rel-toggle {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+}
+.rel-toggle button {
+  padding: 4px 14px; border: none; background: var(--bg); color: var(--text2);
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: all .15s;
+}
+.rel-toggle button.active { background: var(--accent); color: #fff; }
+.rel-toggle button:not(:last-child) { border-right: 1px solid var(--border); }
+
+.rel-legend {
+  font-size: 11px; color: var(--text2); line-height: 1.9;
+  padding: 8px 10px; background: var(--bg); border-radius: 6px; margin-bottom: 14px;
+}
+.rel-legend-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.rel-legend-label { font-weight: 600; color: var(--text); margin-right: 2px; flex-shrink: 0; }
+.legend-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 16px; border-radius: 3px;
+  font-size: 9px; font-weight: 700; color: #fff; padding: 0 4px;
+  vertical-align: middle; position: relative; top: -1px;
+}
+.legend-dot { letter-spacing: 0; font-size: 10px; }
+
+.rel-source-group { margin-bottom: 20px; }
+.rel-source-group:last-child { margin-bottom: 0; }
+.rel-source-title {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid var(--accent);
+}
+.rel-sub-title {
+  font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 1px;
+  margin: 10px 0 6px; padding-left: 2px;
+}
+.rel-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 4px;
+  border-bottom: 1px solid #f0ede8; font-size: 14px;
+}
+.rel-row:last-child { border-bottom: none; }
+.rel-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 32px; height: 22px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+  padding: 0 6px;
+}
+.rel-chars { flex: 1; font-weight: 500; }
+.rel-src-tag {
+  font-size: 10px; padding: 1px 5px; border-radius: 3px;
+  background: var(--accent-light); color: var(--accent); font-weight: 600; flex-shrink: 0;
+}
+.rel-pos { color: var(--text2); font-size: 12px; flex-shrink: 0; min-width: 56px; text-align: right; }
+.rel-dots { flex-shrink: 0; letter-spacing: 1px; font-size: 12px; min-width: 52px; }
+.tag-he { background: var(--rel-he); } .tag-chong { background: var(--rel-chong); }
+.tag-xing { background: var(--rel-xing); } .tag-hai { background: var(--rel-hai); }
+.tag-po { background: var(--rel-po); } .tag-ke { background: var(--rel-ke); }
+.tag-banhe { background: var(--rel-banhe); }
+.tag-sanhe { background: var(--rel-he); }
+.no-rel { color: var(--text2); font-size: 13px; padding: 8px 0; }
+.rel-row-weak { opacity: 0.45; }
+.rel-row-strong { background: #f9f6ee; }
+.rel-int-tag {
+  font-size: 10px; padding: 1px 5px; border-radius: 3px;
+  margin-left: 6px; font-weight: 600; white-space: nowrap;
+}
+.int-weakened { background: #f0e6e6; color: #a66; }
+.int-strengthened { background: #e6f0e6; color: #5a5; }
+.int-noted { background: #f0eeea; color: #998; }
+.rel-ss { font-size: 11px; color: var(--text2); margin-left: 6px; font-weight: 400; }
+
+/* Dayun */
+.dayun-scroll { overflow-x: auto; padding-bottom: 8px; }
+.dayun-list { display: flex; gap: 6px; min-width: max-content; }
+.dayun-item {
+  text-align: center; padding: 10px 12px; border-radius: 8px;
+  background: var(--bg); border: 2px solid transparent; cursor: pointer;
+  transition: border-color .2s; min-width: 72px;
+}
+.dayun-item:hover { border-color: var(--accent); }
+.dayun-item.active { border-color: var(--accent); background: var(--accent-light); }
+.dayun-gz { font-size: 18px; font-weight: 700; }
+.dayun-age { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.dayun-years { font-size: 10px; color: var(--text2); }
+
+/* Liuyue Liuri */
+.period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.period-box {
+  text-align: center; padding: 12px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.period-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.period-gz { font-size: 22px; font-weight: 700; }
+.period-wx { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* Check date */
+.check-card {
+  background: var(--card); border-radius: 10px; padding: 16px 20px;
+  margin-bottom: 16px; border: 2px solid var(--accent);
+}
+.check-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.check-header-label { font-size: 14px; font-weight: 700; color: var(--accent); }
+.check-header-hint { font-size: 12px; color: var(--text2); }
+.check-controls {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.check-controls input[type="date"] {
+  padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; font-family: inherit; background: var(--card); color: var(--text);
+}
+.check-controls input[type="date"]:focus { outline: none; border-color: var(--accent); }
+.check-btn {
+  padding: 5px 12px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--bg); color: var(--text); font-size: 12px; cursor: pointer;
+  font-family: inherit; font-weight: 500; transition: all .15s;
+}
+.check-btn:hover { border-color: var(--accent); color: var(--accent); }
+.check-info {
+  display: flex; align-items: center; gap: 12px; margin-top: 8px;
+  font-size: 13px; color: var(--text2);
+}
+.check-info-item { display: flex; align-items: center; gap: 4px; }
+.check-info-gz { font-weight: 700; font-size: 15px; color: var(--text); }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .form-row { flex-direction: column; }
+  .pillars { grid-template-columns: repeat(2, 1fr); }
+  .period-grid { grid-template-columns: 1fr; }
+  .pillar-gz { font-size: 22px; }
+}
+
+/* Disclaimer */
+.disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>八字排盘</h1>
+  <p class="subtitle">干支关系分析 · 五行能量</p>
+
+  <div class="card">
+    <div class="form-row">
+      <div class="form-group">
+        <label>出生日期</label>
+        <div class="date-inputs">
+          <input type="number" id="birthYear" class="year-input" value="1990" min="1900" max="2099">
+          <span>年</span>
+          <input type="number" id="birthMonth" value="8" min="1" max="12">
+          <span>月</span>
+          <input type="number" id="birthDay" value="15" min="1" max="31">
+          <span>日</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>时辰</label>
+        <select id="birthHour">
+          <option value="0">子时 (23:00-00:59)</option>
+          <option value="1">丑时 (01:00-02:59)</option>
+          <option value="2">寅时 (03:00-04:59)</option>
+          <option value="3">卯时 (05:00-06:59)</option>
+          <option value="4">辰时 (07:00-08:59)</option>
+          <option value="5">巳时 (09:00-10:59)</option>
+          <option value="6">午时 (11:00-12:59)</option>
+          <option value="7" selected>未时 (13:00-14:59)</option>
+          <option value="8">申时 (15:00-16:59)</option>
+          <option value="9">酉时 (17:00-18:59)</option>
+          <option value="10">戌时 (19:00-20:59)</option>
+          <option value="11">亥时 (21:00-22:59)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>性别</label>
+        <div class="gender-group">
+          <label><input type="radio" name="gender" value="male" checked>男</label>
+          <label><input type="radio" name="gender" value="female">女</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button class="btn" onclick="calculate()">排盘</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="check-card">
+      <div class="check-header">
+        <span class="check-header-label">查看日期</span>
+        <span class="check-header-hint">选择任意日期，查看当天的干支关系与运势</span>
+      </div>
+      <div class="check-controls">
+        <button class="check-btn" onclick="shiftCheckDate(-1)">← 前一天</button>
+        <div class="date-inputs">
+          <input type="number" id="checkYear" class="year-input" min="1900" max="2099" onchange="onCheckDateChange()">
+          <span>年</span>
+          <input type="number" id="checkMonth" min="1" max="12" onchange="onCheckDateChange()">
+          <span>月</span>
+          <input type="number" id="checkDay" min="1" max="31" onchange="onCheckDateChange()">
+          <span>日</span>
+        </div>
+        <button class="check-btn" onclick="shiftCheckDate(1)">后一天 →</button>
+        <button class="check-btn" onclick="setCheckToday()">今天</button>
+      </div>
+      <div class="check-info" id="checkInfo"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">四柱排盘</div>
+      <div id="basicInfo" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+      <div class="pillars" id="pillarsDisplay"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">五行能量</div>
+      <div class="wx-bars" id="wxBars"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">干支关系</div>
+      <div class="rel-toolbar">
+        <div class="rel-toggle">
+          <button class="active" onclick="setRelMode('rank')">按重要性</button>
+          <button onclick="setRelMode('group')">按来源</button>
+        </div>
+      </div>
+      <div class="rel-legend">
+        <div class="rel-legend-row">
+          <span class="rel-legend-label">位置</span>
+          年=年柱 &nbsp;月=月柱 &nbsp;日=日柱 &nbsp;时=时柱 &nbsp;运=大运 &nbsp;年运=流年 &nbsp;月运=流月 &nbsp;日运=流日
+        </div>
+        <div class="rel-legend-row" style="margin-top:4px">
+          <span class="rel-legend-label">类型</span>
+          <span class="legend-badge tag-he">合</span>合化*
+          <span class="legend-badge tag-chong">冲</span>对冲
+          <span class="legend-badge tag-xing">刑</span>三刑
+          <span class="legend-badge tag-ke">克</span>相克
+          <span class="legend-badge tag-hai">害</span>暗害
+          <span class="legend-badge tag-po">破</span>六破
+        </div>
+        <div class="rel-legend-row" style="margin-top:4px">
+          <span class="rel-legend-label">强度</span>
+          <span class="legend-dot" style="color:var(--rel-chong)">●●●●●</span> 极重要 &nbsp;
+          <span class="legend-dot" style="color:#c77a20">●●●●</span> 重要 &nbsp;
+          <span class="legend-dot" style="color:var(--accent)">●●●</span> 中等 &nbsp;
+          <span class="legend-dot" style="color:var(--text2)">●●</span> 轻 &nbsp;
+          <span class="legend-dot" style="color:#ccc">●</span> 微
+        </div>
+      </div>
+      <div id="relDisplay"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">大运</div>
+      <div class="dayun-scroll"><div class="dayun-list" id="dayunList"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">流年 · 流月 · 流日</div>
+      <div class="period-grid" id="periodGrid"></div>
+    </div>
+
+    <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。</p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const TG = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const DZ = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const WX = ['木','火','土','金','水'];
+const SX = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const TG_WX = [0,0,1,1,2,2,3,3,4,4];
+const DZ_WX = [4,2,0,0,2,1,1,2,3,3,2,4];
+const TG_YY = [1,0,1,0,1,0,1,0,1,0]; // 1=阳 0=阴
+const WX_COLORS = ['var(--wx-wood)','var(--wx-fire)','var(--wx-earth)','var(--wx-metal)','var(--wx-water)'];
+const WX_CLASS = ['wx-wood','wx-fire','wx-earth','wx-metal','wx-water'];
+
+// 藏干: [stem_idx, proportion]
+const CANGGAN = [
+  [[9,1.0]],[[5,1.0],[9,0.5],[7,0.3]],[[0,1.0],[2,0.5],[4,0.3]],[[1,1.0]],
+  [[4,1.0],[1,0.5],[9,0.3]],[[2,1.0],[6,0.5],[4,0.3]],[[3,1.0],[5,0.3]],
+  [[5,1.0],[3,0.5],[1,0.3]],[[6,1.0],[8,0.5],[4,0.3]],[[7,1.0]],
+  [[4,1.0],[7,0.5],[3,0.3]],[[8,1.0],[0,0.3]]
+];
+
+// 节气(节)近似日期 [month, day] — 月柱起始
+const JIE_DATES = [
+  [2,4],[3,6],[4,5],[5,6],[6,6],[7,7],
+  [8,8],[9,8],[10,8],[11,8],[12,7],[1,6]
+];
+
+// 十神
+const SS_NAMES = {
+  '0s':'比肩','0d':'劫财','1s':'食神','1d':'伤官',
+  '2s':'偏财','2d':'正财','3s':'七杀','3d':'正官',
+  '4s':'偏印','4d':'正印'
+};
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP DATA
+// ═══════════════════════════════════════════════════════════
+
+// 天干五合: [stemA, stemB, 合化五行]
+const TG_WUHE = [[0,5,2],[1,6,3],[2,7,4],[3,8,0],[4,9,1]];
+
+// 地支六合: [branchA, branchB, 合化五行]
+const DZ_LIUHE = [[0,1,2],[2,11,0],[3,10,1],[4,9,3],[5,8,4],[6,7,2]];
+
+// 地支三合: [branch1, branch2, branch3, 合化五行]
+const DZ_SANHE = [[8,0,4,4],[11,3,7,0],[2,6,10,1],[5,9,1,3]];
+
+// 地支六冲
+const DZ_LIUCHONG = [[0,6],[1,7],[2,8],[3,9],[4,10],[5,11]];
+
+// 地支三刑
+const DZ_XING_WUEN = [2,5,8]; // 寅巳申 无恩之刑
+const DZ_XING_SHISHI = [1,10,7]; // 丑戌未 恃势之刑
+const DZ_XING_WULI = [0,3]; // 子卯 无礼之刑
+const DZ_ZIXING = [4,6,9,11]; // 辰午酉亥 自刑
+
+// 地支六害
+const DZ_LIUHAI = [[0,7],[1,6],[2,5],[3,4],[8,11],[9,10]];
+
+// 地支六破
+const DZ_LIUPO = [[0,9],[1,4],[2,11],[3,6],[5,8],[7,10]];
+
+// Position labels
+const POS_NAMES = ['年柱','月柱','日柱','时柱','大运','流年','流月','流日'];
+const POS_SHORT = ['年','月','日','时','运','年运','月运','日运'];
+
+// ═══════════════════════════════════════════════════════════
+// CORE: Date → Pillars
+// ═══════════════════════════════════════════════════════════
+
+function mod(n, m) { return ((n % m) + m) % m; }
+
+function getJieqiMonth(year, month, day) {
+  const jieIdx = [
+    [2,4],[3,6],[4,5],[5,6],[6,6],[7,7],
+    [8,8],[9,8],[10,8],[11,8],[12,7],[1,6]
+  ];
+  const monthMap = {2:1,3:2,4:3,5:4,6:5,7:6,8:7,9:8,10:9,11:10,12:11,1:12};
+  let jieDay = 6;
+  for (const [m, d] of jieIdx) {
+    if (m === month) { jieDay = d; break; }
+  }
+  if (day >= jieDay) {
+    return monthMap[month] || 1;
+  } else {
+    const prevMonth = month > 1 ? month - 1 : 12;
+    return monthMap[prevMonth] || 12;
+  }
+}
+
+function getYearGanzhi(year, month, day) {
+  const lichunDay = 4;
+  if (month < 2 || (month === 2 && day < lichunDay)) year--;
+  const offset = year - 1984;
+  return [mod(offset, 10), mod(offset, 12)];
+}
+
+function getMonthGanzhi(yearGan, jieqiMonth) {
+  const monthZhi = mod(jieqiMonth + 1, 12);
+  const starts = {0:2,1:4,2:6,3:8,4:0,5:2,6:4,7:6,8:8,9:0};
+  const monthGan = mod(starts[yearGan] + jieqiMonth - 1, 10);
+  return [monthGan, monthZhi];
+}
+
+function getDayGanzhi(year, month, day) {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  const jd = day + Math.floor((153 * m + 2) / 5) + 365 * y +
+             Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  const offset = jd - 2445701;
+  return [mod(offset, 10), mod(offset + 6, 12)];
+}
+
+function getHourGanzhi(dayGan, shiIdx) {
+  const hourZhi = shiIdx;
+  const starts = {0:0,1:2,2:4,3:6,4:8,5:0,6:2,7:4,8:6,9:8};
+  const hourGan = mod(starts[dayGan] + hourZhi, 10);
+  return [hourGan, hourZhi];
+}
+
+function getFourPillars(year, month, day, shiIdx) {
+  const [yg, yz] = getYearGanzhi(year, month, day);
+  const jm = getJieqiMonth(year, month, day);
+  const [mg, mz] = getMonthGanzhi(yg, jm);
+  const [dg, dz] = getDayGanzhi(year, month, day);
+  const [hg, hz] = getHourGanzhi(dg, shiIdx);
+  return {
+    pillars: [[yg,yz],[mg,mz],[dg,dz],[hg,hz]],
+    jieqiMonth: jm
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEN GODS
+// ═══════════════════════════════════════════════════════════
+
+function getShishen(dayGan, targetGan) {
+  if (dayGan === targetGan) return '比肩';
+  const dw = Math.floor(dayGan / 2), tw = Math.floor(targetGan / 2);
+  const dy = dayGan % 2, ty = targetGan % 2;
+  const rel = mod(tw - dw, 5);
+  const pm = (dy === ty) ? 's' : 'd';
+  return SS_NAMES[rel + pm] || '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIVE ELEMENTS ENERGY (bazi_vector.py weights)
+// ═══════════════════════════════════════════════════════════
+
+const WEIGHTS = { stem: 1.5, monthLord: 3.0, branchMain: 1.5, hiddenMid: 0.75, hiddenMinor: 0.45 };
+
+function calcWuxingEnergy(pillars, jieqiMonth) {
+  const amps = [0,0,0,0,0]; // 木火土金水
+  const monthIdx = 1;
+  for (let i = 0; i < 4; i++) {
+    const [g, z] = pillars[i];
+    amps[TG_WX[g]] += WEIGHTS.stem;
+    const isMonth = (i === monthIdx);
+    CANGGAN[z].forEach((pair, j) => {
+      const [hsIdx, prop] = pair;
+      const hWx = TG_WX[hsIdx];
+      if (isMonth && j === 0) amps[hWx] += WEIGHTS.monthLord;
+      else if (j === 0) amps[hWx] += WEIGHTS.branchMain;
+      else if (prop >= 0.5) amps[hWx] += WEIGHTS.hiddenMid;
+      else amps[hWx] += WEIGHTS.hiddenMinor;
+    });
+  }
+  return amps;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP DETECTION
+// ═══════════════════════════════════════════════════════════
+
+function findAllRelationships(positions) {
+  // positions: [{stem, branch, posIdx}]
+  // posIdx: 0=年,1=月,2=日,3=时,4=大运,5=流年,6=流月,7=流日
+  const rels = [];
+  const n = positions.length;
+
+  // --- 天干关系 ---
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const si = positions[i].stem, sj = positions[j].stem;
+      const pi = positions[i].posIdx, pj = positions[j].posIdx;
+
+      // 天干五合
+      for (const [a, b, wxResult] of TG_WUHE) {
+        if ((si === a && sj === b) || (si === b && sj === a)) {
+          rels.push({
+            type: 'he', subtype: '天干合',
+            desc: `${TG[a]}${TG[b]}合化${WX[wxResult]}*`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            wxResult, baseScore: 85, tagClass: 'tag-he', stems: [si, sj]
+          });
+        }
+      }
+
+      // 天干相克
+      const wxi = TG_WX[si], wxj = TG_WX[sj];
+      if (mod(wxj - wxi, 5) === 2) {
+        rels.push({
+          type: 'ke', subtype: '天干克',
+          desc: `${TG[si]}${WX[wxi]}克${TG[sj]}${WX[wxj]}`,
+          positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+          baseScore: 55, tagClass: 'tag-ke', stems: [si, sj]
+        });
+      } else if (mod(wxi - wxj, 5) === 2) {
+        rels.push({
+          type: 'ke', subtype: '天干克',
+          desc: `${TG[sj]}${WX[wxj]}克${TG[si]}${WX[wxi]}`,
+          positions: [pj, pi], posNames: [POS_SHORT[pj], POS_SHORT[pi]],
+          baseScore: 55, tagClass: 'tag-ke', stems: [sj, si]
+        });
+      }
+    }
+  }
+
+  // --- 地支关系 ---
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const bi = positions[i].branch, bj = positions[j].branch;
+      const pi = positions[i].posIdx, pj = positions[j].posIdx;
+
+      // 六合
+      for (const [a, b, wxR] of DZ_LIUHE) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'liuhe', subtype: '六合',
+            desc: `${DZ[a]}${DZ[b]}合化${WX[wxR]}`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            wxResult: wxR, baseScore: 78, tagClass: 'tag-he'
+          });
+        }
+      }
+
+      // 六冲
+      for (const [a, b] of DZ_LIUCHONG) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'chong', subtype: '六冲',
+            desc: `${DZ[a]}${DZ[b]}冲`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 90, tagClass: 'tag-chong'
+          });
+        }
+      }
+
+      // 六害
+      for (const [a, b] of DZ_LIUHAI) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'hai', subtype: '六害',
+            desc: `${DZ[a]}${DZ[b]}害`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 50, tagClass: 'tag-hai'
+          });
+        }
+      }
+
+      // 六破
+      for (const [a, b] of DZ_LIUPO) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'po', subtype: '六破',
+            desc: `${DZ[a]}${DZ[b]}破`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 35, tagClass: 'tag-po'
+          });
+        }
+      }
+
+      // 无礼之刑 子卯
+      if ((bi === 0 && bj === 3) || (bi === 3 && bj === 0)) {
+        rels.push({
+          type: 'xing', subtype: '无礼刑',
+          desc: `子卯刑（无礼）`,
+          positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+          baseScore: 65, tagClass: 'tag-xing'
+        });
+      }
+
+      // 自刑
+      if (bi === bj && DZ_ZIXING.includes(bi)) {
+        rels.push({
+          type: 'xing', subtype: '自刑',
+          desc: `${DZ[bi]}${DZ[bj]}自刑`,
+          positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+          baseScore: 30, tagClass: 'tag-xing'
+        });
+      }
+    }
+  }
+
+  // 三刑 (无恩/恃势) - check two and three
+  checkSanxing(positions, rels, DZ_XING_WUEN, '无恩刑');
+  checkSanxing(positions, rels, DZ_XING_SHISHI, '恃势刑');
+
+  // 三合 & 半合
+  checkSanhe(positions, rels);
+
+  return rels;
+}
+
+function checkSanxing(positions, rels, xingSet, label) {
+  const found = {};
+  positions.forEach(p => {
+    if (xingSet.includes(p.branch)) {
+      if (!found[p.branch]) found[p.branch] = [];
+      found[p.branch].push(p.posIdx);
+    }
+  });
+  const presentBranches = Object.keys(found).map(Number);
+
+  if (presentBranches.length >= 3) {
+    const allPos = presentBranches.flatMap(b => found[b]);
+    rels.push({
+      type: 'xing', subtype: label,
+      desc: `${xingSet.map(b=>DZ[b]).join('')}三刑（${label}）`,
+      positions: allPos, posNames: allPos.map(p=>POS_SHORT[p]),
+      baseScore: 85, tagClass: 'tag-xing', isThreeWay: true
+    });
+  } else if (presentBranches.length === 2) {
+    const allPos = presentBranches.flatMap(b => found[b]);
+    for (let i = 0; i < allPos.length; i++) {
+      for (let j = i + 1; j < allPos.length; j++) {
+        const pi = allPos[i], pj = allPos[j];
+        const bi = positions.find(p => p.posIdx === pi)?.branch;
+        const bj = positions.find(p => p.posIdx === pj)?.branch;
+        if (bi !== undefined && bj !== undefined && bi !== bj) {
+          rels.push({
+            type: 'xing', subtype: label,
+            desc: `${DZ[bi]}${DZ[bj]}刑（${label}）`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 65, tagClass: 'tag-xing'
+          });
+        }
+      }
+    }
+  }
+}
+
+function checkSanhe(positions, rels) {
+  for (const [b1, b2, b3, wxR] of DZ_SANHE) {
+    const trio = [b1, b2, b3];
+    const found = {};
+    positions.forEach(p => {
+      if (trio.includes(p.branch)) {
+        if (!found[p.branch]) found[p.branch] = [];
+        found[p.branch].push(p.posIdx);
+      }
+    });
+    const presentBranches = Object.keys(found).map(Number);
+
+    if (presentBranches.length === 3) {
+      const allPos = presentBranches.flatMap(b => found[b]);
+      rels.push({
+        type: 'sanhe', subtype: '三合',
+        desc: `${DZ[b1]}${DZ[b2]}${DZ[b3]}三合${WX[wxR]}局`,
+        positions: allPos, posNames: allPos.map(p=>POS_SHORT[p]),
+        wxResult: wxR, baseScore: 95, tagClass: 'tag-sanhe', isThreeWay: true
+      });
+    } else if (presentBranches.length === 2) {
+      const pair = presentBranches;
+      const allPos = pair.flatMap(b => found[b]);
+      const uniquePos = [...new Set(allPos)];
+      if (uniquePos.length >= 2) {
+        rels.push({
+          type: 'banhe', subtype: '半合',
+          desc: `${pair.map(b=>DZ[b]).join('')}半合${WX[wxR]}局`,
+          positions: uniquePos.slice(0,2), posNames: uniquePos.slice(0,2).map(p=>POS_SHORT[p]),
+          wxResult: wxR, baseScore: 40, tagClass: 'tag-banhe'
+        });
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP SCORING
+// ═══════════════════════════════════════════════════════════
+
+// 位置权重: 原局=1, 大运=0.9, 流年=0.7, 流月=0.35, 流日=0.15
+const POS_WEIGHT = [1,1,1,1, 0.9, 0.7, 0.35, 0.15];
+const MIN_SCORE = 12;
+
+function scoreRelationships(rels) {
+  return rels.map(r => {
+    let score = r.baseScore;
+
+    // 日主参与加成
+    const involvesDayPillar = r.positions.some(p => p === 2);
+    if (involvesDayPillar) score *= 1.5;
+
+    // 月令参与加成
+    const involvesMonth = r.positions.some(p => p === 1);
+    if (involvesMonth && !involvesDayPillar) score *= 1.2;
+
+    // 位置邻近加成 (原局内)
+    const natalPos = r.positions.filter(p => p <= 3);
+    if (natalPos.length >= 2) {
+      const sorted = [...natalPos].sort((a,b) => a-b);
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (sorted[i+1] - sorted[i] === 1) { score *= 1.1; break; }
+      }
+    }
+
+    // 来源层级 — 核心区分
+    const maxPos = Math.max(...r.positions);
+    const minPos = Math.min(...r.positions);
+    const hasNatal = minPos <= 3;
+    const transitWeight = POS_WEIGHT[maxPos];
+
+    // 有原局参与: 以最弱运限层级定权重
+    // 无原局参与: 再打5折（纯运限凑成，缺乏根基）
+    const srcMul = hasNatal ? transitWeight : transitWeight * 0.5;
+    score *= srcMul;
+
+    let source;
+    if (maxPos <= 3) source = '原局';
+    else if (maxPos === 4) source = '大运';
+    else if (maxPos === 5) source = '流年';
+    else if (maxPos === 6) source = '流月';
+    else source = '流日';
+
+    return { ...r, score: Math.round(score), source };
+  })
+  .filter(r => r.score >= MIN_SCORE)
+  .sort((a, b) => b.score - a.score);
+}
+
+function deduplicateRels(rels) {
+  const seen = new Set();
+  return rels.filter(r => {
+    const key = r.subtype + ':' + [...r.positions].sort().join(',') + ':' + r.desc;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP INTERACTIONS (互动裁决)
+// ═══════════════════════════════════════════════════════════
+
+function resolveInteractions(rels, positions) {
+  const posLookup = {};
+  for (const p of positions) posLookup[p.posIdx] = p;
+
+  const dzRels = [];
+  for (const r of rels) {
+    r.interaction = null;
+    r.intClass = '';
+    if (!isTianganRel(r)) {
+      r._branches = r.positions.map(pi => posLookup[pi]?.branch).filter(b => b !== undefined);
+      dzRels.push(r);
+    }
+  }
+
+  // branch → [rels involving it]
+  const bMap = {};
+  for (const r of dzRels) {
+    for (const b of r._branches) {
+      if (!bMap[b]) bMap[b] = [];
+      bMap[b].push(r);
+    }
+  }
+
+  const HE_TYPES = new Set(['liuhe','sanhe','banhe']);
+
+  // --- Rule 1: 三合成局 > 一切 ---
+  const sanheRels = dzRels.filter(r => r.type === 'sanhe');
+  for (const sh of sanheRels) {
+    const shSet = new Set(sh._branches);
+    if (!sh.interaction) {
+      sh.interaction = '局成力大';
+      sh.intClass = 'int-strengthened';
+      sh.score = Math.round(sh.score * 1.15);
+    }
+    for (const r of dzRels) {
+      if (r === sh || r.interaction) continue;
+      if (r.type === 'liuhe' && r._branches.some(b => shSet.has(b))) {
+        r.interaction = '三合优先';
+        r.intClass = 'int-weakened';
+        r.score = Math.round(r.score * 0.4);
+      }
+      if (r.type === 'chong' && r._branches.some(b => shSet.has(b))) {
+        r.interaction = '三合解冲';
+        r.intClass = 'int-weakened';
+        r.score = Math.round(r.score * 0.3);
+      }
+    }
+  }
+
+  // --- Rule 2: 贪合忘冲 / 贪合忘刑 ---
+  for (const rList of Object.values(bMap)) {
+    const hes = rList.filter(r => HE_TYPES.has(r.type) && !r.interaction);
+    const chongs = rList.filter(r => r.type === 'chong' && !r.interaction);
+    const xings = rList.filter(r => r.type === 'xing' && !r.interaction);
+
+    if (hes.length > 0 && chongs.length > 0) {
+      for (const c of chongs) {
+        c.interaction = '贪合忘冲';
+        c.intClass = 'int-weakened';
+        c.score = Math.round(c.score * 0.4);
+      }
+      for (const h of hes) {
+        if (!h.interaction) { h.interaction = '合解冲'; h.intClass = 'int-noted'; }
+      }
+    }
+
+    if (hes.length > 0 && xings.length > 0) {
+      for (const x of xings) {
+        x.interaction = '合解刑';
+        x.intClass = 'int-weakened';
+        x.score = Math.round(x.score * 0.5);
+      }
+    }
+  }
+
+  // --- Rule 3: 三刑三方聚齐 → 力量极大 ---
+  for (const r of dzRels) {
+    if (r.isThreeWay && r.type === 'xing' && !r.interaction) {
+      r.interaction = '三方聚刑';
+      r.intClass = 'int-strengthened';
+      r.score = Math.round(r.score * 1.3);
+    }
+  }
+
+  // --- Rule 4: 天干合克共存 → 合化解克 ---
+  const tgHe = rels.filter(r => r.type === 'he');
+  const tgKe = rels.filter(r => r.type === 'ke');
+  for (const he of tgHe) {
+    const heSet = new Set(he.positions);
+    for (const ke of tgKe) {
+      if (ke.interaction) continue;
+      if (ke.positions.length === 2 && ke.positions.every(p => heSet.has(p))) {
+        ke.interaction = '被合化解';
+        ke.intClass = 'int-weakened';
+        ke.score = Math.round(ke.score * 0.3);
+      }
+    }
+  }
+
+  // --- Rule 5: 冲能散害/散破（冲的力量压制害和破） ---
+  for (const rList of Object.values(bMap)) {
+    const chongs = rList.filter(r => r.type === 'chong' && !r.interaction);
+    const hais = rList.filter(r => r.type === 'hai' && !r.interaction);
+    const pos = rList.filter(r => r.type === 'po' && !r.interaction);
+    if (chongs.length > 0) {
+      for (const h of hais) { h.interaction = '冲散害'; h.intClass = 'int-weakened'; h.score = Math.round(h.score * 0.4); }
+      for (const p of pos) { p.interaction = '冲散破'; p.intClass = 'int-weakened'; p.score = Math.round(p.score * 0.3); }
+    }
+  }
+
+  rels.sort((a, b) => b.score - a.score);
+  return rels;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DAYUN / LIUNIAN / LIUYUE / LIURI
+// ═══════════════════════════════════════════════════════════
+
+function calcDayunStartAge(yearGan, gender, birthYear, birthMonth, birthDay) {
+  const isYang = TG_YY[yearGan] === 1;
+  const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
+
+  // Approximate: count days to next/prev 节
+  const allJie = [];
+  for (let yr = birthYear - 1; yr <= birthYear + 1; yr++) {
+    JIE_DATES.forEach(([m, d]) => {
+      allJie.push(new Date(yr, m - 1, d));
+    });
+  }
+  allJie.sort((a, b) => a - b);
+
+  const birthDate = new Date(birthYear, birthMonth - 1, birthDay);
+  let days;
+  if (forward) {
+    const nextJie = allJie.find(d => d > birthDate);
+    days = nextJie ? Math.round((nextJie - birthDate) / 86400000) : 30;
+  } else {
+    const prevJie = [...allJie].reverse().find(d => d <= birthDate);
+    days = prevJie ? Math.round((birthDate - prevJie) / 86400000) : 30;
+  }
+
+  return Math.round(days / 3);
+}
+
+function calcDayunList(monthGan, monthZhi, yearGan, gender, startAge, n = 8) {
+  const isYang = TG_YY[yearGan] === 1;
+  const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
+  const step = forward ? 1 : -1;
+  const list = [];
+  for (let i = 1; i <= n; i++) {
+    const g = mod(monthGan + step * i, 10);
+    const z = mod(monthZhi + step * i, 12);
+    list.push({
+      stem: g, branch: z,
+      ageStart: startAge + (i - 1) * 10,
+      ageEnd: startAge + i * 10 - 1
+    });
+  }
+  return list;
+}
+
+function getLiunianGanzhi(year) {
+  const offset = year - 1984;
+  return [mod(offset, 10), mod(offset, 12)];
+}
+
+function getLiuyueGanzhi(year, month, day) {
+  const jm = getJieqiMonth(year, month, day);
+  const [yg] = getYearGanzhi(year, month, day);
+  return getMonthGanzhi(yg, jm);
+}
+
+function getLiuriGanzhi(year, month, day) {
+  return getDayGanzhi(year, month, day);
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+
+let STATE = null;
+
+// ═══════════════════════════════════════════════════════════
+// MAIN CALCULATION
+// ═══════════════════════════════════════════════════════════
+
+function getCheckDate() {
+  return [
+    parseInt(document.getElementById('checkYear').value),
+    parseInt(document.getElementById('checkMonth').value),
+    parseInt(document.getElementById('checkDay').value)
+  ];
+}
+function setCheckDate(y, m, d) {
+  document.getElementById('checkYear').value = y;
+  document.getElementById('checkMonth').value = m;
+  document.getElementById('checkDay').value = d;
+}
+
+function calculate() {
+  const year = parseInt(document.getElementById('birthYear').value);
+  const month = parseInt(document.getElementById('birthMonth').value);
+  const day = parseInt(document.getElementById('birthDay').value);
+  if (!year || !month || !day) return;
+  const shiIdx = parseInt(document.getElementById('birthHour').value);
+  const gender = document.querySelector('input[name="gender"]:checked').value;
+
+  const { pillars, jieqiMonth } = getFourPillars(year, month, day, shiIdx);
+  const dayGan = pillars[2][0];
+
+  const energy = calcWuxingEnergy(pillars, jieqiMonth);
+  const startAge = calcDayunStartAge(pillars[0][0], gender, year, month, day);
+  const dayunList = calcDayunList(pillars[1][0], pillars[1][1], pillars[0][0], gender, startAge);
+
+  STATE = { pillars, jieqiMonth, dayGan, energy, dayunList, startAge, birthYear: year, birthMonth: month, birthDay: day, gender };
+
+  const today = new Date();
+  setCheckDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
+
+  document.getElementById('results').style.display = 'block';
+  renderPillars();
+  renderWxBars();
+  renderDayun();
+  onCheckDateChange();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI RENDERING
+// ═══════════════════════════════════════════════════════════
+
+function renderPillars() {
+  const { pillars, dayGan, birthYear, birthMonth, birthDay } = STATE;
+  const [,yz] = pillars[0];
+  document.getElementById('basicInfo').textContent = `${birthYear}年${birthMonth}月${birthDay}日 · ${SX[yz]}年 · 日主${TG[dayGan]}${WX[TG_WX[dayGan]]}`;
+  const labels = ['年柱','月柱','日柱','时柱'];
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const [g, z] = pillars[i];
+    const gWx = TG_WX[g], zWx = DZ_WX[z];
+    const ss = i === 2 ? '日主' : getShishen(dayGan, g);
+    const cg = CANGGAN[z].map(([si]) => TG[si]).join(' ');
+    html += `<div class="pillar">
+      <div class="pillar-label">${labels[i]}</div>
+      <div class="pillar-gz">
+        <span class="${WX_CLASS[gWx]}">${TG[g]}</span><span class="${WX_CLASS[zWx]}">${DZ[z]}</span>
+      </div>
+      <div class="pillar-wx">${WX[gWx]}${WX[zWx]}</div>
+      <div class="pillar-shishen">${ss}</div>
+      <div class="pillar-canggan">藏 ${cg}</div>
+    </div>`;
+  }
+  document.getElementById('pillarsDisplay').innerHTML = html;
+}
+
+function renderWxBars() {
+  const amps = STATE.energy;
+  const maxAmp = Math.max(...amps, 1);
+  const pairs = WX.map((name, i) => ({ name, amp: amps[i], color: WX_COLORS[i], cls: WX_CLASS[i] }));
+  pairs.sort((a, b) => b.amp - a.amp);
+
+  let html = '';
+  for (const { name, amp, color, cls } of pairs) {
+    const pct = (amp / maxAmp * 100).toFixed(0);
+    html += `<div class="wx-bar-row">
+      <div class="wx-bar-label ${cls}">${name}</div>
+      <div class="wx-bar-track">
+        <div class="wx-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="wx-bar-val">${amp.toFixed(1)}</div>
+    </div>`;
+  }
+  document.getElementById('wxBars').innerHTML = html;
+}
+
+function renderDayun() {
+  const { dayunList, dayGan, birthYear } = STATE;
+  let html = '';
+  dayunList.forEach((du, i) => {
+    const gWx = TG_WX[du.stem], zWx = DZ_WX[du.branch];
+    const yearStart = birthYear + du.ageStart;
+    const yearEnd = birthYear + du.ageEnd;
+    const ss = getShishen(dayGan, du.stem);
+    html += `<div class="dayun-item" data-idx="${i}" onclick="selectDayun(${i})">
+      <div class="dayun-gz"><span class="${WX_CLASS[gWx]}">${TG[du.stem]}</span><span class="${WX_CLASS[zWx]}">${DZ[du.branch]}</span></div>
+      <div class="dayun-age">${du.ageStart}-${du.ageEnd}岁</div>
+      <div class="dayun-years">${yearStart}-${yearEnd}</div>
+      <div style="font-size:11px;color:var(--accent);margin-top:2px">${ss}</div>
+    </div>`;
+  });
+  document.getElementById('dayunList').innerHTML = html;
+}
+
+function selectDayun(idx) {
+  if (!STATE) return;
+  const du = STATE.dayunList[idx];
+  const yearMid = STATE.birthYear + du.ageStart + 5;
+  setCheckDate(yearMid, 1, 1);
+  onCheckDateChange();
+}
+
+function renderPeriods(checkYear, checkMonth, checkDay) {
+  const { dayGan } = STATE;
+  const [lyG, lyZ] = getLiunianGanzhi(checkYear);
+  const [lmG, lmZ] = getLiuyueGanzhi(checkYear, checkMonth, checkDay);
+  const [ldG, ldZ] = getLiuriGanzhi(checkYear, checkMonth, checkDay);
+
+  const items = [
+    { label: `流年 ${checkYear}`, g: lyG, z: lyZ },
+    { label: `流月`, g: lmG, z: lmZ },
+    { label: `流日`, g: ldG, z: ldZ },
+  ];
+
+  let html = '';
+  for (const { label, g, z } of items) {
+    const gWx = TG_WX[g], zWx = DZ_WX[z];
+    const ss = getShishen(dayGan, g);
+    html += `<div class="period-box">
+      <div class="period-label">${label}</div>
+      <div class="period-gz"><span class="${WX_CLASS[gWx]}">${TG[g]}</span><span class="${WX_CLASS[zWx]}">${DZ[z]}</span></div>
+      <div class="period-wx">${WX[gWx]}${WX[zWx]} · ${ss}</div>
+    </div>`;
+  }
+  document.getElementById('periodGrid').innerHTML = html;
+}
+
+let relMode = 'rank';
+let lastRels = [];
+
+function setRelMode(mode) {
+  relMode = mode;
+  document.querySelectorAll('.rel-toggle button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.rel-toggle button[onclick="setRelMode('${mode}')"]`).classList.add('active');
+  renderRelationships(lastRels);
+}
+
+function scoreToDots(score) {
+  if (score >= 120) return '<span style="color:var(--rel-chong)">●●●●●</span>';
+  if (score >= 90)  return '<span style="color:#c77a20">●●●●<span style="opacity:.25">●</span></span>';
+  if (score >= 65)  return '<span style="color:var(--accent)">●●●<span style="opacity:.25">●●</span></span>';
+  if (score >= 45)  return '<span style="color:var(--text2)">●●<span style="opacity:.25">●●●</span></span>';
+  return '<span style="color:#ccc">●<span style="opacity:.25">●●●●</span></span>';
+}
+
+function shortBadge(subtype) {
+  const m = { '天干合':'合','天干克':'克','六合':'合','三合':'三合','半合':'半合',
+    '六冲':'冲','无恩刑':'刑','恃势刑':'刑','无礼刑':'刑','自刑':'自刑',
+    '六害':'害','六破':'破' };
+  return m[subtype] || subtype;
+}
+
+function isTianganRel(r) { return r.type === 'he' || r.type === 'ke'; }
+
+function getRelShishenTag(r) {
+  if (!STATE) return '';
+  const dg = STATE.dayGan;
+  const toSS = s => s === dg ? '日主' : getShishen(dg, s);
+
+  let stems;
+  if (r.stems) {
+    stems = r.stems;
+  } else if (STATE.currentPositions) {
+    const lookup = {};
+    for (const p of STATE.currentPositions) lookup[p.posIdx] = p;
+    stems = r.positions.slice(0, 2).map(pi => {
+      const pos = lookup[pi];
+      if (!pos) return undefined;
+      return CANGGAN[pos.branch][0][0];
+    }).filter(s => s !== undefined);
+  }
+  if (!stems || stems.length < 2) return '';
+
+  const a = toSS(stems[0]), b = toSS(stems[1]);
+  let text;
+  if (r.type === 'he') text = `${a}合${b}`;
+  else if (r.type === 'ke') text = `${a}克${b}`;
+  else if (r.type === 'chong') text = `${a}冲${b}`;
+  else if (r.type === 'xing') text = `${a}刑${b}`;
+  else if (r.type === 'liuhe') text = `${a}合${b}`;
+  else if (r.type === 'hai') text = `${a}害${b}`;
+  else if (r.type === 'po') text = `${a}破${b}`;
+  else if (r.type === 'sanhe' || r.type === 'banhe') text = `${a}·${b}`;
+  else text = `${a}·${b}`;
+  return `<span class="rel-ss">${text}</span>`;
+}
+
+function relRowHtml(r, showSource) {
+  const srcTag = showSource ? `<span class="rel-src-tag">${r.source}</span>` : '';
+  const intTag = r.interaction ? `<span class="rel-int-tag ${r.intClass || ''}">${r.interaction}</span>` : '';
+  const ssTag = getRelShishenTag(r);
+  const rowCls = r.intClass === 'int-weakened' ? ' rel-row-weak' :
+                 r.intClass === 'int-strengthened' ? ' rel-row-strong' : '';
+  return `<div class="rel-row${rowCls}">
+    <span class="rel-badge ${r.tagClass}">${shortBadge(r.subtype)}</span>
+    <span class="rel-chars">${r.desc}${ssTag}${intTag}</span>
+    ${srcTag}
+    <span class="rel-pos">${r.posNames.join('·')}</span>
+    <span class="rel-dots">${scoreToDots(r.score)}</span>
+  </div>`;
+}
+
+function renderRelationships(allRels) {
+  lastRels = allRels;
+  if (allRels.length === 0) {
+    document.getElementById('relDisplay').innerHTML = '<div class="no-rel">当前无显著干支关系</div>';
+    return;
+  }
+
+  let html = '';
+
+  if (relMode === 'rank') {
+    const sorted = [...allRels].sort((a, b) => b.score - a.score);
+    for (const r of sorted) {
+      html += relRowHtml(r, true);
+    }
+  } else {
+    const sourceOrder = ['原局','大运','流年','流月','流日'];
+    const groups = {};
+    for (const s of sourceOrder) groups[s] = [];
+    for (const r of allRels) { (groups[r.source] || groups['流年']).push(r); }
+
+    for (const src of sourceOrder) {
+      const items = groups[src];
+      if (items.length === 0) continue;
+      const tgRels = items.filter(isTianganRel);
+      const dzRels = items.filter(r => !isTianganRel(r));
+      html += `<div class="rel-source-group"><div class="rel-source-title">${src}</div>`;
+      if (tgRels.length > 0) {
+        html += '<div class="rel-sub-title">天干</div>';
+        for (const r of tgRels) html += relRowHtml(r, false);
+      }
+      if (dzRels.length > 0) {
+        html += '<div class="rel-sub-title">地支</div>';
+        for (const r of dzRels) html += relRowHtml(r, false);
+      }
+      html += '</div>';
+    }
+  }
+
+  document.getElementById('relDisplay').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHECK DATE HANDLER
+// ═══════════════════════════════════════════════════════════
+
+function shiftCheckDate(delta) {
+  const [y, m, d] = getCheckDate();
+  if (!y) return;
+  const dt = new Date(y, m - 1, d + delta);
+  setCheckDate(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+  onCheckDateChange();
+}
+
+function setCheckToday() {
+  const t = new Date();
+  setCheckDate(t.getFullYear(), t.getMonth() + 1, t.getDate());
+  onCheckDateChange();
+}
+
+function onCheckDateChange() {
+  if (!STATE) return;
+  const [cy, cm, cd] = getCheckDate();
+  if (!cy || !cm || !cd) return;
+  const { pillars, dayGan, dayunList, birthYear } = STATE;
+
+  const age = cy - birthYear;
+
+  // Active dayun
+  let activeDayunIdx = -1;
+  dayunList.forEach((du, i) => {
+    if (age >= du.ageStart && age <= du.ageEnd) activeDayunIdx = i;
+  });
+  document.querySelectorAll('.dayun-item').forEach(el => el.classList.remove('active'));
+  if (activeDayunIdx >= 0) {
+    const el = document.querySelector(`.dayun-item[data-idx="${activeDayunIdx}"]`);
+    if (el) el.classList.add('active');
+  }
+
+  // Check info summary
+  const [ciLyG, ciLyZ] = getLiunianGanzhi(cy);
+  const [ciLdG, ciLdZ] = getLiuriGanzhi(cy, cm, cd);
+  let infoHtml = `<span class="check-info-item">${age >= 0 ? age + '岁' : ''}</span>`;
+  if (activeDayunIdx >= 0) {
+    const adu = dayunList[activeDayunIdx];
+    infoHtml += `<span class="check-info-item">大运 <span class="check-info-gz">${TG[adu.stem]}${DZ[adu.branch]}</span></span>`;
+  }
+  infoHtml += `<span class="check-info-item">流年 <span class="check-info-gz">${TG[ciLyG]}${DZ[ciLyZ]}</span></span>`;
+  infoHtml += `<span class="check-info-item">流日 <span class="check-info-gz">${TG[ciLdG]}${DZ[ciLdZ]}</span></span>`;
+  document.getElementById('checkInfo').innerHTML = infoHtml;
+
+  // Periods
+  renderPeriods(cy, cm, cd);
+
+  // Build positions for relationship analysis
+  const positions = [];
+  for (let i = 0; i < 4; i++) {
+    positions.push({ stem: pillars[i][0], branch: pillars[i][1], posIdx: i });
+  }
+
+  // Add dayun
+  if (activeDayunIdx >= 0) {
+    const du = dayunList[activeDayunIdx];
+    positions.push({ stem: du.stem, branch: du.branch, posIdx: 4 });
+  }
+
+  // Add liunian
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+  positions.push({ stem: lyG, branch: lyZ, posIdx: 5 });
+
+  // Add liuyue
+  const [lmG, lmZ] = getLiuyueGanzhi(cy, cm, cd);
+  positions.push({ stem: lmG, branch: lmZ, posIdx: 6 });
+
+  // Add liuri
+  const [ldG, ldZ] = getLiuriGanzhi(cy, cm, cd);
+  positions.push({ stem: ldG, branch: ldZ, posIdx: 7 });
+
+  STATE.currentPositions = positions;
+
+  // Find, score, and resolve interactions
+  let rels = findAllRelationships(positions);
+  rels = deduplicateRels(rels);
+  rels = scoreRelationships(rels);
+  rels = resolveInteractions(rels, positions);
+
+  renderRelationships(rels);
+}
+
+// Birth date defaults are set in HTML value attributes
+</script>
+</body>
+</html>
