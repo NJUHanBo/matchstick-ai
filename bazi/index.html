@@ -226,6 +226,24 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   .pillar-gz { font-size: 22px; }
 }
 
+/* Prompt Generator */
+.prompt-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.prompt-textarea {
+  width: 100%; min-height: 280px; margin-top: 12px; padding: 14px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+  color: var(--text); font-size: 13px; line-height: 1.7; font-family: inherit;
+  resize: vertical; display: none;
+}
+.prompt-textarea.visible { display: block; }
+.btn-copy {
+  padding: 8px 20px; background: #3a7d44; color: #fff; border: none;
+  border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 600;
+  font-family: inherit; transition: all .2s; display: none;
+}
+.btn-copy.visible { display: inline-block; }
+.btn-copy:hover { opacity: .85; }
+.btn-copy.copied { background: #2d6a35; }
+
 /* Disclaimer */
 .disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 24px; }
 </style>
@@ -354,6 +372,16 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
     <div class="card">
       <div class="card-title">流年 · 流月 · 流日</div>
       <div class="period-grid" id="periodGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI 分析提示词</div>
+      <div class="prompt-actions">
+        <button class="btn" onclick="generatePrompt()">生成提示词</button>
+        <button class="btn-copy" id="copyBtn" onclick="copyPrompt()">复制提示词</button>
+        <span id="copyFeedback" style="font-size:12px;color:var(--rel-he);display:none">✓ 已复制</span>
+      </div>
+      <textarea class="prompt-textarea" id="promptText" readonly></textarea>
     </div>
 
     <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。</p>
@@ -1333,6 +1361,157 @@ function onCheckDateChange() {
   rels = resolveInteractions(rels, positions);
 
   renderRelationships(rels);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROMPT GENERATOR
+// ═══════════════════════════════════════════════════════════
+
+function getRelShishenText(r) {
+  if (!STATE) return '';
+  const dg = STATE.dayGan;
+  const toSS = s => s === dg ? '日主' : getShishen(dg, s);
+  let stems;
+  if (r.stems) {
+    stems = r.stems;
+  } else if (STATE.currentPositions) {
+    const lookup = {};
+    for (const p of STATE.currentPositions) lookup[p.posIdx] = p;
+    stems = r.positions.slice(0, 2).map(pi => {
+      const pos = lookup[pi];
+      if (!pos) return undefined;
+      return CANGGAN[pos.branch][0][0];
+    }).filter(s => s !== undefined);
+  }
+  if (!stems || stems.length < 2) return '';
+  const a = toSS(stems[0]), b = toSS(stems[1]);
+  if (r.type === 'he') return `${a}合${b}`;
+  if (r.type === 'ke') return `${a}克${b}`;
+  if (r.type === 'chong') return `${a}冲${b}`;
+  if (r.type === 'xing') return `${a}刑${b}`;
+  if (r.type === 'liuhe') return `${a}合${b}`;
+  if (r.type === 'hai') return `${a}害${b}`;
+  if (r.type === 'po') return `${a}破${b}`;
+  return `${a}·${b}`;
+}
+
+function generatePrompt() {
+  if (!STATE) return;
+  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
+  const shiIdx = parseInt(document.getElementById('birthHour').value);
+  const shiName = DZ[shiIdx] + '时';
+  const genderText = gender === 'male' ? '男命' : '女命';
+
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+
+  const pLabels = ['年', '月', '日', '时'];
+  const cangganStr = pillars.map(([, z], i) =>
+    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
+  ).join(' ');
+
+  const ssItems = [];
+  for (let i = 0; i < 4; i++) {
+    if (i === 2) continue;
+    ssItems.push(`${pLabels[i]}干${TG[pillars[i][0]]}=${getShishen(dayGan, pillars[i][0])}`);
+  }
+
+  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
+  wxPairs.sort((a, b) => b.amp - a.amp);
+  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+  const missing = wxPairs.filter(p => p.amp === 0).map(p => p.name);
+
+  const isYang = TG_YY[pillars[0][0]] === 1;
+  const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
+  const dayunStrs = dayunList.map(du =>
+    `${TG[du.stem]}${DZ[du.branch]}(${du.ageStart}-${du.ageEnd},${getShishen(dayGan, du.stem)})`
+  );
+
+  const [cy] = getCheckDate();
+  const age = cy - birthYear;
+  let curDayunGz = '', curDayunLabel = '';
+  for (const du of dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      curDayunGz = TG[du.stem] + DZ[du.branch];
+      curDayunLabel = `${curDayunGz}（${du.ageStart}-${du.ageEnd}岁）`;
+      break;
+    }
+  }
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+  const lyGz = TG[lyG] + DZ[lyZ];
+
+  const periodLines = [];
+  if (curDayunLabel) periodLines.push('当前大运：' + curDayunLabel);
+  periodLines.push(`当前流年：${lyGz}（${cy}）`);
+
+  const natalRels = lastRels.filter(r => r.source === '原局');
+  let relLines;
+  if (natalRels.length > 0) {
+    relLines = natalRels.map(r => {
+      let line = `- ${r.desc}（${r.posNames.join('·')}`;
+      const ssText = getRelShishenText(r);
+      if (ssText) line += `，${ssText}`;
+      line += '）';
+      if (r.interaction) line += `【${r.interaction}】`;
+      return line;
+    }).join('\n');
+  } else {
+    relLines = '- 原局无显著干支关系';
+  }
+
+  const monthBranch = DZ[pillars[1][1]];
+  const monthWx = WX[DZ_WX[pillars[1][1]]];
+
+  const prompt = `请根据以下八字命盘进行分析。
+
+【命盘信息】
+出生：${birthYear}年${birthMonth}月${birthDay}日 ${shiName} ${genderText}
+四柱：${fourPillars}
+日主：${dmName}
+藏干：${cangganStr}
+十神：${ssItems.join(' ')}
+
+五行能量（高→低）：${wxStr}
+${missing.length > 0 ? '五行缺：' + missing.join('、') : '五行无缺'}
+
+大运（${forward ? '顺排' : '逆排'}）：${dayunStrs.join(' → ')}
+${periodLines.join('\n')}
+
+原局关系：
+${relLines}
+
+【分析要求】
+请参考《滴天髓》《渊海子平》等经典命理著作，从以下角度进行客观、全面的分析：
+1. 日主${dmName}在原局中的状态：月令${monthBranch}为${monthWx}，日主是否得令、得地、透干、通根
+2. 五行能量的流通与阻塞：哪些五行通路畅通，哪些受阻或断裂${missing.length > 0 ? '（' + missing.join('') + '能量为零需特别关注）' : ''}
+3. 十神结构特征：哪些十神突出或缺失，十神之间的组合关系
+4. 原局干支关系的实际效应：合绊、冲动、刑害如何改变力量格局
+5. 格局倾向分析（正格/从格/特殊格局的可能性）
+6. ${curDayunGz ? '当前大运' + curDayunGz + '与' : ''}流年${lyGz}对原局的叠加影响
+7. 事业、财运、感情方向的综合研判
+
+注意：不要使用简单的"身强身弱"二分法，而是描述五行能量的具体分布和流通状态。分析应客观中立，吉凶并陈。`;
+
+  document.getElementById('promptText').value = prompt;
+  document.getElementById('promptText').classList.add('visible');
+  document.getElementById('copyBtn').classList.add('visible');
+  document.getElementById('copyFeedback').style.display = 'none';
+}
+
+function copyPrompt() {
+  const text = document.getElementById('promptText').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '已复制 ✓';
+    btn.classList.add('copied');
+    document.getElementById('copyFeedback').style.display = 'inline';
+    setTimeout(() => {
+      btn.textContent = '复制提示词';
+      btn.classList.remove('copied');
+      document.getElementById('copyFeedback').style.display = 'none';
+    }, 2000);
+  });
 }
 
 // Birth date defaults are set in HTML value attributes
