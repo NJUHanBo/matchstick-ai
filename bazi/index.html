@@ -1462,6 +1462,18 @@ function generatePrompt() {
   const monthBranch = DZ[pillars[1][1]];
   const monthWx = WX[DZ_WX[pillars[1][1]]];
 
+  const dayBranch = pillars[2][1];
+  const dbCg = CANGGAN[dayBranch].map(([si]) => TG[si]);
+  const dbMainStem = CANGGAN[dayBranch][0][0];
+  const dbMainSS = getShishen(dayGan, dbMainStem);
+  const dbWxI = TG_WX[dbMainStem], dmWxI = TG_WX[dayGan];
+  const wxDiff = mod(dmWxI - dbWxI, 5);
+  const dbRelDesc = wxDiff === 0 ? '同气比助' :
+    wxDiff === 1 ? `${WX[dbWxI]}生${WX[dmWxI]}，生助日主` :
+    wxDiff === 4 ? `${WX[dmWxI]}生${WX[dbWxI]}，日主泄气` :
+    wxDiff === 2 ? `${WX[dbWxI]}克${WX[dmWxI]}，克制日主` :
+    `${WX[dmWxI]}克${WX[dbWxI]}，日主所克`;
+
   const prompt = `请根据以下八字命盘进行分析。
 
 【命盘信息】
@@ -1480,6 +1492,8 @@ ${periodLines.join('\n')}
 原局关系：
 ${relLines}
 
+日支（夫妻宫）：${DZ[dayBranch]}${WX[DZ_WX[dayBranch]]}，藏${dbCg.join('')}，本气${TG[dbMainStem]}（${dbMainSS}），${dbRelDesc}
+
 【分析要求】
 请参考《滴天髓》《渊海子平》等经典命理著作，从以下角度进行客观、全面的分析：
 1. 日主${dmName}在原局中的状态：月令${monthBranch}为${monthWx}，日主是否得令、得地、透干、通根
@@ -1488,9 +1502,10 @@ ${relLines}
 4. 原局干支关系的实际效应：合绊、冲动、刑害如何改变力量格局
 5. 格局倾向分析（正格/从格/特殊格局的可能性）
 6. ${curDayunGz ? '当前大运' + curDayunGz + '与' : ''}流年${lyGz}对原局的叠加影响
-7. 事业、财运、感情方向的综合研判
+7. 感情婚姻：以日支（夫妻宫）为核心框架，分析配偶特质与关系动态。不要套用"男命财为妻、女命官为夫"的封建对应——现代婚姻不是占有关系。重点关注：日支藏干的十神特质所反映的配偶性格倾向，日支与日主的生克关系所反映的互动模式，日支所受刑冲合害对关系稳定性的影响。若要保留"财/官"概念，应重新理解为"主动投入精力经营的领域"，而非配偶的代名词
+8. 事业方向与财运趋势的综合研判
 
-注意：不要使用简单的"身强身弱"二分法，而是描述五行能量的具体分布和流通状态。分析应客观中立，吉凶并陈。`;
+注意：不要使用简单的"身强身弱"二分法，而是描述五行能量的具体分布和流通状态。感情分析中避免"正财不透=妻缘薄""官星混杂=婚姻不稳"等机械推导，应从日支藏干特质、与日主的实际生克关系出发，描述关系的质感与动态。分析应客观中立，吉凶并陈。`;
 
   document.getElementById('promptText').value = prompt;
   document.getElementById('promptText').classList.add('visible');
