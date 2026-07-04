@@ -72,13 +72,14 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   text-align: center; padding: 12px 8px; border-radius: 8px;
   background: var(--bg); border: 1px solid var(--border);
 }
-.pillar-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; }
-.pillar-gz { font-size: 26px; font-weight: 700; letter-spacing: 2px; line-height: 1.3; }
-.pillar-wx { font-size: 12px; color: var(--text2); margin-top: 4px; }
-.pillar-canggan { font-size: 11px; color: var(--text2); margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
-.pillar-shishen { font-size: 12px; color: var(--accent); margin-top: 2px; font-weight: 500; }
-.pillar .stem-char { display: inline; }
-.pillar .branch-char { display: inline; }
+.pillar-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.pillar-char { font-size: 28px; font-weight: 700; display: block; line-height: 1.2; }
+.pillar-ss { font-size: 11px; color: var(--accent); font-weight: 500; display: block; margin-top: 1px; min-height: 16px; }
+.pillar-divider { height: 1px; background: var(--border); margin: 6px 4px; }
+.pillar-canggan { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+.cg-item { text-align: center; }
+.cg-char { font-size: 14px; font-weight: 600; display: block; }
+.cg-ss { font-size: 10px; color: var(--text2); display: block; margin-top: 1px; }
 .wx-wood { color: var(--wx-wood); } .wx-fire { color: var(--wx-fire); }
 .wx-earth { color: var(--wx-earth); } .wx-metal { color: var(--wx-metal); }
 .wx-water { color: var(--wx-water); }
@@ -223,7 +224,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   .form-row { flex-direction: column; }
   .pillars { grid-template-columns: repeat(2, 1fr); }
   .period-grid { grid-template-columns: 1fr; }
-  .pillar-gz { font-size: 22px; }
+  .pillar-char { font-size: 24px; }
 }
 
 /* Prompt Generator */
@@ -1077,15 +1078,17 @@ function renderPillars() {
     const [g, z] = pillars[i];
     const gWx = TG_WX[g], zWx = DZ_WX[z];
     const ss = i === 2 ? '日主' : getShishen(dayGan, g);
-    const cg = CANGGAN[z].map(([si]) => TG[si]).join(' ');
+    const cgHtml = CANGGAN[z].map(([si]) => {
+      const cSs = getShishen(dayGan, si);
+      return `<div class="cg-item"><span class="cg-char ${WX_CLASS[TG_WX[si]]}">${TG[si]}</span><span class="cg-ss">${cSs}</span></div>`;
+    }).join('');
     html += `<div class="pillar">
       <div class="pillar-label">${labels[i]}</div>
-      <div class="pillar-gz">
-        <span class="${WX_CLASS[gWx]}">${TG[g]}</span><span class="${WX_CLASS[zWx]}">${DZ[z]}</span>
-      </div>
-      <div class="pillar-wx">${WX[gWx]}${WX[zWx]}</div>
-      <div class="pillar-shishen">${ss}</div>
-      <div class="pillar-canggan">藏 ${cg}</div>
+      <span class="pillar-char ${WX_CLASS[gWx]}">${TG[g]}</span>
+      <span class="pillar-ss">${ss}</span>
+      <div class="pillar-divider"></div>
+      <span class="pillar-char ${WX_CLASS[zWx]}">${DZ[z]}</span>
+      <div class="pillar-canggan">${cgHtml}</div>
     </div>`;
   }
   document.getElementById('pillarsDisplay').innerHTML = html;
