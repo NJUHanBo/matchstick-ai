@@ -1114,10 +1114,49 @@ function renderWxBars() {
   document.getElementById('wxBars').innerHTML = html;
 }
 
+let wxPentMode = 'natal';
+
+function setWxPentMode(mode) {
+  wxPentMode = mode;
+  renderWxPentagon();
+}
+
+function calcDayunEnergy() {
+  const base = [...STATE.energy];
+  const checkY = getCheckDate()[0];
+  const age = checkY - STATE.birthYear;
+  for (const du of STATE.dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      base[TG_WX[du.stem]] += WEIGHTS.stem;
+      CANGGAN[du.branch].forEach(([hsIdx, prop], j) => {
+        const hWx = TG_WX[hsIdx];
+        if (j === 0) base[hWx] += WEIGHTS.branchMain;
+        else if (prop >= 0.5) base[hWx] += WEIGHTS.hiddenMid;
+        else base[hWx] += WEIGHTS.hiddenMinor;
+      });
+      return base;
+    }
+  }
+  return base;
+}
+
 function renderWxPentagon() {
   if (!STATE) return;
-  const { energy, dayGan } = STATE;
+  const { dayGan } = STATE;
   const dayWx = TG_WX[dayGan];
+  const energy = wxPentMode === 'dayun' ? calcDayunEnergy() : STATE.energy;
+
+  let modeLabel = '';
+  if (wxPentMode === 'dayun') {
+    const checkY = getCheckDate()[0];
+    const age = checkY - STATE.birthYear;
+    for (const du of STATE.dayunList) {
+      if (age >= du.ageStart && age <= du.ageEnd) {
+        modeLabel = `${TG[du.stem]}${DZ[du.branch]}运（${du.ageStart}-${du.ageEnd}岁）`;
+        break;
+      }
+    }
+  }
 
   const W = 360, H = 330;
   const cx = W / 2, cy = 160;
@@ -1179,7 +1218,15 @@ function renderWxPentagon() {
   s += `<tspan fill="#4a8a5a" font-weight="600">——</tspan> 相生·流通量　<tspan fill="#c46a5a" font-weight="600">- - -</tspan> 相克·制约力</text>`;
   s += '</svg>';
 
-  document.getElementById('wxPentagon').innerHTML = s;
+  const toggle = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">` +
+    `<div class="rel-toggle">` +
+    `<button class="${wxPentMode === 'natal' ? 'active' : ''}" onclick="setWxPentMode('natal')">原局</button>` +
+    `<button class="${wxPentMode === 'dayun' ? 'active' : ''}" onclick="setWxPentMode('dayun')">+大运</button>` +
+    `</div>` +
+    (modeLabel ? `<span style="font-size:11px;color:var(--text2)">${modeLabel}</span>` : '') +
+    `</div>`;
+
+  document.getElementById('wxPentagon').innerHTML = toggle + s;
 }
 
 function renderDayun() {
@@ -1435,6 +1482,7 @@ function onCheckDateChange() {
   rels = scoreRelationships(rels);
   rels = resolveInteractions(rels, positions);
 
+  renderWxPentagon();
   renderRelationships(rels);
 }
 
