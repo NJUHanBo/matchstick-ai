@@ -245,6 +245,21 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .btn-copy:hover { opacity: .85; }
 .btn-copy.copied { background: #2d6a35; }
 
+/* Services */
+.svc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 8px; }
+.svc-card {
+  background: var(--card); border-radius: 10px; padding: 20px;
+  border: 1px solid var(--border); text-align: center; transition: border-color .2s;
+}
+.svc-card:hover { border-color: var(--accent); }
+.svc-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.svc-desc { font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
+.svc-price { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+.svc-price span { font-size: 13px; font-weight: 400; color: var(--text2); }
+.svc-contact { font-size: 12px; color: var(--text2); background: var(--bg); border-radius: 6px; padding: 8px; }
+.svc-contact strong { color: var(--text); font-size: 13px; letter-spacing: 0.5px; }
+@media (max-width: 600px) { .svc-grid { grid-template-columns: 1fr; } }
+
 /* Disclaimer */
 .disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 24px; }
 </style>
@@ -384,6 +399,21 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
         <span id="copyFeedback" style="font-size:12px;color:var(--rel-he);display:none">✓ 已复制</span>
       </div>
       <textarea class="prompt-textarea" id="promptText" readonly></textarea>
+    </div>
+
+    <div class="svc-grid">
+      <div class="svc-card">
+        <div class="svc-title">不外传的八字命理笔记</div>
+        <div class="svc-desc">系统整理的命理学习笔记，涵盖十神功能解读、五行流通分析、大运流年实战要点，适合有基础想深入的学习者</div>
+        <div class="svc-price">¥96 <span>/ 份</span></div>
+        <div class="svc-contact">添加微信咨询<br><strong>18512566097</strong></div>
+      </div>
+      <div class="svc-card">
+        <div class="svc-title">深度线下命盘解读</div>
+        <div class="svc-desc">一对一详细解盘，结合现代功能性框架与经典命理，覆盖事业、感情、运势走向，提供可操作的建议</div>
+        <div class="svc-price">¥169 <span>/ 次</span></div>
+        <div class="svc-contact">添加微信预约<br><strong>18512566097</strong></div>
+      </div>
     </div>
 
     <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。</p>
