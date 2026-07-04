@@ -74,6 +74,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 .pillar-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
 .pillar-char { font-size: 28px; font-weight: 700; display: block; line-height: 1.2; }
+.pillar-wx { font-size: 11px; color: var(--text2); display: block; margin-top: 1px; }
 .pillar-ss { font-size: 11px; color: var(--accent); font-weight: 500; display: block; margin-top: 1px; min-height: 16px; }
 .pillar-divider { height: 1px; background: var(--border); margin: 6px 4px; }
 .pillar-canggan { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
@@ -1085,9 +1086,11 @@ function renderPillars() {
     html += `<div class="pillar">
       <div class="pillar-label">${labels[i]}</div>
       <span class="pillar-char ${WX_CLASS[gWx]}">${TG[g]}</span>
+      <span class="pillar-wx">${WX[gWx]}</span>
       <span class="pillar-ss">${ss}</span>
       <div class="pillar-divider"></div>
       <span class="pillar-char ${WX_CLASS[zWx]}">${DZ[z]}</span>
+      <span class="pillar-wx">${WX[zWx]}</span>
       <div class="pillar-canggan">${cgHtml}</div>
     </div>`;
   }
