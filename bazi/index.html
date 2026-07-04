@@ -1189,12 +1189,13 @@ function renderDayun() {
     const gWx = TG_WX[du.stem], zWx = DZ_WX[du.branch];
     const yearStart = birthYear + du.ageStart;
     const yearEnd = birthYear + du.ageEnd;
-    const ss = getShishen(dayGan, du.stem);
+    const ssStem = getShishen(dayGan, du.stem);
+    const ssBranch = getShishen(dayGan, CANGGAN[du.branch][0][0]);
     html += `<div class="dayun-item" data-idx="${i}" onclick="selectDayun(${i})">
       <div class="dayun-gz"><span class="${WX_CLASS[gWx]}">${TG[du.stem]}</span><span class="${WX_CLASS[zWx]}">${DZ[du.branch]}</span></div>
       <div class="dayun-age">${du.ageStart}-${du.ageEnd}岁</div>
       <div class="dayun-years">${yearStart}-${yearEnd}</div>
-      <div style="font-size:11px;color:var(--accent);margin-top:2px">${ss}</div>
+      <div style="font-size:11px;color:var(--accent);margin-top:2px">${ssStem}·${ssBranch}</div>
     </div>`;
   });
   document.getElementById('dayunList').innerHTML = html;
@@ -1223,11 +1224,12 @@ function renderPeriods(checkYear, checkMonth, checkDay) {
   let html = '';
   for (const { label, g, z } of items) {
     const gWx = TG_WX[g], zWx = DZ_WX[z];
-    const ss = getShishen(dayGan, g);
+    const ssStem = getShishen(dayGan, g);
+    const ssBranch = getShishen(dayGan, CANGGAN[z][0][0]);
     html += `<div class="period-box">
       <div class="period-label">${label}</div>
       <div class="period-gz"><span class="${WX_CLASS[gWx]}">${TG[g]}</span><span class="${WX_CLASS[zWx]}">${DZ[z]}</span></div>
-      <div class="period-wx">${WX[gWx]}${WX[zWx]} · ${ss}</div>
+      <div class="period-wx">${ssStem} · ${ssBranch}</div>
     </div>`;
   }
   document.getElementById('periodGrid').innerHTML = html;
