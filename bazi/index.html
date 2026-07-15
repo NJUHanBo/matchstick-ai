@@ -92,6 +92,22 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .wx-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; min-width: 2px; }
 .wx-bar-val { width: 42px; font-size: 13px; color: var(--text2); text-align: right; font-variant-numeric: tabular-nums; }
 
+/* Flow analysis */
+.flow-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 16px 0 8px; }
+.flow-links { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.flow-link {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px;
+  border-radius: 6px; background: var(--bg); font-size: 12px;
+  border: 1px solid var(--border); font-variant-numeric: tabular-nums;
+}
+.flow-link.weak { border-color: var(--rel-xing); }
+.flow-link.blocked { border-color: var(--rel-chong); background: #faf0ef; }
+.flow-bottleneck-tag { color: var(--rel-chong); font-weight: 700; font-size: 11px; }
+.flow-summary { font-size: 13px; color: var(--text2); line-height: 1.9; margin-bottom: 10px; }
+.flow-summary strong { color: var(--text); }
+.flow-delta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.flow-note { font-size: 11px; color: #aaa; margin-top: 8px; }
+
 /* Relationships */
 .rel-toolbar {
   display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
@@ -348,6 +364,11 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
     </div>
 
     <div class="card">
+      <div class="card-title">流通分析</div>
+      <div id="flowAnalysis"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">大运</div>
       <div class="dayun-scroll"><div class="dayun-list" id="dayunList"></div></div>
     </div>
@@ -590,6 +611,101 @@ function calcWuxingEnergy(pillars, jieqiMonth) {
     });
   }
   return amps;
+}
+
+// ═══════════════════════════════════════════════════════════
+// FLOW MODEL (ported from bazi_vector.py)
+// 能量沿生循环扩散，conductivity 木桶效应，断裂点上游淤积
+// ═══════════════════════════════════════════════════════════
+
+const COS72 = Math.cos(72 * Math.PI / 180); // ≈0.309 生循环耦合常数
+
+// 沿生循环（木→火→土→金→水→木）迭代重分配，总能量守恒
+function flowRedistribute(amps, nIter = 20) {
+  const a = [...amps];
+  const total = a.reduce((s, v) => s + v, 0);
+  if (total <= 0) return a;
+  const avg = total / 5;
+  const baseRate = COS72 * 0.08;
+  const eps = avg * 0.05;
+  for (let it = 0; it < nIter; it++) {
+    const delta = [0, 0, 0, 0, 0];
+    for (let i = 0; i < 5; i++) {
+      const j = (i + 1) % 5;
+      const conductivity = Math.min(1, (a[j] + eps) / (avg + eps));
+      const flow = baseRate * a[i] * conductivity;
+      delta[i] -= flow;
+      delta[j] += flow;
+    }
+    for (let i = 0; i < 5; i++) a[i] = Math.max(0, a[i] + delta[i]);
+  }
+  return a;
+}
+
+// 生循环五环节通路强度 + 完整度（几何平均，木桶效应）
+function cycleLinks(amps) {
+  const total = amps.reduce((s, v) => s + v, 0);
+  if (total <= 0) return { links: [], completeness: 0, weakest: -1 };
+  const avg = total / 5;
+  const eps = avg * 0.05;
+  const links = [];
+  for (let i = 0; i < 5; i++) {
+    const j = (i + 1) % 5;
+    links.push({ from: i, to: j, strength: Math.min(1, Math.min(amps[i], amps[j]) / (avg + eps)) });
+  }
+  let product = 1;
+  for (const l of links) product *= (l.strength + 0.01);
+  const completeness = Math.min(1, Math.pow(product, 0.2));
+  let weakest = 0;
+  links.forEach((l, i) => { if (l.strength < links[weakest].strength) weakest = i; });
+  return { links, completeness, weakest };
+}
+
+// 合成向量 R：|R|=失衡度，方向=能量集中方位
+function computeRVector(amps) {
+  let re = 0, im = 0;
+  for (let i = 0; i < 5; i++) {
+    const ang = i * 72 * Math.PI / 180;
+    re += amps[i] * Math.cos(ang);
+    im += amps[i] * Math.sin(ang);
+  }
+  return { mag: Math.hypot(re, im), ang: (Math.atan2(im, re) * 180 / Math.PI + 360) % 360 };
+}
+
+function nearestElement(angleDeg) {
+  let best = 0, bestD = 999;
+  for (let i = 0; i < 5; i++) {
+    const d = Math.min(
+      Math.abs(angleDeg - i * 72),
+      Math.abs(angleDeg - i * 72 + 360),
+      Math.abs(angleDeg - i * 72 - 360)
+    );
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+// 完整诊断：瓶颈、淤积点、枯竭点、通关吸收率
+function flowDiagnosis(amps) {
+  const { links, completeness, weakest } = cycleLinks(amps);
+  if (links.length === 0) return null;
+  const flowAmps = flowRedistribute(amps);
+  const rStatic = computeRVector(amps);
+  const rFlow = computeRVector(flowAmps);
+  const absorption = rStatic.mag > 0 ? (rStatic.mag - rFlow.mag) / rStatic.mag : 0;
+
+  // 淤积点：瓶颈通路的上游元素（能量到此流不出去）
+  const stagnation = links[weakest].from;
+  // 枯竭点：振幅最低的元素
+  let depletion = 0;
+  for (let i = 1; i < 5; i++) if (amps[i] < amps[depletion]) depletion = i;
+
+  return {
+    links, completeness, weakest, flowAmps,
+    rStatic, rFlow, absorption, stagnation, depletion,
+    biasStatic: nearestElement(rStatic.ang),
+    biasFlow: nearestElement(rFlow.ang),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1090,6 +1206,7 @@ function calculate() {
   renderPillars();
   renderWxBars();
   renderWxPentagon();
+  renderFlowAnalysis();
   renderDayun();
   onCheckDateChange();
 }
@@ -1257,6 +1374,88 @@ function renderWxPentagon() {
     `</div>`;
 
   document.getElementById('wxPentagon').innerHTML = toggle + s;
+}
+
+let flowMode = 'natal';
+
+function setFlowMode(mode) {
+  flowMode = mode;
+  renderFlowAnalysis();
+}
+
+// 十神五类标签（相对日主）
+function ssGroupOf(wxIdx) {
+  const SS_GROUPS = ['比劫', '食伤', '财星', '官杀', '印枭'];
+  return SS_GROUPS[mod(wxIdx - TG_WX[STATE.dayGan], 5)];
+}
+
+function renderFlowAnalysis() {
+  if (!STATE) return;
+  const energy = flowMode === 'dayun' ? calcDayunEnergy() : STATE.energy;
+  const diag = flowDiagnosis(energy);
+  const el = document.getElementById('flowAnalysis');
+  if (!diag) { el.innerHTML = '<div class="no-rel">能量数据不足</div>'; return; }
+
+  let modeLabel = '';
+  if (flowMode === 'dayun') {
+    const checkY = getCheckDate()[0];
+    const age = checkY - STATE.birthYear;
+    for (const du of STATE.dayunList) {
+      if (age >= du.ageStart && age <= du.ageEnd) {
+        modeLabel = `${TG[du.stem]}${DZ[du.branch]}运（${du.ageStart}-${du.ageEnd}岁）`;
+        break;
+      }
+    }
+  }
+
+  const toggle = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">` +
+    `<div class="rel-toggle">` +
+    `<button class="${flowMode === 'natal' ? 'active' : ''}" onclick="setFlowMode('natal')">原局</button>` +
+    `<button class="${flowMode === 'dayun' ? 'active' : ''}" onclick="setFlowMode('dayun')">+大运</button>` +
+    `</div>` +
+    (modeLabel ? `<span style="font-size:11px;color:var(--text2)">${modeLabel}</span>` : '') +
+    `</div>`;
+
+  // 五环节通路
+  let linksHtml = '<div class="flow-links">';
+  diag.links.forEach((l, i) => {
+    const cls = l.strength < 0.25 ? 'blocked' : (l.strength < 0.5 ? 'weak' : '');
+    const mark = i === diag.weakest ? ' <span class="flow-bottleneck-tag">瓶颈</span>' : '';
+    linksHtml += `<span class="flow-link ${cls}">` +
+      `<span class="${WX_CLASS[l.from]}">${WX[l.from]}</span>→` +
+      `<span class="${WX_CLASS[l.to]}">${WX[l.to]}</span> ${l.strength.toFixed(2)}${mark}</span>`;
+  });
+  linksHtml += '</div>';
+
+  // 诊断摘要
+  const wkL = diag.links[diag.weakest];
+  const stagWx = diag.stagnation, depWx = diag.depletion;
+  const summaryHtml = `<div class="flow-summary">` +
+    `通路完整度 <strong>${diag.completeness.toFixed(2)}</strong>` +
+    `（1=五行循环全通，越低说明生循环断裂越严重）<br>` +
+    `瓶颈通路：<strong class="${WX_CLASS[wkL.from]}">${WX[wkL.from]}</strong>→` +
+    `<strong class="${WX_CLASS[wkL.to]}">${WX[wkL.to]}</strong>` +
+    `（${ssGroupOf(wkL.from)}的能量难以传递给${ssGroupOf(wkL.to)}）<br>` +
+    `淤积点：<strong class="${WX_CLASS[stagWx]}">${WX[stagWx]}</strong>（${ssGroupOf(stagWx)}）— 能量到此流不出去，易在此过载<br>` +
+    `枯竭点：<strong class="${WX_CLASS[depWx]}">${WX[depWx]}</strong>（${ssGroupOf(depWx)}）— 供血不足的功能模块<br>` +
+    `失衡度 |R| ${diag.rStatic.mag.toFixed(2)} → 流通后 ${diag.rFlow.mag.toFixed(2)}，` +
+    `通关吸收 <strong>${Math.round(diag.absorption * 100)}%</strong>` +
+    `（越高说明现有循环越能自我消化失衡）` +
+    `</div>`;
+
+  // 流通前后对比
+  let deltaHtml = '<div class="flow-title">流通模拟（能量沿生循环重分配后）</div><div class="flow-delta">';
+  for (let i = 0; i < 5; i++) {
+    const d = diag.flowAmps[i] - energy[i];
+    const sign = d >= 0 ? '+' : '';
+    deltaHtml += `<span><span class="${WX_CLASS[i]}">${WX[i]}</span> ` +
+      `${energy[i].toFixed(1)}→${diag.flowAmps[i].toFixed(1)} (${sign}${d.toFixed(1)})</span>`;
+  }
+  deltaHtml += '</div>';
+
+  const note = `<div class="flow-note">模型：能量沿木→火→土→金→水生循环扩散，通路宽度由下游元素振幅决定（木桶效应）；下游缺失则通路阻断，能量在上游淤积。参数与 bazi_vector.py 一致。</div>`;
+
+  el.innerHTML = toggle + linksHtml + summaryHtml + deltaHtml + note;
 }
 
 function renderDayun() {
@@ -1513,6 +1712,7 @@ function onCheckDateChange() {
   rels = resolveInteractions(rels, positions);
 
   renderWxPentagon();
+  renderFlowAnalysis();
   renderRelationships(rels);
 }
 
@@ -1573,6 +1773,25 @@ function generatePrompt() {
   wxPairs.sort((a, b) => b.amp - a.amp);
   const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
   const missing = wxPairs.filter(p => p.amp === 0).map(p => p.name);
+
+  // 流通诊断（量化瓶颈报告）
+  const diag = flowDiagnosis(energy);
+  let flowSection = '';
+  if (diag) {
+    const ssGroup = wx => ['比劫','食伤','财星','官杀','印枭'][mod(wx - TG_WX[dayGan], 5)];
+    const linkStrs = diag.links.map((l, i) =>
+      `${WX[l.from]}→${WX[l.to]} ${l.strength.toFixed(2)}${i === diag.weakest ? '【瓶颈】' : ''}`
+    ).join('  ');
+    flowSection = `
+【流通诊断】（能量沿生循环流动的量化模拟，通路宽度由下游振幅决定）
+生循环通路：${linkStrs}
+通路完整度：${diag.completeness.toFixed(2)}（1=全通，越低断裂越严重）
+瓶颈通路：${WX[diag.links[diag.weakest].from]}→${WX[diag.links[diag.weakest].to]}（${ssGroup(diag.links[diag.weakest].from)}的能量难以传递给${ssGroup(diag.links[diag.weakest].to)}）
+淤积点：${WX[diag.stagnation]}（${ssGroup(diag.stagnation)}）— 能量在此堆积流不出去
+枯竭点：${WX[diag.depletion]}（${ssGroup(diag.depletion)}）— 供血不足的功能模块
+失衡度：|R|=${diag.rStatic.mag.toFixed(2)}，流通模拟后降至${diag.rFlow.mag.toFixed(2)}，通关吸收率${Math.round(diag.absorption * 100)}%（越高说明现有循环越能自我消化失衡；低则失衡是结构性的，靠自身流通无法化解）
+`;
+  }
 
   const isYang = TG_YY[pillars[0][0]] === 1;
   const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
@@ -1638,7 +1857,7 @@ function generatePrompt() {
 
 五行能量（高→低）：${wxStr}
 ${missing.length > 0 ? '五行缺：' + missing.join('、') : '五行无缺'}
-
+${flowSection}
 大运（${forward ? '顺排' : '逆排'}）：${dayunStrs.join(' → ')}
 ${periodLines.join('\n')}
 
@@ -1667,7 +1886,7 @@ ${relLines}
 【分析要求】
 请参考《滴天髓》《渊海子平》等经典的底层逻辑（五行生克的能量流动模型），从以下角度进行客观、全面的分析：
 1. 日主${dmName}在原局中的状态：月令${monthBranch}为${monthWx}，日主是否得令、得地、透干、通根
-2. 五行能量的流通与阻塞：哪些五行通路畅通，哪些受阻或断裂${missing.length > 0 ? '（' + missing.join('') + '能量为零需特别关注）' : ''}
+2. 五行能量的流通与阻塞：直接使用上方【流通诊断】的量化结果（瓶颈通路、淤积点、枯竭点、通关吸收率），解释这个流通结构在现实行为中的表现${missing.length > 0 ? '（' + missing.join('') + '能量为零需特别关注）' : ''}
 3. 十神结构的光谱分析：每个十神都有适度/过载/不足三态（见上方光谱定义）。根据该命盘的五行能量分布，判断每个关键十神落在光谱的哪一端，并分析模块间的动态——如食神制杀（稳定输出消化压力）、枭神夺食（输入过载压制输出）、伤官佩印（知识支撑创新）、食伤生财（输出转化为回报）、官印相生（外部评价驱动学习）。关键：同一个十神在不同人生阶段可能在光谱上滑动（大运激活/压制）
 4. 原局干支关系的实际效应：合绊、冲动、刑害如何改变力量格局
 5. 格局倾向分析（正格/从格/特殊格局的可能性）
