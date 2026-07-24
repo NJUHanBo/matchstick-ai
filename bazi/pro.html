@@ -570,7 +570,103 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+// ═══════════════════════════════════════════════════════════
+// SUPABASE DATA COLLECTION
+// ═══════════════════════════════════════════════════════════
+const SB_URL = 'https://ccepjmfhlanlwgowwxqu.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZXBqbWZobGFubHdnb3d3eHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDc5NzksImV4cCI6MjA5NzE4Mzk3OX0.3X5JVXwqGJDDkDuQvc9rnM2CVP6x9O6PYMTTUnu9aXo';
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+let sessionId = null;
+
+async function saveSession() {
+  if (!sb || !STATE) return;
+  const { pillars, dayGan, birthYear, birthMonth, birthDay, gender } = STATE;
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+
+  const mv = document.getElementById('anchorMarriage').value;
+  const my = document.getElementById('anchorMarriageYear').value;
+  const cv = document.getElementById('anchorCareer').value;
+  const cy = document.getElementById('anchorCareerYear').value;
+  const gv = document.getElementById('anchorGoal').value;
+
+  const row = {
+    birth_year: birthYear, birth_month: birthMonth, birth_day: birthDay,
+    birth_hour: parseInt(document.getElementById('birthHour').value),
+    gender, four_pillars: fourPillars, day_master: dmName,
+    anchor_marriage: mv || null, anchor_marriage_year: my ? parseInt(my) : null,
+    anchor_career: cv || null, anchor_career_year: cy ? parseInt(cy) : null,
+    anchor_goal: gv || null
+  };
+
+  if (sessionId) {
+    await sb.from('bazi_sessions').update(row).eq('id', sessionId);
+  } else {
+    const { data } = await sb.from('bazi_sessions').insert(row).select('id').single();
+    if (data) sessionId = data.id;
+  }
+}
+
+async function saveAnalysis(relDesc, aiResponse) {
+  if (!sb || !sessionId) return;
+  const { data } = await sb.from('bazi_sessions').select('analyses').eq('id', sessionId).single();
+  const analyses = (data?.analyses || []);
+  analyses.push({ rel: relDesc, response: aiResponse.slice(0, 5000), ts: new Date().toISOString() });
+  await sb.from('bazi_sessions').update({ analyses }).eq('id', sessionId);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIVATION CODE
+// ═══════════════════════════════════════════════════════════
+
+function isActivated() {
+  return !!localStorage.getItem('bazi_vip_code');
+}
+
+async function validateCode(code) {
+  if (!sb) return false;
+  const { data } = await sb.from('activation_codes')
+    .select('code, is_active, type')
+    .eq('code', code.trim())
+    .eq('is_active', true)
+    .single();
+  return !!data;
+}
+
+function showCodePrompt() {
+  const section = document.getElementById('relAiSection');
+  section.innerHTML = `<div class="modal-section">
+    <div class="modal-section-title">需要激活码</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px">AI 深度分析为付费功能，请输入激活码解锁</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="codeInput" placeholder="请输入激活码" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">
+      <button class="btn" onclick="submitCode()">验证</button>
+    </div>
+    <div id="codeError" style="font-size:12px;color:var(--rel-chong);margin-top:6px;display:none"></div>
+    <div style="font-size:11px;color:var(--text2);margin-top:10px">获取激活码：添加微信 <strong>18512566097</strong></div>
+  </div>`;
+}
+
+async function submitCode() {
+  const input = document.getElementById('codeInput');
+  const code = input.value.trim();
+  if (!code) return;
+
+  const errEl = document.getElementById('codeError');
+  errEl.style.display = 'none';
+
+  const valid = await validateCode(code);
+  if (valid) {
+    localStorage.setItem('bazi_vip_code', code);
+    analyzeRel();
+  } else {
+    errEl.textContent = '激活码无效或已过期';
+    errEl.style.display = 'block';
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════
@@ -1340,6 +1436,7 @@ function calculate() {
   renderWxPentagon();
   renderDayun();
   onCheckDateChange();
+  saveSession();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2101,6 +2198,11 @@ function copyRelPrompt() {
 async function analyzeRel() {
   if (!currentRelPrompt || currentRelIdx < 0) return;
 
+  if (!isActivated()) {
+    showCodePrompt();
+    return;
+  }
+
   const apiKey = localStorage.getItem('ds_api_key') || '';
   if (!apiKey) {
     const section = document.getElementById('relAiSection');
@@ -2178,6 +2280,7 @@ async function analyzeRel() {
     outputEl.classList.remove('streaming');
     btn.textContent = '重新分析';
     btn.disabled = false;
+    saveAnalysis(lastRels[currentRelIdx]?.desc || '', fullText);
 
   } catch(err) {
     if (err.name === 'AbortError') return;
