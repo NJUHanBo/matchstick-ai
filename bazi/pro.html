@@ -600,9 +600,15 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
     <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。</p>
 
     <div class="card" style="margin-top:24px">
-      <div class="card-title" style="font-size:12px;color:var(--text2)">API 设置</div>
+      <div class="card-title" style="font-size:12px;color:var(--text2)">AI 模型设置</div>
+      <div style="margin-bottom:8px">
+        <select id="providerSelect" onchange="switchProvider()" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+          <option value="gemini">Gemini 3.6 Flash</option>
+          <option value="deepseek">DeepSeek V4 Flash</option>
+        </select>
+      </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="password" id="apiKeyInput" placeholder="DeepSeek API Key" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <input type="password" id="apiKeyInput" placeholder="API Key" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px">
         <button class="btn" style="font-size:11px;padding:6px 12px" onclick="saveApiKey()">保存</button>
       </div>
       <div id="apiKeyStatus" style="font-size:11px;color:var(--text2);margin-top:4px"></div>
@@ -2240,63 +2246,9 @@ async function predictEvent() {
   const prompt = generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me);
 
   try {
-    const response = await fetch(DEEPSEEK_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: 'system', content: `你是一位精通八字命理的预测分析师，遵循以下核心框架。
-
-【十神功能光谱】十神是能量交互模式，不是社会角色。每种都有适度/过载/不足三态。食神=稳定输出轴，伤官=颠覆输出轴，正财=持续经营轴，偏财=机会杠杆轴，正官=有序约束轴，七杀=极端压力轴，正印=知识输入轴，偏印=直觉认知轴，比肩=同行协作轴，劫财=竞争驱动轴。
-
-【事件-十神对应逻辑】考试升学=印星（输入消化力）+食伤（输出表达力）；求财创业=食伤生财链+偏财（机会识别）；婚恋=日支互动+财官的合化关系；求职=官杀（外部评价系统）+食伤（展示能力）；诉讼=官杀（制度力量）+比劫（博弈能力）；健康=五行受克方位+大运流年激活条件。
-
-【时机判断原则】
-- 流月流日做排程，不做断言。它们是能量窗口，不是吉凶判决
-- 节气切换是行为突变点：换月前后冲动的出现/消失常可追溯到新月干支激活的十神
-- 大运改写力量对比，不删除结构：行运补根让碾压变博弈，命主"更有力量顶住"，不是问题消失
-- 冲=激活与重组，不必然凶。对能量淤积的盘，适度的冲是治疗
-- 合=能量绑定，不必然吉。合而不化时是牵绊而非助力
-
-【用神=系统瓶颈】找淤积点和枯竭点，瓶颈=淤积到枯竭之间的通道。建议落地为具体行为。借强补弱是顺命——改造方案架在命主最强模块上。
-
-【宫位映射】年=初始条件；月=生态位；日=核心自我与亲密关系；时=产出与想去的方向
-
-【分析风格】结构清晰，逐月具体，不回避不确定性，给出时间窗口建议和注意事项。预测不是宿命论，是概率倾向+时机把握。回答用中文。` },
-          { role: 'user', content: prompt }
-        ],
-        stream: true,
-        thinking: { type: 'disabled' },
-        temperature: 0.7,
-        max_tokens: 4096
-      })
-    });
-
-    if (!response.ok) throw new Error(`API 错误 ${response.status}`);
-
     resultEl.innerHTML = '<div class="rel-ai-output streaming"></div>';
     const outputEl = resultEl.querySelector('.rel-ai-output');
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '', fullText = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-        try {
-          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
-          if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
-        } catch(e) {}
-      }
-    }
+    const fullText = await streamAI(SYSTEM_PROMPT_PREDICT, prompt, outputEl);
     outputEl.classList.remove('streaming');
     saveAnalysis(`事件预测：${eventDesc}（${timeStr}）`, fullText);
   } catch(err) {
@@ -2410,29 +2362,105 @@ ${periodInfo}
 }
 
 // API key management
+function switchProvider() {
+  const provider = document.getElementById('providerSelect').value;
+  localStorage.setItem('bazi_ai_provider', provider);
+  loadKeyForProvider();
+}
+
+function loadKeyForProvider() {
+  const provider = getActiveProvider();
+  document.getElementById('providerSelect').value = provider;
+  const keyName = provider === 'gemini' ? 'gemini_api_key' : 'ds_api_key';
+  const saved = localStorage.getItem(keyName) || '';
+  document.getElementById('apiKeyInput').value = saved;
+  document.getElementById('apiKeyInput').placeholder = provider === 'gemini' ? 'Gemini API Key' : 'DeepSeek API Key';
+  document.getElementById('apiKeyStatus').textContent = saved ? '已从本地加载' : '';
+}
+
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
+  const provider = getActiveProvider();
+  const keyName = provider === 'gemini' ? 'gemini_api_key' : 'ds_api_key';
   if (key) {
-    localStorage.setItem('ds_api_key', key);
+    localStorage.setItem(keyName, key);
     document.getElementById('apiKeyStatus').textContent = '✓ 已保存到本地';
     setTimeout(() => document.getElementById('apiKeyStatus').textContent = '', 2000);
   }
 }
-(function initApiKey() {
-  const saved = localStorage.getItem('ds_api_key');
-  if (saved) {
-    document.getElementById('apiKeyInput').value = saved;
-    document.getElementById('apiKeyStatus').textContent = '已从本地加载';
-  }
-})();
+(function initApiKey() { loadKeyForProvider(); })();
 
 // ═══════════════════════════════════════════════════════════
 // RELATIONSHIP DETAIL MODAL (PRO - with AI Analysis)
 // ═══════════════════════════════════════════════════════════
 
-const DEEPSEEK_API_KEY = localStorage.getItem('ds_api_key') || '';
 const DEEPSEEK_MODEL = 'deepseek-v4-flash';
 const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions';
+const GEMINI_MODEL = 'gemini-3.6-flash';
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse';
+
+function getActiveProvider() {
+  return localStorage.getItem('bazi_ai_provider') || 'gemini';
+}
+function getApiKey() {
+  const provider = getActiveProvider();
+  if (provider === 'gemini') return localStorage.getItem('gemini_api_key') || '';
+  return localStorage.getItem('ds_api_key') || '';
+}
+
+const SYSTEM_PROMPT_DETAIL = `你是一位精通八字命理的分析师，遵循以下核心框架进行分析。
+
+【十神功能光谱】十神是能量交互模式，不是社会角色。正官≠公务员，正财≠妻子，七杀≠小人。每种十神都有适度/过载/不足三态，没有绝对吉凶，只有相对于系统需求的平衡与失衡。
+- 正印=知识输入轴（过载→分析瘫痪；不足→碎片化）
+- 偏印=直觉认知轴（过载→发散失焦；不足→线性死板）
+- 食神=稳定输出轴（过载→舒适区惰性；不足→产出断流）。食神旺≠外在高产，区分"泄"（被动流失）和"发"（主动表达），是否转化为可见产出取决于下游财星是否有接收系统
+- 伤官=颠覆输出轴（过载→无差别破坏；不足→不敢挑战）
+- 正财=持续经营轴（过载→事必躬亲；不足→虎头蛇尾）
+- 偏财=机会杠杆轴（过载→投机散漫；不足→过度保守）
+- 正官=有序约束轴（过载→教条僵化；不足→缺乏纪律）
+- 七杀=极端压力轴（过载→慢性焦虑；不足→缺乏驱动）
+- 比肩=同行协作轴（过载→从众丧失独立；不足→孤立无法借力）
+- 劫财=竞争驱动轴（过载→零和思维；不足→被动退让）
+
+【"生"的双面性】产物呈现子的质感，生者体验的是消耗。泄=被动无意识流失；发=主动有方向表达。从泄转发需要有明确回报的接收系统。
+
+【用神=系统瓶颈】不是"对我好的五行"。诊断：找淤积点（能量堆积流不动）和枯竭点（严重供血不足），瓶颈=淤积到枯竭之间的通道。用神建议必须落地为具体行为，不停留在"喜木火"。忌神=已过载的功能模块，继续强化等于加剧失衡。
+
+【宫位现代映射】年柱=初始条件（家庭/时代）；月柱=生态位（行业/圈子/竞争格局）；日柱=核心自我与亲密关系；时柱=产出与遗产（作品/影响力/想去的方向）
+
+【感情以日支为核心】不套用"男命财为妻、女命官为夫"。关注：日支藏干的十神功能→关系模式；日支与日主生克→互动动态；日支受刑冲合害→稳定性。
+
+【决策咨询原则】
+- 借强补弱是顺命：改造方案必须架在命主配置强的模块上，架在最弱模块上的方案注定失败
+- 无制之神需要外置调节器：过载模块靠意志力对抗无效，需要外置机制（清单/签发人/期限/容器）
+- 警惕忌神收编解盘结论：命主的过载模块会把建议本身消化为新的过载素材
+- 核心矛盾会换装重现：同一结构在作品/社交/目标/评价等处以变体反复出现
+- 内部感受不是校准信号：印重者的"不足感"、杀旺者的"紧迫感"是常驻运行状态，不反映外部实际
+
+【关键要求】你的回答必须严格使用prompt中提供的命盘数据（大运、流年、流月干支），不要自行推算或编造干支信息。如果prompt中已给出具体大运流年信息，直接引用，不要重新计算。
+
+【分析风格】结构清晰，用现代语言解释传统概念，不回避不确定性，给出具体可操作的建议。回答用中文。`;
+
+const SYSTEM_PROMPT_PREDICT = `你是一位精通八字命理的预测分析师，遵循以下核心框架。
+
+【十神功能光谱】十神是能量交互模式，不是社会角色。每种都有适度/过载/不足三态。食神=稳定输出轴，伤官=颠覆输出轴，正财=持续经营轴，偏财=机会杠杆轴，正官=有序约束轴，七杀=极端压力轴，正印=知识输入轴，偏印=直觉认知轴，比肩=同行协作轴，劫财=竞争驱动轴。
+
+【事件-十神对应逻辑】考试升学=印星（输入消化力）+食伤（输出表达力）；求财创业=食伤生财链+偏财（机会识别）；婚恋=日支互动+财官的合化关系；求职=官杀（外部评价系统）+食伤（展示能力）；诉讼=官杀（制度力量）+比劫（博弈能力）；健康=五行受克方位+大运流年激活条件。
+
+【时机判断原则】
+- 流月流日做排程，不做断言。它们是能量窗口，不是吉凶判决
+- 节气切换是行为突变点：换月前后冲动的出现/消失常可追溯到新月干支激活的十神
+- 大运改写力量对比，不删除结构：行运补根让碾压变博弈，命主"更有力量顶住"，不是问题消失
+- 冲=激活与重组，不必然凶。对能量淤积的盘，适度的冲是治疗
+- 合=能量绑定，不必然吉。合而不化时是牵绊而非助力
+
+【用神=系统瓶颈】找淤积点和枯竭点，瓶颈=淤积到枯竭之间的通道。建议落地为具体行为。借强补弱是顺命——改造方案架在命主最强模块上。
+
+【宫位映射】年=初始条件；月=生态位；日=核心自我与亲密关系；时=产出与想去的方向
+
+【关键要求】你的回答必须严格使用prompt中【预测时段的运势环境】部分提供的大运、流年、流月干支数据，不要自行推算或编造。直接引用已提供的干支信息进行分析。
+
+【分析风格】结构清晰，逐月具体，不回避不确定性，给出时间窗口建议和注意事项。预测不是宿命论，是概率倾向+时机把握。回答用中文。`;
 
 let currentRelPrompt = '';
 let currentRelIdx = -1;
@@ -2481,6 +2509,87 @@ function copyRelPrompt() {
   });
 }
 
+async function streamAI(systemPrompt, userPrompt, outputEl, signal) {
+  const provider = getActiveProvider();
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('请先在页面底部设置 API Key');
+
+  let fullText = '';
+
+  if (provider === 'gemini') {
+    const url = GEMINI_ENDPOINT + '&key=' + apiKey;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
+        ],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+      }),
+      signal
+    });
+    if (!response.ok) { const t = await response.text(); throw new Error(`Gemini API 错误 ${response.status}: ${t.slice(0,200)}`); }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(data);
+          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) { fullText += text; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
+        } catch(e) {}
+      }
+    }
+  } else {
+    const response = await fetch(DEEPSEEK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        stream: true, thinking: { type: 'disabled' }, temperature: 0.7, max_tokens: 4096
+      }),
+      signal
+    });
+    if (!response.ok) { const t = await response.text(); throw new Error(`DeepSeek API 错误 ${response.status}: ${t.slice(0,200)}`); }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+          if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
+        } catch(e) {}
+      }
+    }
+  }
+  return fullText;
+}
+
 async function analyzeRel() {
   if (!currentRelPrompt || currentRelIdx < 0) return;
 
@@ -2489,10 +2598,9 @@ async function analyzeRel() {
     return;
   }
 
-  const apiKey = localStorage.getItem('ds_api_key') || '';
-  if (!apiKey) {
+  if (!getApiKey()) {
     const section = document.getElementById('relAiSection');
-    section.innerHTML = '<div class="modal-section" style="color:var(--rel-chong)">请先在页面底部「API 设置」中填入 DeepSeek API Key</div>';
+    section.innerHTML = '<div class="modal-section" style="color:var(--rel-chong)">请先在页面底部设置 API Key</div>';
     return;
   }
 
@@ -2507,99 +2615,16 @@ async function analyzeRel() {
   aiAbortController = new AbortController();
 
   try {
-    const response = await fetch(DEEPSEEK_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: 'system', content: `你是一位精通八字命理的分析师，遵循以下核心框架进行分析。
-
-【十神功能光谱】十神是能量交互模式，不是社会角色。正官≠公务员，正财≠妻子，七杀≠小人。每种十神都有适度/过载/不足三态，没有绝对吉凶，只有相对于系统需求的平衡与失衡。
-- 正印=知识输入轴（过载→分析瘫痪；不足→碎片化）
-- 偏印=直觉认知轴（过载→发散失焦；不足→线性死板）
-- 食神=稳定输出轴（过载→舒适区惰性；不足→产出断流）。食神旺≠外在高产，区分"泄"（被动流失）和"发"（主动表达），是否转化为可见产出取决于下游财星是否有接收系统
-- 伤官=颠覆输出轴（过载→无差别破坏；不足→不敢挑战）
-- 正财=持续经营轴（过载→事必躬亲；不足→虎头蛇尾）
-- 偏财=机会杠杆轴（过载→投机散漫；不足→过度保守）
-- 正官=有序约束轴（过载→教条僵化；不足→缺乏纪律）
-- 七杀=极端压力轴（过载→慢性焦虑；不足→缺乏驱动）
-- 比肩=同行协作轴（过载→从众丧失独立；不足→孤立无法借力）
-- 劫财=竞争驱动轴（过载→零和思维；不足→被动退让）
-
-【"生"的双面性】产物呈现子的质感，生者体验的是消耗。泄=被动无意识流失；发=主动有方向表达。从泄转发需要有明确回报的接收系统。
-
-【用神=系统瓶颈】不是"对我好的五行"。诊断：找淤积点（能量堆积流不动）和枯竭点（严重供血不足），瓶颈=淤积到枯竭之间的通道。用神建议必须落地为具体行为，不停留在"喜木火"。忌神=已过载的功能模块，继续强化等于加剧失衡。
-
-【宫位现代映射】年柱=初始条件（家庭/时代）；月柱=生态位（行业/圈子/竞争格局）；日柱=核心自我与亲密关系；时柱=产出与遗产（作品/影响力/想去的方向）
-
-【感情以日支为核心】不套用"男命财为妻、女命官为夫"。关注：日支藏干的十神功能→关系模式；日支与日主生克→互动动态；日支受刑冲合害→稳定性。
-
-【决策咨询原则】
-- 借强补弱是顺命：改造方案必须架在命主配置强的模块上，架在最弱模块上的方案注定失败
-- 无制之神需要外置调节器：过载模块靠意志力对抗无效，需要外置机制（清单/签发人/期限/容器）
-- 警惕忌神收编解盘结论：命主的过载模块会把建议本身消化为新的过载素材
-- 核心矛盾会换装重现：同一结构在作品/社交/目标/评价等处以变体反复出现
-- 内部感受不是校准信号：印重者的"不足感"、杀旺者的"紧迫感"是常驻运行状态，不反映外部实际
-
-【分析风格】结构清晰，用现代语言解释传统概念，不回避不确定性，给出具体可操作的建议。回答用中文。` },
-          { role: 'user', content: currentRelPrompt }
-        ],
-        stream: true,
-        thinking: { type: 'disabled' },
-        temperature: 0.7,
-        max_tokens: 4096
-      }),
-      signal: aiAbortController.signal
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`API 错误 ${response.status}: ${errText}`);
-    }
-
     section.innerHTML = '<div class="rel-ai-output streaming"></div>';
     const outputEl = section.querySelector('.rel-ai-output');
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) {
-            fullText += delta;
-            outputEl.innerHTML = renderMarkdown(fullText);
-            outputEl.scrollTop = outputEl.scrollHeight;
-          }
-        } catch(e) {}
-      }
-    }
-
+    const fullText = await streamAI(SYSTEM_PROMPT_DETAIL, currentRelPrompt, outputEl, aiAbortController.signal);
     outputEl.classList.remove('streaming');
     btn.textContent = '重新分析';
     btn.disabled = false;
     saveAnalysis(lastRels[currentRelIdx]?.desc || '', fullText);
-
   } catch(err) {
     if (err.name === 'AbortError') return;
-    section.innerHTML = `<div class="modal-section" style="color:var(--rel-chong)">分析失败：${escapeHtml(err.message)}<br>可复制提示词手动使用。</div>`;
+    section.innerHTML = `<div class="modal-section" style="color:var(--rel-chong)">分析失败：${escapeHtml(err.message)}</div>`;
     btn.textContent = '重试';
     btn.disabled = false;
   }
