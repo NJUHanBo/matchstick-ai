@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>八字排盘 · 干支关系分析</title>
+<title>八字排盘 · 干支关系分析（Pro）</title>
 <style>
 :root {
   --bg: #f5f3ef; --card: #fff; --text: #1e1e1e; --text2: #6b6b6b;
@@ -272,8 +272,8 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 .rel-modal-overlay.visible { display: flex; }
 .rel-modal {
-  background: var(--card); border-radius: 12px; width: 100%; max-width: 520px;
-  max-height: 80vh; display: flex; flex-direction: column;
+  background: var(--card); border-radius: 12px; width: 100%; max-width: 640px;
+  max-height: 85vh; display: flex; flex-direction: column;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 .rel-modal-header {
@@ -303,9 +303,52 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 .rel-modal-feedback { font-size: 12px; color: var(--rel-he); display: none; }
 
+/* AI output */
+.rel-ai-output {
+  background: var(--bg); border-radius: 8px; padding: 14px 16px;
+  font-size: 13px; line-height: 1.9; color: var(--text);
+  max-height: 400px; overflow-y: auto; border: 1px solid var(--border);
+  margin-top: 12px;
+}
+.rel-ai-output h3 { font-size: 15px; font-weight: 700; margin: 16px 0 6px; color: var(--text); }
+.rel-ai-output h4 { font-size: 13px; font-weight: 700; margin: 12px 0 4px; color: var(--accent); }
+.rel-ai-output hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.rel-ai-output ul { margin: 4px 0 8px 16px; padding: 0; }
+.rel-ai-output li { margin: 2px 0; list-style: disc; }
+.rel-ai-output strong { color: var(--text); }
+.rel-ai-output em { font-style: italic; color: var(--text2); }
+.rel-ai-output.streaming { border-color: var(--accent); }
+.rel-ai-loading {
+  display: flex; align-items: center; gap: 8px; padding: 16px 0;
+  font-size: 13px; color: var(--text2);
+}
+.rel-ai-loading::before {
+  content: ''; width: 16px; height: 16px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* Make rel rows clickable */
 .rel-row { cursor: pointer; transition: background 0.15s; }
 .rel-row:hover { background: var(--accent-light); }
+
+/* Anchor inputs */
+.anchor-row {
+  display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;
+}
+.anchor-group {
+  display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;
+}
+.anchor-group label { font-size: 12px; color: var(--text2); }
+.anchor-group select {
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; background: #fff; color: var(--text);
+}
+.anchor-year {
+  margin-top: 4px; padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 13px; width: 80px;
+}
 </style>
 </head>
 <body>
@@ -353,6 +396,46 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
       <div class="form-group">
         <label>&nbsp;</label>
         <button class="btn" onclick="calculate()">排盘</button>
+      </div>
+    </div>
+    <div class="anchor-row">
+      <div class="anchor-group">
+        <label>感情状态</label>
+        <select id="anchorMarriage">
+          <option value="">不填</option>
+          <option value="unmarried">未婚/单身</option>
+          <option value="relationship">恋爱中</option>
+          <option value="married">已婚</option>
+          <option value="divorced">离异</option>
+        </select>
+        <input type="number" id="anchorMarriageYear" class="anchor-year" placeholder="年份" min="1990" max="2099" style="display:none">
+      </div>
+      <div class="anchor-group">
+        <label>事业阶段</label>
+        <select id="anchorCareer">
+          <option value="">不填</option>
+          <option value="student">在读</option>
+          <option value="graduate">刚毕业/求职中</option>
+          <option value="employed">在职</option>
+          <option value="startup">创业中</option>
+          <option value="freelance">自由职业</option>
+          <option value="gap">间隔期/转型中</option>
+        </select>
+        <input type="number" id="anchorCareerYear" class="anchor-year" placeholder="起始年" min="1990" max="2099" style="display:none">
+      </div>
+      <div class="anchor-group">
+        <label>当前最大期望</label>
+        <select id="anchorGoal">
+          <option value="">不填</option>
+          <option value="money">赚钱</option>
+          <option value="stability">稳定</option>
+          <option value="creation">创造/表达</option>
+          <option value="freedom">自由/躺平</option>
+          <option value="growth">成长/突破</option>
+          <option value="enjoyment">享受生活</option>
+          <option value="relationship">经营关系</option>
+          <option value="meaning">找到方向</option>
+        </select>
       </div>
     </div>
   </div>
@@ -461,6 +544,15 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
     </div>
 
     <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。</p>
+
+    <div class="card" style="margin-top:24px">
+      <div class="card-title" style="font-size:12px;color:var(--text2)">API 设置</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="password" id="apiKeyInput" placeholder="DeepSeek API Key" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <button class="btn" style="font-size:11px;padding:6px 12px" onclick="saveApiKey()">保存</button>
+      </div>
+      <div id="apiKeyStatus" style="font-size:11px;color:var(--text2);margin-top:4px"></div>
+    </div>
   </div>
 </div>
 
@@ -473,8 +565,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
     </div>
     <div class="rel-modal-body" id="relModalBody"></div>
     <div class="rel-modal-footer">
-      <button class="btn" onclick="copyRelPrompt()">复制提示词</button>
-      <span class="rel-modal-feedback" id="relModalFeedback">✓ 已复制</span>
+      <button class="btn" id="relModalAnalyzeBtn" onclick="analyzeRel()">AI 深度分析</button>
     </div>
   </div>
 </div>
@@ -1187,6 +1278,42 @@ function setCheckDate(y, m, d) {
   document.getElementById('checkDay').value = d;
 }
 
+// Anchor field interactions
+document.getElementById('anchorMarriage').addEventListener('change', function() {
+  const yearEl = document.getElementById('anchorMarriageYear');
+  yearEl.style.display = (this.value === 'married' || this.value === 'divorced') ? 'block' : 'none';
+});
+document.getElementById('anchorCareer').addEventListener('change', function() {
+  const yearEl = document.getElementById('anchorCareerYear');
+  yearEl.style.display = (this.value === 'employed' || this.value === 'startup' || this.value === 'freelance') ? 'block' : 'none';
+});
+
+function getAnchorContext() {
+  const marriageLabels = { unmarried: '未婚/单身', relationship: '恋爱中', married: '已婚', divorced: '离异' };
+  const careerLabels = { student: '在读', graduate: '刚毕业/求职中', employed: '在职', startup: '创业中', freelance: '自由职业', gap: '间隔期/转型中' };
+  const goalLabels = { money: '赚钱', stability: '稳定', creation: '创造/表达', freedom: '自由/躺平', growth: '成长/突破', enjoyment: '享受生活', relationship: '经营关系', meaning: '找到方向' };
+
+  const parts = [];
+  const mv = document.getElementById('anchorMarriage').value;
+  if (mv) {
+    let s = '感情状态：' + marriageLabels[mv];
+    const my = document.getElementById('anchorMarriageYear').value;
+    if (my && (mv === 'married' || mv === 'divorced')) s += `（${my}年）`;
+    parts.push(s);
+  }
+  const cv = document.getElementById('anchorCareer').value;
+  if (cv) {
+    let s = '事业阶段：' + careerLabels[cv];
+    const cy = document.getElementById('anchorCareerYear').value;
+    if (cy && (cv === 'employed' || cv === 'startup' || cv === 'freelance')) s += `（${cy}年起）`;
+    parts.push(s);
+  }
+  const gv = document.getElementById('anchorGoal').value;
+  if (gv) parts.push('当前最大期望：' + goalLabels[gv]);
+
+  return parts.length > 0 ? parts.join('\n') : '';
+}
+
 function calculate() {
   const year = parseInt(document.getElementById('birthYear').value);
   const month = parseInt(document.getElementById('birthMonth').value);
@@ -1829,7 +1956,7 @@ function generatePrompt() {
 
 五行能量（高→低）：${wxStr}
 ${missing.length > 0 ? '五行缺：' + missing.join('、') : '五行无缺'}
-
+${getAnchorContext() ? '\n【命主现状】\n' + getAnchorContext() + '\n' : ''}
 大运（${forward ? '顺排' : '逆排'}）：${dayunStrs.join(' → ')}
 ${periodLines.join('\n')}
 
@@ -1898,15 +2025,39 @@ function copyPrompt() {
 
 // Birth date defaults are set in HTML value attributes
 
+// API key management
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (key) {
+    localStorage.setItem('ds_api_key', key);
+    document.getElementById('apiKeyStatus').textContent = '✓ 已保存到本地';
+    setTimeout(() => document.getElementById('apiKeyStatus').textContent = '', 2000);
+  }
+}
+(function initApiKey() {
+  const saved = localStorage.getItem('ds_api_key');
+  if (saved) {
+    document.getElementById('apiKeyInput').value = saved;
+    document.getElementById('apiKeyStatus').textContent = '已从本地加载';
+  }
+})();
+
 // ═══════════════════════════════════════════════════════════
-// RELATIONSHIP DETAIL MODAL
+// RELATIONSHIP DETAIL MODAL (PRO - with AI Analysis)
 // ═══════════════════════════════════════════════════════════
 
+const DEEPSEEK_API_KEY = localStorage.getItem('ds_api_key') || '';
+const DEEPSEEK_MODEL = 'deepseek-v4-flash';
+const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions';
+
 let currentRelPrompt = '';
+let currentRelIdx = -1;
+let aiAbortController = null;
 
 function openRelDetail(idx) {
   const r = lastRels[idx];
   if (!r || !STATE) return;
+  currentRelIdx = idx;
 
   const modal = document.getElementById('relModal');
   const title = document.getElementById('relModalTitle');
@@ -1923,17 +2074,19 @@ function openRelDetail(idx) {
   if (meaning) {
     html += `<div class="modal-section"><div class="modal-section-title">传统象意</div><div>${meaning}</div></div>`;
   }
-  html += `<div class="modal-section"><div class="modal-section-title">个性化分析提示词</div>`;
-  html += `<div class="modal-prompt">${escapeHtml(prompt)}</div></div>`;
+  html += `<div id="relAiSection"></div>`;
 
   body.innerHTML = html;
   document.getElementById('relModalFeedback').style.display = 'none';
+  document.getElementById('relModalAnalyzeBtn').disabled = false;
+  document.getElementById('relModalAnalyzeBtn').textContent = 'AI 深度分析';
   modal.classList.add('visible');
 }
 
 function closeRelModal(event) {
   if (event && event.target !== event.currentTarget) return;
   document.getElementById('relModal').classList.remove('visible');
+  if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
 }
 
 function copyRelPrompt() {
@@ -1945,8 +2098,118 @@ function copyRelPrompt() {
   });
 }
 
+async function analyzeRel() {
+  if (!currentRelPrompt || currentRelIdx < 0) return;
+
+  const apiKey = localStorage.getItem('ds_api_key') || '';
+  if (!apiKey) {
+    const section = document.getElementById('relAiSection');
+    section.innerHTML = '<div class="modal-section" style="color:var(--rel-chong)">请先在页面底部「API 设置」中填入 DeepSeek API Key</div>';
+    return;
+  }
+
+  const btn = document.getElementById('relModalAnalyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '分析中...';
+
+  const section = document.getElementById('relAiSection');
+  section.innerHTML = '<div class="rel-ai-loading">正在调用 AI 进行深度分析...</div>';
+
+  if (aiAbortController) aiAbortController.abort();
+  aiAbortController = new AbortController();
+
+  try {
+    const response = await fetch(DEEPSEEK_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: 'system', content: '你是一位精通八字命理的分析师。你的分析风格：结构清晰、层次分明，用现代语言解释传统命理概念，不回避不确定性，给出具体可操作的建议。回答用中文。' },
+          { role: 'user', content: currentRelPrompt }
+        ],
+        stream: true,
+        thinking: { type: 'disabled' },
+        temperature: 0.7,
+        max_tokens: 4096
+      }),
+      signal: aiAbortController.signal
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API 错误 ${response.status}: ${errText}`);
+    }
+
+    section.innerHTML = '<div class="rel-ai-output streaming"></div>';
+    const outputEl = section.querySelector('.rel-ai-output');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullText += delta;
+            outputEl.innerHTML = renderMarkdown(fullText);
+            outputEl.scrollTop = outputEl.scrollHeight;
+          }
+        } catch(e) {}
+      }
+    }
+
+    outputEl.classList.remove('streaming');
+    btn.textContent = '重新分析';
+    btn.disabled = false;
+
+  } catch(err) {
+    if (err.name === 'AbortError') return;
+    section.innerHTML = `<div class="modal-section" style="color:var(--rel-chong)">分析失败：${escapeHtml(err.message)}<br>可复制提示词手动使用。</div>`;
+    btn.textContent = '重试';
+    btn.disabled = false;
+  }
+}
+
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^---$/gm, '<hr>');
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/\n/g, '<br>');
+  html = html.replace(/<br>(<h[34]>)/g, '$1');
+  html = html.replace(/(<\/h[34]>)<br>/g, '$1');
+  html = html.replace(/<br>(<hr>)<br>/g, '$1');
+  html = html.replace(/<br>(<ul>)/g, '$1');
+  html = html.replace(/(<\/ul>)<br>/g, '$1');
+  return html;
 }
 
 function generateRelDetailPrompt(r) {
@@ -1988,6 +2251,8 @@ function generateRelDetailPrompt(r) {
   if (intLabel) relContext += `\n${intLabel}`;
   if (meaning) relContext += `\n传统象意：${meaning}`;
 
+  const anchorCtx = getAnchorContext();
+
   return `请针对以下八字命盘中的【一条特定干支关系】进行深度解读。
 
 【命盘信息】
@@ -1997,6 +2262,7 @@ function generateRelDetailPrompt(r) {
 藏干：${cangganStr}
 五行能量（高→低）：${wxStr}
 当前大运：${curDayunLabel || '未知'}
+${anchorCtx ? '\n【命主现状】\n' + anchorCtx + '\n' : ''}
 
 【待分析的关系】
 ${relContext}
