@@ -467,6 +467,47 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
     </div>
 
     <div class="card">
+      <div class="card-title">事件预测</div>
+      <div class="event-predict-form">
+        <div class="event-row">
+          <div class="event-field">
+            <label>想问的事</label>
+            <select id="eventType">
+              <option value="">选择类型...</option>
+              <option value="婚恋感情">婚恋感情</option>
+              <option value="求职面试">求职面试</option>
+              <option value="考试升学">考试升学</option>
+              <option value="创业项目">创业项目</option>
+              <option value="申请基金/贷款">申请基金/贷款</option>
+              <option value="跳槽转行">跳槽转行</option>
+              <option value="投资理财">投资理财</option>
+              <option value="健康手术">健康手术</option>
+              <option value="搬家迁移">搬家迁移</option>
+              <option value="诉讼纠纷">诉讼纠纷</option>
+              <option value="合作谈判">合作谈判</option>
+              <option value="other">其他（自填）</option>
+            </select>
+            <input type="text" id="eventCustom" placeholder="具体描述..." style="display:none;margin-top:6px">
+          </div>
+          <div class="event-field">
+            <label>时间范围</label>
+            <div class="event-time-row">
+              <input type="number" id="eventYearStart" class="year-input" placeholder="年" min="2024" max="2040">
+              <input type="number" id="eventMonthStart" min="1" max="12" placeholder="月" style="width:48px">
+              <span>—</span>
+              <input type="number" id="eventYearEnd" class="year-input" placeholder="年" min="2024" max="2040">
+              <input type="number" id="eventMonthEnd" min="1" max="12" placeholder="月" style="width:48px">
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn" onclick="predictEvent()">AI 预测分析</button>
+        </div>
+        <div id="eventResult" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-title">大运</div>
       <div class="dayun-scroll"><div class="dayun-list" id="dayunList"></div></div>
     </div>
@@ -539,47 +580,6 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
         <span id="copyFeedback" style="font-size:12px;color:var(--rel-he);display:none">✓ 已复制</span>
       </div>
       <textarea class="prompt-textarea" id="promptText" readonly></textarea>
-    </div>
-
-    <div class="card">
-      <div class="card-title">事件预测</div>
-      <div class="event-predict-form">
-        <div class="event-row">
-          <div class="event-field">
-            <label>想问的事</label>
-            <select id="eventType">
-              <option value="">选择类型...</option>
-              <option value="婚恋感情">婚恋感情</option>
-              <option value="求职面试">求职面试</option>
-              <option value="考试升学">考试升学</option>
-              <option value="创业项目">创业项目</option>
-              <option value="申请基金/贷款">申请基金/贷款</option>
-              <option value="跳槽转行">跳槽转行</option>
-              <option value="投资理财">投资理财</option>
-              <option value="健康手术">健康手术</option>
-              <option value="搬家迁移">搬家迁移</option>
-              <option value="诉讼纠纷">诉讼纠纷</option>
-              <option value="合作谈判">合作谈判</option>
-              <option value="other">其他（自填）</option>
-            </select>
-            <input type="text" id="eventCustom" placeholder="具体描述..." style="display:none;margin-top:6px">
-          </div>
-          <div class="event-field">
-            <label>时间范围</label>
-            <div class="event-time-row">
-              <input type="number" id="eventYearStart" class="year-input" placeholder="年" min="2024" max="2040">
-              <input type="number" id="eventMonthStart" min="1" max="12" placeholder="月" style="width:48px">
-              <span>—</span>
-              <input type="number" id="eventYearEnd" class="year-input" placeholder="年" min="2024" max="2040">
-              <input type="number" id="eventMonthEnd" min="1" max="12" placeholder="月" style="width:48px">
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <button class="btn" onclick="predictEvent()">AI 预测分析</button>
-        </div>
-        <div id="eventResult" style="margin-top:12px"></div>
-      </div>
     </div>
 
     <div class="svc-grid">
