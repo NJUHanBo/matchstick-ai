@@ -625,14 +625,32 @@ function isActivated() {
   return !!localStorage.getItem('bazi_vip_code');
 }
 
+function getDeviceId() {
+  let id = localStorage.getItem('bazi_device_id');
+  if (!id) {
+    id = 'dev_' + crypto.randomUUID();
+    localStorage.setItem('bazi_device_id', id);
+  }
+  return id;
+}
+
 async function validateCode(code) {
   if (!sb) return false;
   const { data } = await sb.from('activation_codes')
-    .select('code, is_active, type')
+    .select('code, is_active, type, used_by')
     .eq('code', code.trim())
     .eq('is_active', true)
     .single();
-  return !!data;
+  if (!data) return false;
+
+  const deviceId = getDeviceId();
+  if (data.used_by && data.used_by !== deviceId) {
+    return 'already_bound';
+  }
+  if (!data.used_by) {
+    await sb.from('activation_codes').update({ used_by: deviceId }).eq('code', code.trim());
+  }
+  return true;
 }
 
 function showCodePrompt() {
@@ -657,10 +675,13 @@ async function submitCode() {
   const errEl = document.getElementById('codeError');
   errEl.style.display = 'none';
 
-  const valid = await validateCode(code);
-  if (valid) {
+  const result = await validateCode(code);
+  if (result === true) {
     localStorage.setItem('bazi_vip_code', code);
     analyzeRel();
+  } else if (result === 'already_bound') {
+    errEl.textContent = '该激活码已绑定其他设备，请联系获取新码';
+    errEl.style.display = 'block';
   } else {
     errEl.textContent = '激活码无效或已过期';
     errEl.style.display = 'block';
