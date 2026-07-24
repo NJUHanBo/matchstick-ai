@@ -349,6 +349,19 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   margin-top: 4px; padding: 5px 8px; border: 1px solid var(--border);
   border-radius: 6px; font-size: 13px; width: 80px;
 }
+
+/* Event prediction */
+.event-predict-form { font-size: 13px; }
+.event-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.event-field { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px; }
+.event-field label { font-size: 12px; color: var(--text2); }
+.event-field select, .event-field input[type="text"] {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; background: #fff; color: var(--text);
+}
+.event-time-row { display: flex; align-items: center; gap: 6px; }
+.event-time-row input { width: 60px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+.event-time-row span { color: var(--text2); }
 </style>
 </head>
 <body>
@@ -526,6 +539,47 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
         <span id="copyFeedback" style="font-size:12px;color:var(--rel-he);display:none">✓ 已复制</span>
       </div>
       <textarea class="prompt-textarea" id="promptText" readonly></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-title">事件预测</div>
+      <div class="event-predict-form">
+        <div class="event-row">
+          <div class="event-field">
+            <label>想问的事</label>
+            <select id="eventType">
+              <option value="">选择类型...</option>
+              <option value="婚恋感情">婚恋感情</option>
+              <option value="求职面试">求职面试</option>
+              <option value="考试升学">考试升学</option>
+              <option value="创业项目">创业项目</option>
+              <option value="申请基金/贷款">申请基金/贷款</option>
+              <option value="跳槽转行">跳槽转行</option>
+              <option value="投资理财">投资理财</option>
+              <option value="健康手术">健康手术</option>
+              <option value="搬家迁移">搬家迁移</option>
+              <option value="诉讼纠纷">诉讼纠纷</option>
+              <option value="合作谈判">合作谈判</option>
+              <option value="other">其他（自填）</option>
+            </select>
+            <input type="text" id="eventCustom" placeholder="具体描述..." style="display:none;margin-top:6px">
+          </div>
+          <div class="event-field">
+            <label>时间范围</label>
+            <div class="event-time-row">
+              <input type="number" id="eventYearStart" class="year-input" placeholder="年" min="2024" max="2040">
+              <input type="number" id="eventMonthStart" min="1" max="12" placeholder="月" style="width:48px">
+              <span>—</span>
+              <input type="number" id="eventYearEnd" class="year-input" placeholder="年" min="2024" max="2040">
+              <input type="number" id="eventMonthEnd" min="1" max="12" placeholder="月" style="width:48px">
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn" onclick="predictEvent()">AI 预测分析</button>
+        </div>
+        <div id="eventResult" style="margin-top:12px"></div>
+      </div>
     </div>
 
     <div class="svc-grid">
@@ -2142,6 +2196,201 @@ function copyPrompt() {
 }
 
 // Birth date defaults are set in HTML value attributes
+
+// ═══════════════════════════════════════════════════════════
+// EVENT PREDICTION
+// ═══════════════════════════════════════════════════════════
+
+document.getElementById('eventType').addEventListener('change', function() {
+  document.getElementById('eventCustom').style.display = this.value === 'other' ? 'block' : 'none';
+});
+
+async function predictEvent() {
+  if (!STATE) { alert('请先排盘'); return; }
+
+  if (!isActivated()) {
+    document.getElementById('eventResult').innerHTML = `<div style="color:var(--rel-chong);font-size:13px">需要激活码才能使用事件预测。添加微信 <strong>18512566097</strong> 获取。</div>`;
+    return;
+  }
+
+  const apiKey = localStorage.getItem('ds_api_key') || '';
+  if (!apiKey) {
+    document.getElementById('eventResult').innerHTML = '<div style="color:var(--rel-chong);font-size:13px">请先在页面底部填入 API Key</div>';
+    return;
+  }
+
+  const eventType = document.getElementById('eventType').value;
+  const eventCustom = document.getElementById('eventCustom').value.trim();
+  const eventDesc = eventType === 'other' ? eventCustom : eventType;
+  if (!eventDesc) { alert('请选择或填写想问的事'); return; }
+
+  const ys = document.getElementById('eventYearStart').value;
+  const ms = document.getElementById('eventMonthStart').value;
+  const ye = document.getElementById('eventYearEnd').value;
+  const me = document.getElementById('eventMonthEnd').value;
+  if (!ys) { alert('请填写起始年份'); return; }
+
+  const timeRange = ms ? `${ys}年${ms}月` : `${ys}年`;
+  const timeEnd = ye ? (me ? `${ye}年${me}月` : `${ye}年`) : '';
+  const timeStr = timeEnd ? `${timeRange} — ${timeEnd}` : `${timeRange}前后`;
+
+  const resultEl = document.getElementById('eventResult');
+  resultEl.innerHTML = '<div class="rel-ai-loading">正在分析...</div>';
+
+  const prompt = generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me);
+
+  try {
+    const response = await fetch(DEEPSEEK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages: [
+          { role: 'system', content: '你是一位精通八字命理的预测分析师。你擅长结合原局结构、大运流年流月的干支关系，对具体事件的时机和顺逆做出有理有据的推断。风格：结构清晰，不回避不确定性，给出具体的时间窗口建议和注意事项。回答用中文。' },
+          { role: 'user', content: prompt }
+        ],
+        stream: true,
+        thinking: { type: 'disabled' },
+        temperature: 0.7,
+        max_tokens: 4096
+      })
+    });
+
+    if (!response.ok) throw new Error(`API 错误 ${response.status}`);
+
+    resultEl.innerHTML = '<div class="rel-ai-output streaming"></div>';
+    const outputEl = resultEl.querySelector('.rel-ai-output');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+          if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
+        } catch(e) {}
+      }
+    }
+    outputEl.classList.remove('streaming');
+    saveAnalysis(`事件预测：${eventDesc}（${timeStr}）`, fullText);
+  } catch(err) {
+    resultEl.innerHTML = `<div style="color:var(--rel-chong);font-size:13px">分析失败：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me) {
+  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+  const genderText = gender === 'male' ? '男命' : '女命';
+
+  const pLabels = ['年', '月', '日', '时'];
+  const cangganStr = pillars.map(([, z], i) =>
+    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
+  ).join(' ');
+
+  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
+  wxPairs.sort((a, b) => b.amp - a.amp);
+  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+
+  const startYear = parseInt(ys);
+  const endYear = ye ? parseInt(ye) : startYear;
+
+  let periodInfo = '';
+  for (let y = startYear; y <= endYear; y++) {
+    const age = y - birthYear;
+    let dayunGz = '';
+    for (const du of dayunList) {
+      if (age >= du.ageStart && age <= du.ageEnd) {
+        dayunGz = `${TG[du.stem]}${DZ[du.branch]}`;
+        break;
+      }
+    }
+    const [lyG, lyZ] = getLiunianGanzhi(y);
+    periodInfo += `${y}年（${age}岁）：大运${dayunGz}，流年${TG[lyG]}${DZ[lyZ]}\n`;
+  }
+
+  if (ms) {
+    const startM = parseInt(ms);
+    const endM = me ? parseInt(me) : startM;
+    const y = startYear;
+    periodInfo += '\n涉及流月：\n';
+    for (let m = startM; m <= (ye && parseInt(ye) > startYear ? 12 : endM); m++) {
+      const [lmG, lmZ] = getLiuyueGanzhi(y, m, 15);
+      periodInfo += `  ${y}年${m}月：${TG[lmG]}${DZ[lmZ]}\n`;
+    }
+  }
+
+  const anchorCtx = getAnchorContext();
+
+  const natalRels = lastRels.filter(r => r.source === '原局');
+  const relLines = natalRels.length > 0
+    ? natalRels.slice(0, 8).map(r => `- ${r.desc}（${r.posNames.join('·')}）`).join('\n')
+    : '- 原局无显著干支关系';
+
+  return `请根据以下八字命盘，对命主提出的具体事件进行时机预测分析。
+
+【命盘信息】
+出生：${birthYear}年${birthMonth}月${birthDay}日 ${genderText}
+四柱：${fourPillars}
+日主：${dmName}
+藏干：${cangganStr}
+五行能量（高→低）：${wxStr}
+${anchorCtx ? '\n【命主现状】\n' + anchorCtx + '\n' : ''}
+原局主要关系：
+${relLines}
+
+【预测时段的运势环境】
+${periodInfo}
+【命主的问题】
+事件：${eventDesc}
+时间范围：${timeStr}
+核心问题：这段时间做这件事顺利吗？有什么需要注意的？
+
+【分析框架】
+
+请从以下层面展开推断：
+
+1. 事件与十神对应
+   - 该事件主要涉及哪些十神的功能（如考试=印星+食伤，求财=财星+食伤生财，婚恋=日支+财/官，诉讼=官杀等）
+   - 原局中这些十神的先天状态如何（旺/弱/受制/得用）
+
+2. 大运背景
+   - 当前大运对该事件相关十神是助力还是压制
+   - 大运与原局有无直接的合冲刑害影响格局
+
+3. 流年流月具体时机
+   - 逐一分析预测时段内各流年流月的干支与原局的互动
+   - 哪些月份形成有利组合（如合入用神、生助事件相关十神）
+   - 哪些月份形成不利组合（如冲克、刑害、忌神当旺）
+   - 给出最佳行动窗口和需要避开的时段
+
+4. 综合判断
+   - 整体顺逆程度（给一个直觉性判断：顺/中性/需谨慎/不宜）
+   - 成事的有利因素和不利因素各是什么
+   - 如果时间可调整，建议提前/推后到什么时候更佳
+
+5. 具体建议
+   - 在有利时段应该主动做什么
+   - 在不利时段应该如何防范或等待
+   - 有没有可以人为增强的因素（如合作伙伴方向、准备策略）
+
+【注意】
+- 预测不是宿命论，是概率倾向+时机把握
+- 不要只说"吉"或"凶"，要说清楚吉凶的具体表现形式
+- 流月级别的分析要具体到月份，不要笼统带过
+- 如果事件跨度长，区分不同阶段的运势起伏
+- 坦诚不确定性：如果信息不足以判断，明确说明`;
+}
 
 // API key management
 function saveApiKey() {
