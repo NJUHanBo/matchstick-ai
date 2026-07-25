@@ -536,6 +536,10 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
         <button class="check-btn" onclick="setCheckToday()">今天</button>
       </div>
       <div class="check-info" id="checkInfo"></div>
+      <div style="margin-top:10px">
+        <button class="btn" onclick="analyzeDailyFortune()">AI 今日运势</button>
+      </div>
+      <div id="dailyFortuneResult" style="margin-top:12px"></div>
     </div>
 
     <div class="card">
@@ -2210,6 +2214,82 @@ function copyPrompt() {
 document.getElementById('eventType').addEventListener('change', function() {
   document.getElementById('eventCustom').style.display = this.value === 'other' ? 'block' : 'none';
 });
+
+async function analyzeDailyFortune() {
+  if (!STATE) { alert('请先排盘'); return; }
+  if (!isActivated()) {
+    document.getElementById('dailyFortuneResult').innerHTML = `<div style="color:var(--rel-chong);font-size:13px">需要激活码。添加微信 <strong>18512566097</strong> 获取。</div>`;
+    return;
+  }
+  if (!getApiKey()) {
+    document.getElementById('dailyFortuneResult').innerHTML = '<div style="color:var(--rel-chong);font-size:13px">请先在页面底部设置 API Key</div>';
+    return;
+  }
+
+  const [cy, cm, cd] = getCheckDate();
+  if (!cy || !cm || !cd) return;
+
+  const { pillars, dayGan, dayunList, birthYear, gender } = STATE;
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+  const age = cy - birthYear;
+
+  let dayunGz = '';
+  for (const du of dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      dayunGz = `${TG[du.stem]}${DZ[du.branch]}`;
+      break;
+    }
+  }
+
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+  const [lmG, lmZ] = getLiuyueGanzhi(cy, cm, cd);
+  const [ldG, ldZ] = getLiuriGanzhi(cy, cm, cd);
+
+  const dayRels = lastRels.filter(r => r.score >= 20).slice(0, 10).map(r => {
+    const ss = getRelShishenTag(r).replace(/<[^>]+>/g, '');
+    return `- ${r.desc}${ss ? '（' + ss + '）' : ''}${r.interaction ? '【' + r.interaction + '】' : ''}`;
+  }).join('\n');
+
+  const anchorCtx = getAnchorContext();
+
+  const prompt = `请为以下命主分析选定日期的运势。
+
+【命盘】
+四柱：${fourPillars}，日主${dmName}，${gender === 'male' ? '男' : '女'}，${age}岁
+当前大运：${dayunGz}
+
+【选定日期】${cy}年${cm}月${cd}日
+流年：${TG[lyG]}${DZ[lyZ]}
+流月：${TG[lmG]}${DZ[lmZ]}
+流日：${TG[ldG]}${DZ[ldZ]}
+
+【当日干支关系（已计算）】
+${dayRels || '无显著关系'}
+${anchorCtx ? '\n【命主现状】\n' + anchorCtx : ''}
+
+【分析要求】
+请给出这一天的运势简析（300-500字），包含：
+1. 今日能量环境：流日干支与日主的生克关系，对命主意味着什么
+2. 有利方面：今天适合做什么类型的事（结合激活的十神功能）
+3. 需要注意：今天可能的风险或不顺（结合冲克刑害关系）
+4. 行动建议：1-2条具体可操作的建议
+
+要求简洁实用，不要长篇大论。直接给结论和建议，像一个懂命理的朋友早上发给你的简短提醒。`;
+
+  const resultEl = document.getElementById('dailyFortuneResult');
+  resultEl.innerHTML = '<div class="rel-ai-loading">分析中...</div>';
+
+  try {
+    resultEl.innerHTML = '<div class="rel-ai-output streaming"></div>';
+    const outputEl = resultEl.querySelector('.rel-ai-output');
+    const fullText = await streamAI(SYSTEM_PROMPT_PREDICT, prompt, outputEl);
+    outputEl.classList.remove('streaming');
+    saveAnalysis(`日运：${cy}-${cm}-${cd}`, fullText);
+  } catch(err) {
+    resultEl.innerHTML = `<div style="color:var(--rel-chong);font-size:13px">分析失败：${escapeHtml(err.message)}</div>`;
+  }
+}
 
 async function predictEvent() {
   if (!STATE) { alert('请先排盘'); return; }
