@@ -2215,10 +2215,37 @@ document.getElementById('eventType').addEventListener('change', function() {
   document.getElementById('eventCustom').style.display = this.value === 'other' ? 'block' : 'none';
 });
 
+async function submitDailyCode() {
+  const input = document.getElementById('dailyCodeInput');
+  const code = input.value.trim();
+  if (!code) return;
+  const errEl = document.getElementById('dailyCodeError');
+  errEl.style.display = 'none';
+  const result = await validateCode(code);
+  if (result === true) {
+    localStorage.setItem('bazi_vip_code', code);
+    analyzeDailyFortune();
+  } else if (result === 'already_bound') {
+    errEl.textContent = '该激活码已绑定其他设备，请联系获取新码';
+    errEl.style.display = 'block';
+  } else {
+    errEl.textContent = '激活码无效或已过期';
+    errEl.style.display = 'block';
+  }
+}
+
 async function analyzeDailyFortune() {
   if (!STATE) { alert('请先排盘'); return; }
   if (!isActivated()) {
-    document.getElementById('dailyFortuneResult').innerHTML = `<div style="color:var(--rel-chong);font-size:13px">需要激活码。添加微信 <strong>18512566097</strong> 获取。</div>`;
+    document.getElementById('dailyFortuneResult').innerHTML = `<div class="modal-section">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">AI 运势为付费功能，请输入激活码解锁</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="dailyCodeInput" placeholder="请输入激活码" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">
+        <button class="btn" onclick="submitDailyCode()">验证</button>
+      </div>
+      <div id="dailyCodeError" style="font-size:12px;color:var(--rel-chong);margin-top:6px;display:none"></div>
+      <div style="font-size:11px;color:var(--text2);margin-top:10px">获取激活码：添加微信 <strong>18512566097</strong></div>
+    </div>`;
     return;
   }
   if (!getApiKey()) {
