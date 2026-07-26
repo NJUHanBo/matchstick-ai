@@ -3,113 +3,245 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>八字排盘 · 干支关系分析（Pro）</title>
+<title>墨里知几 · 八字排盘</title>
 <style>
+/* 墨里知几 · 纸墨主题：湿拓墨流背景，五行五色敦煌矿彩 */
 :root {
-  --bg: #f5f3ef; --card: #fff; --text: #1e1e1e; --text2: #6b6b6b;
-  --border: #e5e2dc; --accent: #8b6914; --accent-light: #f5ecd9;
-  --wx-wood: #2d9a4e; --wx-fire: #d94030; --wx-earth: #c9a53a;
-  --wx-metal: #7a7a7a; --wx-water: #2e78c4;
-  --rel-he: #2d8a42; --rel-chong: #c9302c; --rel-xing: #d4742a;
-  --rel-hai: #7b3fa0; --rel-po: #888; --rel-ke: #a83232;
-  --rel-banhe: #5fa078;
+  --paper: #efe6cd;
+  --bg: rgba(233,222,196,.55); --card: rgba(248,242,229,.8);
+  --text: #2b2620; --text2: rgba(43,38,32,.62);
+  --border: rgba(43,38,32,.16); --accent: #a44a28; --accent-light: rgba(164,74,40,.1);
+  --wx-wood: #4f7d5a; --wx-fire: #b03a26; --wx-earth: #9c5f36;
+  --wx-metal: #a8862e; --wx-water: #3f5e8f;
+  --rel-he: #3f7d55; --rel-chong: #b03a26; --rel-xing: #b06a2e;
+  --rel-hai: #7a4a8f; --rel-po: #8a8474; --rel-ke: #a8432e;
+  --rel-banhe: #5f8d6b;
+  --serif: "Songti SC","Source Han Serif SC","Noto Serif CJK SC","STSong","SimSun",serif;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html { background: var(--paper); }
 body {
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
-  background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px;
+  background: transparent; color: var(--text); line-height: 1.6; font-size: 15px;
 }
+/* 墨流背景：z-index:-1 沉底，指针事件不受影响 */
+.ink-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--paper); }
+#fluid { position: absolute; inset: 0; width: 100%; height: 100%; }
+.no-webgl #fluid { display: none; }
+.ink-veil { position: absolute; inset: 0;
+  background: radial-gradient(ellipse 76% 66% at 50% 42%, rgba(239,230,205,.52) 0%, rgba(239,230,205,.36) 70%, rgba(239,230,205,.2) 100%); }
 .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
-h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-.subtitle { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
-.card {
-  background: var(--card); border-radius: 10px; padding: 20px;
-  margin-bottom: 16px; border: 1px solid var(--border);
+
+/* ══ 整屏首页 ══ */
+.hero {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; position: relative; padding: 0 24px;
 }
-.card-title {
-  font-size: 14px; font-weight: 600; color: var(--accent);
-  margin-bottom: 14px; letter-spacing: 0.5px;
+.hero-kicker {
+  font-size: 11px; letter-spacing: .55em; padding-left: .55em; color: rgba(43,38,32,.5);
+  margin-bottom: 30px; opacity: 0;
+  animation: fadeUp 1.2s .4s cubic-bezier(.16,1,.3,1) forwards;
+}
+.hero-title {
+  font-family: var(--serif); font-size: clamp(46px, 11vw, 96px); font-weight: 500;
+  line-height: 1.05; letter-spacing: .1em; padding-left: .1em;
+  background: linear-gradient(178deg, #2b2620 8%, #4a3a2c 52%, #8c3a20 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  opacity: 0; animation: heroIn 1.9s .6s cubic-bezier(.16,1,.3,1) forwards;
+}
+.hero-name2 {
+  font-family: var(--serif); font-size: clamp(19px, 3.2vw, 28px); font-weight: 500;
+  letter-spacing: .55em; padding-left: .55em; color: var(--text2); margin-top: 20px;
+  opacity: 0; animation: fadeUp 1.2s 1.1s cubic-bezier(.16,1,.3,1) forwards;
+}
+.hero-sub {
+  margin-top: 26px; font-size: 15px; color: var(--text2); letter-spacing: .14em;
+  line-height: 2; opacity: 0; animation: fadeUp 1.2s 1.3s cubic-bezier(.16,1,.3,1) forwards;
+}
+.hero-layers {
+  display: flex; gap: 34px; margin-top: 52px; opacity: 0;
+  animation: fadeUp 1.3s 1.6s cubic-bezier(.16,1,.3,1) forwards;
+}
+.hl { display: flex; flex-direction: column; align-items: center; gap: 11px; }
+.hl-dot { width: 6px; height: 6px; border-radius: 50%; animation: breathe 5s ease-in-out infinite; }
+.hl:nth-child(2) .hl-dot { animation-delay: 1.6s; }
+.hl:nth-child(3) .hl-dot { animation-delay: 3.2s; }
+.hl-name { font-family: var(--serif); font-size: 15px; font-weight: 600; }
+.hl-star { font-size: 9.5px; color: rgba(43,38,32,.42); letter-spacing: .22em; }
+.scroll-hint {
+  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; letter-spacing: .42em; color: rgba(43,38,32,.4); opacity: 0;
+  animation: fadeUp 1s 2.2s forwards;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.scroll-hint i {
+  width: 1px; height: 44px; display: block;
+  background: linear-gradient(180deg, rgba(43,38,32,.4), transparent);
+  animation: dropLine 3s ease-in-out infinite;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(26px); letter-spacing: .36em; filter: blur(10px); }
+  to { opacity: 1; transform: none; letter-spacing: .1em; filter: blur(0); }
+}
+@keyframes breathe { 0%,100% { opacity: .3; transform: scale(1); } 50% { opacity: .95; transform: scale(1.35); } }
+@keyframes dropLine {
+  0% { transform: scaleY(0); transform-origin: top; }
+  45% { transform: scaleY(1); transform-origin: top; }
+  55% { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
 }
 
-/* Input form */
-.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group label { font-size: 12px; color: var(--text2); font-weight: 500; }
+/* ══ 卡片滚动显现（翻页感） ══ */
+.card, .check-card {
+  opacity: 0; transform: translateY(28px);
+}
+.card.in, .check-card.in {
+  opacity: 1; transform: none;
+  transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-kicker, .hero-title, .hero-name2, .hero-sub, .hero-layers, .scroll-hint {
+    animation: none; opacity: 1; transform: none; filter: none;
+  }
+  .card, .check-card { opacity: 1; transform: none; }
+}
+
+.container { counter-reset: sec; }
+.card {
+  background: var(--card); border-radius: 6px; padding: 28px 30px;
+  margin-bottom: 24px; border: 1px solid var(--border);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+/* 分节大标题：编号 + 宋体 + 细线（prototype4 sec-head） */
+.card-title {
+  display: flex; align-items: baseline; gap: 16px;
+  font-family: var(--serif); font-size: 20px; font-weight: 500;
+  letter-spacing: .2em; color: var(--text); margin-bottom: 22px;
+}
+.card-title::before {
+  counter-increment: sec; content: counter(sec, decimal-leading-zero);
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-size: 10.5px; letter-spacing: .3em; color: var(--accent);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.card-title::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+  transform: translateY(-5px);
+}
+
+/* Input form：下划线输入 + 定制箭头下拉（prototype4 fields） */
+.form-row { display: flex; gap: 24px 30px; flex-wrap: wrap; align-items: end; }
+.form-group { display: flex; flex-direction: column; gap: 9px; }
+.form-group label { font-size: 10.5px; color: rgba(43,38,32,.5); font-weight: 500; letter-spacing: .26em; }
 .form-group input, .form-group select {
-  padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
-  font-size: 14px; background: var(--card); color: var(--text);
+  font-size: 15px; background: transparent; color: var(--text);
   font-family: inherit;
 }
-.date-inputs { display: flex; align-items: center; gap: 2px; }
+.form-group input {
+  border: none; border-bottom: 1px solid rgba(43,38,32,.28);
+  border-radius: 0; padding: 6px 2px;
+}
+select {
+  border: 1px solid rgba(43,38,32,.28); border-radius: 3px;
+  padding: 8px 30px 8px 12px; color: var(--text); font-family: inherit; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, rgba(43,38,32,.5) 50%) calc(100% - 15px) 52%/4px 4px no-repeat,
+    linear-gradient(135deg, rgba(43,38,32,.5) 50%, transparent 50%) calc(100% - 11px) 52%/4px 4px no-repeat,
+    transparent;
+}
+select option { background: #efe6cd; }
+.date-inputs { display: flex; align-items: baseline; gap: 4px; }
 .date-inputs input[type="number"] {
-  width: 56px; text-align: center; padding: 8px 4px;
-  border: 1px solid var(--border); border-radius: 6px;
-  font-size: 14px; background: var(--card); color: var(--text); font-family: inherit;
+  width: 52px; text-align: center; padding: 6px 2px;
+  border: none; border-bottom: 1px solid rgba(43,38,32,.28); border-radius: 0;
+  font-size: 15px; background: transparent; color: var(--text); font-family: inherit;
+  font-variant-numeric: tabular-nums;
   -moz-appearance: textfield;
 }
 .date-inputs input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-.date-inputs input.year-input { width: 68px; }
-.date-inputs span { font-size: 13px; color: var(--text2); margin: 0 1px; }
-.form-group input:focus, .form-group select:focus {
-  outline: none; border-color: var(--accent);
+.date-inputs input.year-input { width: 64px; }
+.date-inputs span { font-size: 12px; color: rgba(43,38,32,.42); margin: 0 1px; }
+.form-group input:focus, .form-group select:focus, .date-inputs input:focus {
+  outline: none; border-color: var(--accent); border-bottom-color: var(--accent);
 }
 .btn {
-  padding: 8px 24px; background: var(--accent); color: #fff; border: none;
-  border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600;
-  font-family: inherit; transition: opacity .2s;
+  padding: 11px 28px; letter-spacing: .24em; text-indent: .24em;
+  background: linear-gradient(135deg, var(--accent), #8a3a1e); color: #f3ecdb;
+  border: none; border-radius: 3px; font-size: 12.5px; cursor: pointer; font-weight: 600;
+  font-family: inherit;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset, 0 10px 30px -18px var(--accent);
+  transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s;
 }
-.btn:hover { opacity: .85; }
-.gender-group { display: flex; gap: 8px; align-items: center; }
-.gender-group label { font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.16) inset, 0 16px 38px -18px var(--accent);
+}
+.gender-group { display: flex; gap: 18px; align-items: center; padding-bottom: 6px; }
+.gender-group label { font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .gender-group input[type="radio"] { accent-color: var(--accent); }
 
 /* Results */
 #results { display: none; }
 
-/* Four Pillars */
-.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* Four Pillars：顶部光线 + 宋体大字 + 悬停浮起（prototype4 pillar） */
+.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .pillar {
-  text-align: center; padding: 12px 8px; border-radius: 8px;
-  background: var(--bg); border: 1px solid var(--border);
+  position: relative; text-align: center; padding: 24px 10px 18px; border-radius: 4px;
+  background: linear-gradient(180deg, rgba(248,242,229,.55), transparent 78%);
+  border: 1px solid var(--border);
+  transition: transform .45s cubic-bezier(.16,1,.3,1), border-color .45s;
 }
-.pillar-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-.pillar-char { font-size: 28px; font-weight: 700; display: block; line-height: 1.2; }
-.pillar-ss { font-size: 11px; color: var(--accent); font-weight: 500; display: block; margin-top: 1px; min-height: 16px; }
-.pillar-divider { height: 1px; background: var(--border); margin: 6px 4px; }
-.pillar-canggan { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+.pillar:hover { transform: translateY(-5px); border-color: rgba(43,38,32,.28); }
+.pillar::before {
+  content: ""; position: absolute; top: 0; left: 24%; right: 24%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(164,74,40,.55), transparent);
+  box-shadow: 0 0 12px rgba(164,74,40,.35);
+}
+.pillar-label { font-size: 10px; color: rgba(43,38,32,.42); letter-spacing: .42em; padding-left: .42em; margin-bottom: 14px; }
+.pillar-char { font-family: var(--serif); font-size: 32px; font-weight: 600; display: block; line-height: 1.25; letter-spacing: .04em; }
+.pillar-ss { font-size: 11px; color: var(--accent); font-weight: 500; display: block; margin-top: 6px; min-height: 16px; letter-spacing: .14em; }
+.pillar-divider { height: 1px; background: var(--border); margin: 14px 8px 10px; }
+.pillar-canggan { display: flex; justify-content: center; gap: 12px; margin-top: 6px; }
 .cg-item { text-align: center; }
-.cg-char { font-size: 14px; font-weight: 600; display: block; }
-.cg-ss { font-size: 10px; color: var(--text2); display: block; margin-top: 1px; }
+.cg-char { font-family: var(--serif); font-size: 15px; font-weight: 600; display: block; }
+.cg-ss { font-size: 9.5px; color: rgba(43,38,32,.45); display: block; margin-top: 2px; letter-spacing: .08em; }
 .wx-wood { color: var(--wx-wood); } .wx-fire { color: var(--wx-fire); }
 .wx-earth { color: var(--wx-earth); } .wx-metal { color: var(--wx-metal); }
 .wx-water { color: var(--wx-water); }
 
-/* Five Elements Energy */
-.wx-bars { display: flex; flex-direction: column; gap: 8px; }
-.wx-bar-row { display: flex; align-items: center; gap: 10px; }
-.wx-bar-label { width: 24px; font-weight: 700; font-size: 16px; text-align: center; }
-.wx-bar-track { flex: 1; height: 22px; background: var(--bg); border-radius: 4px; overflow: hidden; position: relative; }
-.wx-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; min-width: 2px; }
-.wx-bar-val { width: 42px; font-size: 13px; color: var(--text2); text-align: right; font-variant-numeric: tabular-nums; }
+/* Five Elements Energy：细线能量条（prototype4 e-row） */
+.wx-bars { display: flex; flex-direction: column; }
+.wx-bar-row {
+  display: flex; align-items: center; gap: 18px;
+  padding: 13px 0; border-bottom: 1px solid var(--border);
+}
+.wx-bar-row:last-child { border-bottom: none; }
+.wx-bar-label { width: 28px; font-family: var(--serif); font-weight: 600; font-size: 19px; text-align: center; }
+.wx-bar-track { flex: 1; height: 2px; background: rgba(43,38,32,.1); border-radius: 0; overflow: visible; position: relative; }
+.wx-bar-fill { height: 100%; border-radius: 0; transition: width 1.4s cubic-bezier(.16,1,.3,1); min-width: 2px; }
+.wx-bar-val { width: 46px; font-size: 12.5px; color: var(--text2); text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Relationships */
 .rel-toolbar {
   display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
 }
-.rel-toggle {
-  display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
-}
+.rel-toggle { display: inline-flex; gap: 9px; }
 .rel-toggle button {
-  padding: 4px 14px; border: none; background: var(--bg); color: var(--text2);
-  font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
-  transition: all .15s;
+  padding: 7px 16px; border: 1px solid rgba(43,38,32,.24); border-radius: 3px;
+  background: transparent; color: var(--text2);
+  font-size: 12px; letter-spacing: .14em; cursor: pointer; font-family: inherit;
+  transition: border-color .25s, color .25s, background .25s;
 }
-.rel-toggle button.active { background: var(--accent); color: #fff; }
-.rel-toggle button:not(:last-child) { border-right: 1px solid var(--border); }
+.rel-toggle button:hover { border-color: var(--accent); color: var(--text); }
+.rel-toggle button.active { border-color: var(--accent); color: var(--accent); background: rgba(164,74,40,.1); }
 
 .rel-legend {
-  font-size: 11px; color: var(--text2); line-height: 1.9;
-  padding: 8px 10px; background: var(--bg); border-radius: 6px; margin-bottom: 14px;
+  font-size: 11.5px; color: var(--text2); line-height: 2.1;
+  padding: 16px 18px; background: rgba(233,222,196,.4); border-radius: 4px; margin-bottom: 14px;
+  border-left: 2px solid rgba(164,74,40,.4);
 }
 .rel-legend-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .rel-legend-label { font-weight: 600; color: var(--text); margin-right: 2px; flex-shrink: 0; }
@@ -132,19 +264,23 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   margin: 10px 0 6px; padding-left: 2px;
 }
 .rel-row {
-  padding: 6px 4px;
-  border-bottom: 1px solid #f0ede8; font-size: 14px;
+  position: relative; padding: 13px 10px;
+  border-bottom: 1px solid rgba(43,38,32,.08); font-size: 14px;
+}
+.rel-row::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--accent); opacity: 0; transition: opacity .3s;
 }
 .rel-row:last-child { border-bottom: none; }
-.rel-row-main { display: flex; align-items: center; gap: 8px; }
-.rel-meaning { font-size: 11px; color: var(--text2); margin: 3px 0 0 40px; line-height: 1.5; }
+.rel-row-main { display: flex; align-items: center; gap: 10px; }
+.rel-meaning { font-size: 11.5px; color: var(--text2); margin: 5px 0 0 42px; line-height: 1.7; }
 .rel-badge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 32px; height: 22px; border-radius: 4px;
   font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
   padding: 0 6px;
 }
-.rel-chars { flex: 1; font-weight: 500; }
+.rel-chars { flex: 1; font-family: var(--serif); font-size: 16px; font-weight: 500; letter-spacing: .05em; }
 .rel-src-tag {
   font-size: 10px; padding: 1px 5px; border-radius: 3px;
   background: var(--accent-light); color: var(--accent); font-weight: 600; flex-shrink: 0;
@@ -158,48 +294,64 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .tag-sanhe { background: var(--rel-he); }
 .no-rel { color: var(--text2); font-size: 13px; padding: 8px 0; }
 .rel-row-weak { opacity: 0.45; }
-.rel-row-strong { background: #f9f6ee; }
+.rel-row-strong { background: rgba(164,74,40,.06); }
 .rel-int-tag {
   font-size: 10px; padding: 1px 5px; border-radius: 3px;
   margin-left: 6px; font-weight: 600; white-space: nowrap;
 }
-.int-weakened { background: #f0e6e6; color: #a66; }
-.int-strengthened { background: #e6f0e6; color: #5a5; }
-.int-noted { background: #f0eeea; color: #998; }
+.int-weakened { background: rgba(176,58,38,.08); color: #a8432e; }
+.int-strengthened { background: rgba(79,125,90,.1); color: #4f7d5a; }
+.int-noted { background: rgba(43,38,32,.06); color: rgba(43,38,32,.5); }
 .rel-ss { font-size: 11px; color: var(--text2); margin-left: 6px; font-weight: 400; }
 
-/* Dayun */
-.dayun-scroll { overflow-x: auto; padding-bottom: 8px; }
-.dayun-list { display: flex; gap: 6px; min-width: max-content; }
-.dayun-item {
-  text-align: center; padding: 10px 12px; border-radius: 8px;
-  background: var(--bg); border: 2px solid transparent; cursor: pointer;
-  transition: border-color .2s; min-width: 72px;
+/* Dayun：时间轴（prototype4 dy-track，中线贯穿） */
+.dayun-scroll { overflow-x: auto; padding: 8px 0 14px; }
+.dayun-list { position: relative; display: flex; gap: 14px; min-width: max-content; }
+.dayun-list::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(43,38,32,.24) 12%, rgba(43,38,32,.24) 88%, transparent);
 }
-.dayun-item:hover { border-color: var(--accent); }
-.dayun-item.active { border-color: var(--accent); background: var(--accent-light); }
-.dayun-gz { font-size: 18px; font-weight: 700; }
-.dayun-age { font-size: 11px; color: var(--text2); margin-top: 2px; }
-.dayun-years { font-size: 10px; color: var(--text2); }
+.dayun-item {
+  position: relative; z-index: 1; text-align: center; padding: 15px 14px;
+  border-radius: 4px; background: rgba(248,242,229,.94); border: 1px solid var(--border);
+  cursor: pointer; min-width: 82px;
+  transition: transform .4s cubic-bezier(.16,1,.3,1), border-color .4s;
+}
+.dayun-item:hover { transform: translateY(-4px); border-color: rgba(43,38,32,.3); }
+.dayun-item.active {
+  border-color: rgba(164,74,40,.5);
+  background: linear-gradient(180deg, rgba(164,74,40,.1), rgba(248,242,229,.94));
+}
+.dayun-item.active::after {
+  content: ""; position: absolute; bottom: -1px; left: 28%; right: 28%; height: 1.5px;
+  background: var(--accent);
+}
+.dayun-gz { font-family: var(--serif); font-size: 20px; font-weight: 600; line-height: 1.2; }
+.dayun-age { font-size: 10px; color: rgba(43,38,32,.45); letter-spacing: .1em; margin-top: 7px; }
+.dayun-years { font-size: 10px; color: rgba(43,38,32,.4); }
 
 /* Liuyue Liuri */
-.period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .period-box {
-  text-align: center; padding: 12px; border-radius: 8px;
-  background: var(--bg); border: 1px solid var(--border);
+  text-align: center; padding: 18px 12px 14px; border-radius: 4px;
+  background: linear-gradient(180deg, rgba(248,242,229,.55), transparent 80%);
+  border: 1px solid var(--border);
+  transition: transform .4s cubic-bezier(.16,1,.3,1), border-color .4s;
 }
-.period-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-.period-gz { font-size: 22px; font-weight: 700; }
-.period-wx { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.period-box:hover { transform: translateY(-4px); border-color: rgba(43,38,32,.28); }
+.period-label { font-size: 10px; color: rgba(43,38,32,.42); letter-spacing: .42em; padding-left: .42em; margin-bottom: 8px; }
+.period-gz { font-family: var(--serif); font-size: 26px; font-weight: 600; }
+.period-wx { font-size: 11px; color: var(--text2); margin-top: 5px; letter-spacing: .14em; }
 
 /* Check date */
 .check-card {
   background: var(--card); border-radius: 10px; padding: 16px 20px;
   margin-bottom: 16px; border: 2px solid var(--accent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
-.check-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.check-header-label { font-size: 14px; font-weight: 700; color: var(--accent); }
-.check-header-hint { font-size: 12px; color: var(--text2); }
+.check-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.check-header-label { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--accent); letter-spacing: .14em; }
+.check-header-hint { font-size: 11.5px; color: var(--text2); }
 .check-controls {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
@@ -209,17 +361,18 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 .check-controls input[type="date"]:focus { outline: none; border-color: var(--accent); }
 .check-btn {
-  padding: 5px 12px; border: 1px solid var(--border); border-radius: 5px;
-  background: var(--bg); color: var(--text); font-size: 12px; cursor: pointer;
-  font-family: inherit; font-weight: 500; transition: all .15s;
+  padding: 7px 15px; border: 1px solid rgba(43,38,32,.24); border-radius: 3px;
+  background: transparent; color: var(--text2); font-size: 12px; letter-spacing: .1em;
+  cursor: pointer; font-family: inherit; font-weight: 500;
+  transition: border-color .25s, color .25s, background .25s;
 }
-.check-btn:hover { border-color: var(--accent); color: var(--accent); }
+.check-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(164,74,40,.06); }
 .check-info {
   display: flex; align-items: center; gap: 12px; margin-top: 8px;
   font-size: 13px; color: var(--text2);
 }
 .check-info-item { display: flex; align-items: center; gap: 4px; }
-.check-info-gz { font-weight: 700; font-size: 15px; color: var(--text); }
+.check-info-gz { font-family: var(--serif); font-weight: 600; font-size: 17px; color: var(--text); letter-spacing: .05em; }
 
 /* Responsive */
 @media (max-width: 600px) {
@@ -239,31 +392,34 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 .prompt-textarea.visible { display: block; }
 .btn-copy {
-  padding: 8px 20px; background: #3a7d44; color: #fff; border: none;
+  padding: 8px 20px; background: #4f7d5a; color: #f3ecdb; border: none;
   border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 600;
   font-family: inherit; transition: all .2s; display: none;
 }
 .btn-copy.visible { display: inline-block; }
 .btn-copy:hover { opacity: .85; }
-.btn-copy.copied { background: #2d6a35; }
+.btn-copy.copied { background: #3f6347; }
 
-/* Services */
-.svc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 8px; }
+/* Services（prototype4 svc：左对齐 + 宋体价签 + 悬停浮起） */
+.svc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 8px; }
 .svc-card {
-  background: var(--card); border-radius: 10px; padding: 20px;
-  border: 1px solid var(--border); text-align: center; transition: border-color .2s;
+  background: linear-gradient(180deg, rgba(248,242,229,.55), transparent 75%);
+  border-radius: 4px; padding: 28px 26px;
+  border: 1px solid var(--border); text-align: left;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: transform .45s cubic-bezier(.16,1,.3,1), border-color .45s;
 }
-.svc-card:hover { border-color: var(--accent); }
-.svc-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-.svc-desc { font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
-.svc-price { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
-.svc-price span { font-size: 13px; font-weight: 400; color: var(--text2); }
-.svc-contact { font-size: 12px; color: var(--text2); background: var(--bg); border-radius: 6px; padding: 8px; }
-.svc-contact strong { color: var(--text); font-size: 13px; letter-spacing: 0.5px; }
+.svc-card:hover { transform: translateY(-4px); border-color: rgba(164,74,40,.35); }
+.svc-title { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: .12em; margin-bottom: 0; }
+.svc-desc { font-size: 12.5px; color: var(--text2); line-height: 1.9; margin-bottom: 0; flex: 1; }
+.svc-price { font-family: var(--serif); font-size: 26px; font-weight: 600; color: var(--text); margin-bottom: 0; }
+.svc-price span { font-size: 12px; font-weight: 400; color: var(--text2); margin-left: 4px; }
+.svc-contact { font-size: 11.5px; color: var(--text2); border-top: 1px solid var(--border); padding: 12px 0 0; background: none; border-radius: 0; }
+.svc-contact strong { color: var(--text); font-size: 13px; letter-spacing: .1em; }
 @media (max-width: 600px) { .svc-grid { grid-template-columns: 1fr; } }
 
 /* Disclaimer */
-.disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 24px; }
+.disclaimer { font-size: 11px; color: rgba(43,38,32,.38); text-align: center; margin-top: 24px; }
 
 /* Rel Modal */
 .rel-modal-overlay {
@@ -272,15 +428,15 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 .rel-modal-overlay.visible { display: flex; }
 .rel-modal {
-  background: var(--card); border-radius: 12px; width: 100%; max-width: 640px;
+  background: rgba(248,242,229,.97); border-radius: 12px; width: 100%; max-width: 640px;
   max-height: 85vh; display: flex; flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 32px rgba(30,24,16,0.25);
 }
 .rel-modal-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px 12px; border-bottom: 1px solid var(--border);
 }
-.rel-modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.rel-modal-title { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: .1em; }
 .rel-modal-close {
   background: none; border: none; font-size: 22px; color: var(--text2);
   cursor: pointer; line-height: 1; padding: 4px 8px; border-radius: 4px;
@@ -310,8 +466,12 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
   max-height: 400px; overflow-y: auto; border: 1px solid var(--border);
   margin-top: 12px;
 }
-.rel-ai-output h3 { font-size: 15px; font-weight: 700; margin: 16px 0 6px; color: var(--text); }
-.rel-ai-output h4 { font-size: 13px; font-weight: 700; margin: 12px 0 4px; color: var(--accent); }
+.rel-ai-output h3 {
+  font-family: var(--serif); font-size: 15px; font-weight: 600; margin: 18px 0 8px;
+  color: var(--text); letter-spacing: .1em;
+  padding-left: 12px; border-left: 2px solid var(--accent);
+}
+.rel-ai-output h4 { font-size: 13px; font-weight: 600; margin: 14px 0 5px; color: var(--accent); letter-spacing: .06em; }
 .rel-ai-output hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 .rel-ai-output ul { margin: 4px 0 8px 16px; padding: 0; }
 .rel-ai-output li { margin: 2px 0; list-style: disc; }
@@ -329,9 +489,10 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Make rel rows clickable */
-.rel-row { cursor: pointer; transition: background 0.15s; }
-.rel-row:hover { background: var(--accent-light); }
+/* Make rel rows clickable：悬停缩进 + 左侧朱砂条（prototype4 rel） */
+.rel-row { cursor: pointer; transition: background .3s, padding-left .3s; }
+.rel-row:hover { background: var(--accent-light); padding-left: 20px; }
+.rel-row:hover::before { opacity: 1; }
 
 /* Anchor inputs */
 .anchor-row {
@@ -343,7 +504,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .anchor-group label { font-size: 12px; color: var(--text2); }
 .anchor-group select {
   padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
-  font-size: 13px; background: #fff; color: var(--text);
+  font-size: 13px; background: var(--card); color: var(--text);
 }
 .anchor-year {
   margin-top: 4px; padding: 5px 8px; border: 1px solid var(--border);
@@ -357,17 +518,65 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .event-field label { font-size: 12px; color: var(--text2); }
 .event-field select, .event-field input[type="text"] {
   padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
-  font-size: 13px; background: #fff; color: var(--text);
+  font-size: 13px; background: var(--card); color: var(--text);
 }
 .event-time-row { display: flex; align-items: center; gap: 6px; }
 .event-time-row input { width: 60px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
 .event-time-row span { color: var(--text2); }
+
+/* 今日小帖士 */
+.tips-today {
+  cursor: pointer; padding: 20px 22px; border: 1px solid var(--border); border-radius: 4px;
+  background: linear-gradient(180deg, rgba(248,242,229,.55), transparent 75%);
+  transition: transform .45s cubic-bezier(.16,1,.3,1), border-color .45s;
+}
+.tips-today:hover { transform: translateY(-3px); border-color: rgba(164,74,40,.35); }
+.tips-meta { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--text2); letter-spacing: .08em; margin-bottom: 9px; }
+.tips-tag { color: var(--accent); border: 1px solid rgba(164,74,40,.35); border-radius: 3px; padding: 1px 7px; letter-spacing: .14em; }
+.tips-title { font-family: var(--serif); font-size: 17px; font-weight: 600; letter-spacing: .06em; margin-bottom: 8px; }
+.tips-summary { font-size: 12.5px; color: var(--text2); line-height: 1.9; }
+.tips-read { display: inline-block; margin-top: 12px; font-size: 12px; color: var(--accent); letter-spacing: .12em; }
+.tips-archive-label { font-size: 11px; color: var(--text2); letter-spacing: .26em; margin: 22px 0 6px; }
+.tips-item {
+  display: flex; align-items: baseline; gap: 14px; padding: 11px 4px;
+  border-bottom: 1px dashed var(--border); cursor: pointer;
+  transition: background .3s, padding-left .3s;
+}
+.tips-item:last-child { border-bottom: none; }
+.tips-item:hover { background: var(--accent-light); padding-left: 14px; }
+.tips-item-date { font-size: 11px; color: var(--text2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tips-item-title { font-size: 13.5px; }
+.tips-empty { font-size: 12px; color: var(--text2); padding: 8px 4px; }
+/* 帖士正文（弹窗内） */
+.tips-article p { margin: 0 0 12px; }
+.tips-article h4 { font-size: 13px; font-weight: 600; margin: 18px 0 8px; color: var(--accent); letter-spacing: .06em; }
+.tips-article strong { color: var(--text); }
+.tips-abstract {
+  background: var(--bg); border: 1px solid var(--border); border-left: 2px solid var(--accent);
+  border-radius: 4px; padding: 12px 14px; margin-bottom: 16px;
+  font-size: 12.5px; color: var(--text2); line-height: 1.9;
+}
+.tips-abstract strong { display: block; color: var(--accent); font-size: 11px; letter-spacing: .26em; margin-bottom: 5px; }
 </style>
 </head>
 <body>
+<div class="ink-bg" aria-hidden="true">
+  <canvas id="fluid"></canvas>
+  <div class="ink-veil"></div>
+</div>
+<header class="hero">
+  <div class="hero-kicker">见几而作 · 不俟终日</div>
+  <div class="hero-title">墨里</div>
+  <div class="hero-name2">知几</div>
+  <p class="hero-sub">几者，动之微，吉凶之先见也<br>从一池乱墨中，理出你的人生主线</p>
+  <div class="hero-layers">
+    <div class="hl"><i class="hl-dot" style="background:var(--wx-water)"></i><span class="hl-name" style="color:var(--wx-water)">知命</span><span class="hl-star">见其纹</span></div>
+    <div class="hl"><i class="hl-dot" style="background:var(--wx-metal)"></i><span class="hl-name" style="color:var(--wx-metal)">算命</span><span class="hl-star">推其势</span></div>
+    <div class="hl"><i class="hl-dot" style="background:var(--wx-fire)"></i><span class="hl-name" style="color:var(--wx-fire)">改命</span><span class="hl-star">易其行</span></div>
+  </div>
+  <div class="scroll-hint"><span>SCROLL</span><i></i></div>
+</header>
 <div class="container">
-  <h1>八字排盘</h1>
-  <p class="subtitle">干支关系分析 · 五行能量</p>
 
   <div class="card">
     <div class="form-row">
@@ -605,18 +814,31 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 
     <div class="card" style="margin-top:24px">
       <div class="card-title" style="font-size:12px;color:var(--text2)">AI 模型设置</div>
-      <div style="margin-bottom:8px">
-        <select id="providerSelect" onchange="switchProvider()" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px">
-          <option value="gemini">Gemini 3.6 Flash</option>
-          <option value="deepseek">DeepSeek V4 Flash</option>
-        </select>
-      </div>
+      <div style="margin-bottom:8px;font-size:12px;color:var(--text2)">DeepSeek V4 Pro</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="password" id="apiKeyInput" placeholder="API Key" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <input type="password" id="apiKeyInput" placeholder="DeepSeek API Key" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px">
         <button class="btn" style="font-size:11px;padding:6px 12px" onclick="saveApiKey()">保存</button>
       </div>
       <div id="apiKeyStatus" style="font-size:11px;color:var(--text2);margin-top:4px"></div>
     </div>
+  </div>
+
+  <div class="card" id="tipsCard">
+    <div class="card-title">今日小帖士</div>
+    <div id="tipsToday"></div>
+    <div class="tips-archive-label">往期内容</div>
+    <div id="tipsArchive"></div>
+  </div>
+</div>
+
+<!-- 帖士全文弹窗 -->
+<div class="rel-modal-overlay" id="tipsModal" onclick="closeTipsModal(event)">
+  <div class="rel-modal">
+    <div class="rel-modal-header">
+      <span class="rel-modal-title" id="tipsModalTitle"></span>
+      <button class="rel-modal-close" onclick="closeTipsModal()">&times;</button>
+    </div>
+    <div class="rel-modal-body tips-article" id="tipsModalBody"></div>
   </div>
 </div>
 
@@ -1675,7 +1897,7 @@ function renderWxPentagon() {
   }
 
   s += `<text x="${W / 2}" y="${H - 10}" text-anchor="middle" fill="var(--text2)" font-size="10" style="font-family:inherit">`;
-  s += `<tspan fill="#4a8a5a" font-weight="600">——</tspan> 相生·流通量　<tspan fill="#c46a5a" font-weight="600">- - -</tspan> 相克·制约力</text>`;
+  s += `<tspan fill="#4f7d5a" font-weight="600">——</tspan> 相生·流通量　<tspan fill="#b03a26" font-weight="600">- - -</tspan> 相克·制约力</text>`;
   s += '</svg>';
 
   const toggle = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">` +
@@ -2166,6 +2388,7 @@ ${relLines}
 
 【分析要求】
 请参考《滴天髓》《渊海子平》等经典的底层逻辑（五行生克的能量流动模型），从以下角度进行客观、全面的分析：
+0. 白话总述（必须放在回答最开头）：用一段完全不含命理术语的话（150-250字）概括这个人的性格底色、当前阶段的整体状态、最值得做的事和最需要防的事，让完全不懂命理的人直接读懂；之后再进入下列专业分析
 1. 日主${dmName}在原局中的状态：月令${monthBranch}为${monthWx}，日主是否得令、得地、透干、通根
 2. 五行能量分布：根据上方能量排序，说明强弱偏倚与缺失，以及由此带来的功能倾向${missing.length > 0 ? '（' + missing.join('') + '能量为零需特别关注）' : ''}
 3. 十神结构的光谱分析：每个十神都有适度/过载/不足三态（见上方光谱定义）。根据该命盘的五行能量分布，判断每个关键十神落在光谱的哪一端，并分析模块间的动态——如食神制杀（稳定输出消化压力）、枭神夺食（输入过载压制输出）、伤官佩印（知识支撑创新）、食伤生财（输出转化为回报）、官印相生（外部评价驱动学习）。关键：同一个十神在不同人生阶段可能在光谱上滑动（大运激活/压制）
@@ -2296,13 +2519,15 @@ ${dayRels || '无显著关系'}
 ${anchorCtx ? '\n【命主现状】\n' + anchorCtx : ''}
 
 【分析要求】
-请给出这一天的运势简析（300-500字），包含：
-1. 今日能量环境：流日干支与日主的生克关系，对命主意味着什么
-2. 有利方面：今天适合做什么类型的事（结合激活的十神功能）
-3. 需要注意：今天可能的风险或不顺（结合冲克刑害关系）
-4. 行动建议：1-2条具体可操作的建议
+这是"单日"运势分析（300-500字）。大运、流年、流月干支只用来校准背景强弱，不是今天的内容——不要把年运、月运层面的主题写成今天会发生的事，结论里不要出现对全年或当月的判断。分析主角是流日${TG[ldG]}${DZ[ldZ]}与命局的互动。
 
-要求简洁实用，不要长篇大论。直接给结论和建议，像一个懂命理的朋友早上发给你的简短提醒。`;
+输出结构：
+
+### 今日速览
+3-5 句白话，零命理术语：今天整体状态如何（顺/平/紧）、适合推进什么、应该避开什么、给一条具体行动建议。像一个懂命理的朋友早上发来的提醒，完全不懂命理的人也能照着做。
+
+### 分析依据
+简短说明上面判断的来由（此处可用术语）：流日干支与日主及原局的生克合冲、今天被激活的十神功能。大运流年最多一句背景交代，不展开。`;
 
   const resultEl = document.getElementById('dailyFortuneResult');
   resultEl.innerHTML = '<div class="rel-ai-loading">分析中...</div>';
@@ -2434,6 +2659,11 @@ ${periodInfo}
 
 【分析框架】
 
+0. 结论摘要（必须放在回答最开头）
+   - 用白话直接回答：这段时间做这件事顺不顺、最好的时间窗在何时、最大的风险是什么、现在该做什么
+   - 3-6 句，禁止任何命理术语；给出明确程度判断（顺/中性/需谨慎/不宜）
+   - 下面第 1-5 部分是这个结论的推导依据
+
 请从以下层面展开推断：
 
 1. 事件与十神对应
@@ -2461,6 +2691,7 @@ ${periodInfo}
    - 有没有可以人为增强的因素（如合作伙伴方向、准备策略）
 
 【注意】
+- 结论摘要必须完全用日常语言，命理术语只允许出现在第 1-5 部分
 - 预测不是宿命论，是概率倾向+时机把握
 - 不要只说"吉"或"凶"，要说清楚吉凶的具体表现形式
 - 流月级别的分析要具体到月份，不要笼统带过
@@ -2469,28 +2700,16 @@ ${periodInfo}
 }
 
 // API key management
-function switchProvider() {
-  const provider = document.getElementById('providerSelect').value;
-  localStorage.setItem('bazi_ai_provider', provider);
-  loadKeyForProvider();
-}
-
 function loadKeyForProvider() {
-  const provider = getActiveProvider();
-  document.getElementById('providerSelect').value = provider;
-  const keyName = provider === 'gemini' ? 'gemini_api_key' : 'ds_api_key';
-  const saved = localStorage.getItem(keyName) || '';
+  const saved = localStorage.getItem('ds_api_key') || '';
   document.getElementById('apiKeyInput').value = saved;
-  document.getElementById('apiKeyInput').placeholder = provider === 'gemini' ? 'Gemini API Key' : 'DeepSeek API Key';
   document.getElementById('apiKeyStatus').textContent = saved ? '已从本地加载' : '';
 }
 
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
-  const provider = getActiveProvider();
-  const keyName = provider === 'gemini' ? 'gemini_api_key' : 'ds_api_key';
   if (key) {
-    localStorage.setItem(keyName, key);
+    localStorage.setItem('ds_api_key', key);
     document.getElementById('apiKeyStatus').textContent = '✓ 已保存到本地';
     setTimeout(() => document.getElementById('apiKeyStatus').textContent = '', 2000);
   }
@@ -2501,17 +2720,10 @@ function saveApiKey() {
 // RELATIONSHIP DETAIL MODAL (PRO - with AI Analysis)
 // ═══════════════════════════════════════════════════════════
 
-const DEEPSEEK_MODEL = 'deepseek-v4-flash';
+const DEEPSEEK_MODEL = 'deepseek-v4-pro';
 const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions';
-const GEMINI_MODEL = 'gemini-3.6-flash';
-const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse';
 
-function getActiveProvider() {
-  return localStorage.getItem('bazi_ai_provider') || 'gemini';
-}
 function getApiKey() {
-  const provider = getActiveProvider();
-  if (provider === 'gemini') return localStorage.getItem('gemini_api_key') || '';
   return localStorage.getItem('ds_api_key') || '';
 }
 
@@ -2533,6 +2745,8 @@ const SYSTEM_PROMPT_DETAIL = `你是一位精通八字命理的分析师，遵�
 
 【用神=系统瓶颈】不是"对我好的五行"。诊断：找淤积点（能量堆积流不动）和枯竭点（严重供血不足），瓶颈=淤积到枯竭之间的通道。用神建议必须落地为具体行为，不停留在"喜木火"。忌神=已过载的功能模块，继续强化等于加剧失衡。
 
+【调候与取用路由】先看月令定季节：冬生（亥子丑月）局寒需火暖，夏生（巳午未月）局燥需水润——季节极端时，调候优先于能量强弱判断。取用思路依次检查：格局可定则以护格为先；寒燥失衡则调候优先；干支有显著冲合做功结构则从做功切入；以上都不明确时再看能量分布找瓶颈。不要机械套用身强身弱二分法。
+
 【宫位现代映射】年柱=初始条件（家庭/时代）；月柱=生态位（行业/圈子/竞争格局）；日柱=核心自我与亲密关系；时柱=产出与遗产（作品/影响力/想去的方向）
 
 【感情以日支为核心】不套用"男命财为妻、女命官为夫"。关注：日支藏干的十神功能→关系模式；日支与日主生克→互动动态；日支受刑冲合害→稳定性。
@@ -2545,6 +2759,13 @@ const SYSTEM_PROMPT_DETAIL = `你是一位精通八字命理的分析师，遵�
 - 内部感受不是校准信号：印重者的"不足感"、杀旺者的"紧迫感"是常驻运行状态，不反映外部实际
 
 【关键要求】你的回答必须严格使用prompt中提供的命盘数据（大运、流年、流月干支），不要自行推算或编造干支信息。如果prompt中已给出具体大运流年信息，直接引用，不要重新计算。
+
+【输出结构】（严格遵守，顺序不可颠倒）
+第一层「结论」：回答开头用"### 结论"标题，2-5 句白话直接回答对方关心的事。这一段禁止出现任何命理术语（干支名、十神名、五行、大运流年流月流日、用神忌神、刑冲合害、生克、月令、藏干等一律不可出现）。像对一个完全不懂命理的朋友说话：直接给程度判断、说清对生活的实际影响、该做什么、该防什么。
+第二层「分析依据」：用"### 分析依据"标题，之后才允许使用命理术语展开推理。
+读者只看第一层就能行动；第二层是给想深究的人看的。
+
+【表达伦理】判断用"倾向""可能""有迹象"表述，不用"一定""注定""必然"。不预测生死，不预测重大疾病的时点，不渲染恐慌；提示凶象时必须同时给出具体的应对路径，让读者拿到的是可行动的提醒而不是焦虑。
 
 【分析风格】结构清晰，用现代语言解释传统概念，不回避不确定性，给出具体可操作的建议。回答用中文。`;
 
@@ -2560,12 +2781,22 @@ const SYSTEM_PROMPT_PREDICT = `你是一位精通八字命理的预测分析师�
 - 大运改写力量对比，不删除结构：行运补根让碾压变博弈，命主"更有力量顶住"，不是问题消失
 - 冲=激活与重组，不必然凶。对能量淤积的盘，适度的冲是治疗
 - 合=能量绑定，不必然吉。合而不化时是牵绊而非助力
+- 调候背景：冬生（亥子丑月）局寒喜火暖，夏生（巳午未月）局燥喜水润。季节极端的命局，调候优先于能量强弱判断；流月走到调候用神当令的时段，往往是天然的行动窗口
 
 【用神=系统瓶颈】找淤积点和枯竭点，瓶颈=淤积到枯竭之间的通道。建议落地为具体行为。借强补弱是顺命——改造方案架在命主最强模块上。
 
 【宫位映射】年=初始条件；月=生态位；日=核心自我与亲密关系；时=产出与想去的方向
 
-【关键要求】你的回答必须严格使用prompt中【预测时段的运势环境】部分提供的大运、流年、流月干支数据，不要自行推算或编造。直接引用已提供的干支信息进行分析。
+【关键要求】你的回答必须严格使用prompt中提供的大运、流年、流月、流日干支数据，不要自行推算或编造。直接引用已提供的干支信息进行分析。
+
+【输出结构】（严格遵守，顺序不可颠倒）
+第一层「结论」：回答开头先用白话直接回答对方问的事，2-6 句。这一段禁止出现任何命理术语（干支名、十神名、五行、大运流年流月流日、用神忌神、刑冲合害、生克等一律不可出现）。直接给程度判断（顺/一般/偏紧/需谨慎）、时间点、该做什么、该防什么。问财运就先明说财运如何，问考试就先明说成算多大、何时发力。
+第二层「分析依据」：之后才允许使用命理术语展开具体推理。
+读者只看第一层就能行动；第二层是给想深究的人看的。
+
+【层级纪律】回答什么时段的问题，就聚焦什么时段。分析单日就以流日为主角，大运流年只作背景权重、一句带过；分析某几个月就以流月为主角。不要把长周期（大运、流年）层面的主题当成短周期（当日、当月）会发生的事。
+
+【表达伦理】判断用"倾向""可能""有迹象"表述，不用"一定""注定""必然"。不预测生死，不预测重大疾病的时点，不渲染恐慌；提示不利时段必须同时给出应对方式，让读者拿到的是可执行的排程而不是焦虑。
 
 【分析风格】结构清晰，逐月具体，不回避不确定性，给出时间窗口建议和注意事项。预测不是宿命论，是概率倾向+时机把握。回答用中文。`;
 
@@ -2617,87 +2848,42 @@ function copyRelPrompt() {
 }
 
 async function streamAI(systemPrompt, userPrompt, outputEl, signal) {
-  const provider = getActiveProvider();
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('请先在页面底部设置 API Key');
 
   let fullText = '';
+  const response = await fetch(DEEPSEEK_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: DEEPSEEK_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      stream: true, thinking: { type: 'disabled' }, temperature: 0.7, max_tokens: 4096
+    }),
+    signal
+  });
+  if (!response.ok) { const t = await response.text(); throw new Error(`DeepSeek API 错误 ${response.status}: ${t.slice(0,200)}`); }
 
-  if (provider === 'gemini') {
-    const url = GEMINI_ENDPOINT + '&key=' + apiKey;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
-        ],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 65536 },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-        ]
-      }),
-      signal
-    });
-    if (!response.ok) { const t = await response.text(); throw new Error(`Gemini API 错误 ${response.status}: ${t.slice(0,200)}`); }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(data);
-          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) { fullText += text; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
-        } catch(e) {}
-      }
-    }
-  } else {
-    const response = await fetch(DEEPSEEK_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        stream: true, thinking: { type: 'disabled' }, temperature: 0.7, max_tokens: 4096
-      }),
-      signal
-    });
-    if (!response.ok) { const t = await response.text(); throw new Error(`DeepSeek API 错误 ${response.status}: ${t.slice(0,200)}`); }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-        try {
-          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
-          if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
-        } catch(e) {}
-      }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6);
+      if (data === '[DONE]') break;
+      try {
+        const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+        if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
+      } catch(e) {}
     }
   }
   return fullText;
@@ -2825,6 +3011,10 @@ ${relContext}
 
 【分析要求】
 
+0. 白话导语（必须放在回答最开头）
+   - 2-4 句白话说清：这条关系对这个人的实际生活意味着什么、是助力还是消耗、程度如何、最该注意什么
+   - 禁止任何命理术语，让完全不懂命理的人一读就懂；下面 1-4 才是展开推理
+
 请围绕这一条关系，从以下维度展开深度分析：
 
 1. 这条关系的本质含义
@@ -2851,6 +3041,736 @@ ${relContext}
 - 宫位解读用现代生活域映射（年=原生家庭/起点，月=事业生态/圈子，日=自我与亲密关系，时=产出与未来）
 - 如果涉及合化，必须判断合化是否成立（月令是否支持、有无克神破坏）`;
 }
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// 今日小帖士：数组第一条为当期，其余进往期。新内容往最前面加。
+// ═══════════════════════════════════════════════════════════
+const TIPS = [
+  {
+    date: '2026-07-26',
+    tag: '健康',
+    title: '喝咖啡胸闷怎么办',
+    summary: '咖啡因引起胸闷有三条通路——心血管加压、胃酸反流、过度换气。最快的缓解办法是做几分钟高强度运动，其次是控制呼吸节奏，同时吃点东西垫胃。绝大多数情况下十几分钟就能过去，但持续超过 20 分钟不缓解或心跳明显异常时应就医。',
+    body: `
+<div class="tips-abstract"><strong>摘要</strong>咖啡因引起胸闷有三条通路——心血管加压、胃酸反流、过度换气。最快的缓解办法是做几分钟高强度运动，其次是控制呼吸节奏，同时吃点东西垫胃。绝大多数情况下十几分钟就能过去，但持续超过 20 分钟不缓解或心跳明显异常时应就医。</div>
+<p>一杯美式大约含 150 mg 咖啡因，摄入后 15–45 分钟到达血药峰值。咖啡因让静息心率上升 5–15 次/分钟，同时收缩外周血管，血压升高约 5–10 mmHg。空腹、缺觉、或者已经是第二杯的时候，身体对这个剂量的耐受会明显下降——心脏在更高阻力下加速泵血，胸腔就紧起来了。</p>
+<p>第二条路是胃。咖啡因让胃酸分泌量增加约 30%，如果发生胃食管反流，灼热感会从胃往胸骨后面走，跟心血管那边的压迫感混在一起。空腹的时候这条路更容易被激活。</p>
+<p>第三条路是呼吸。交感神经兴奋之后，呼吸不自觉地变浅变快，每次吸入的气量下降，二氧化碳排出过多，血液 pH 偏碱。手指发麻、胸口发闷，看着像心脏问题，其实是过度换气。</p>
+<h4>闷了之后怎么办？三步走</h4>
+<p><strong>先动起来。</strong>高抬腿、深蹲跳、开合跳，做 3–5 分钟就行。运动迫使你大口呼吸，过度换气的问题当场解决；大肌群收缩把血液从胸腔重新分配到四肢，闷的感觉会很快减轻；停下来之后副交感神经接管，心率反而会降到比运动前更低的状态。整个过程十分钟内就能走完。</p>
+<p><strong>不方便动的话，控制呼吸。</strong>吸气 4 秒，屏息 4 秒，呼气 6 秒——呼气比吸气长是关键，这个节奏能激活迷走神经。做 5–6 轮大概 90 秒，心率通常能降 10–20 次/分钟。</p>
+<p><strong>然后吃点东西，喝温水。</strong>哪怕就一片面包，胃里有东西就能中和多余的胃酸，把第二条通路关掉。水能加速咖啡因从肾脏排出。咖啡因的半衰期大约 5 小时，多喝水虽然不能让它立刻消失，但能缩短体内高浓度维持的时间。</p>
+<h4>什么情况下该去医院</h4>
+<p>四条红线：闷了超过 20 分钟休息后没有缓解；能感觉到心跳"漏拍"或者节奏乱了；疼痛往左胳膊、下巴或后背串；出冷汗、快要晕过去。任何一条出现，不要扛。</p>
+<h4>怎么少闷几次</h4>
+<p>说起来没什么玄机：别空腹喝，睡不好的日子少喝一半，喝的时候留意心跳——感觉开始加速了就放下杯子。每个人的耐受量每天都不一样，昨天灌两杯没事，不代表今天也扛得住。</p>`
+  },
+];
+
+function renderTips() {
+  const latest = TIPS[0];
+  if (!latest) { document.getElementById('tipsCard').style.display = 'none'; return; }
+  document.getElementById('tipsToday').innerHTML = `
+    <div class="tips-today" onclick="openTip(0)">
+      <div class="tips-meta"><span class="tips-tag">${latest.tag}</span><span>${latest.date}</span></div>
+      <div class="tips-title">${latest.title}</div>
+      <div class="tips-summary">${latest.summary}</div>
+      <span class="tips-read">阅读全文 →</span>
+    </div>`;
+  const rest = TIPS.slice(1);
+  document.getElementById('tipsArchive').innerHTML = rest.length
+    ? rest.map((t, i) => `
+      <div class="tips-item" onclick="openTip(${i + 1})">
+        <span class="tips-item-date">${t.date}</span>
+        <span class="tips-item-title">${t.title}</span>
+      </div>`).join('')
+    : '<div class="tips-empty">往期内容会在这里陆续出现</div>';
+}
+
+function openTip(idx) {
+  const tip = TIPS[idx];
+  if (!tip) return;
+  document.getElementById('tipsModalTitle').textContent = tip.title;
+  document.getElementById('tipsModalBody').innerHTML = tip.body;
+  document.getElementById('tipsModalBody').scrollTop = 0;
+  document.getElementById('tipsModal').classList.add('visible');
+}
+
+function closeTipsModal(e) {
+  if (e && e.target !== document.getElementById('tipsModal')) return;
+  document.getElementById('tipsModal').classList.remove('visible');
+}
+
+renderTips();
+</script>
+<script>
+/* 卡片滚动显现：给长页面翻页感。放在墨流脚本之前，互不牵连。 */
+(function revealer() {
+  const els = document.querySelectorAll('.card, .check-card');
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    els.forEach(el => el.classList.add('in'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    }
+  }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
+  els.forEach(el => io.observe(el));
+})();
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   墨里知几 · 湿拓墨流背景（GPU stable fluids）
+   五行五色敦煌矿彩轮流落墨；速度场压力投影保持不可压缩，
+   染料场随流平流；Beer-Lambert 吸光渲染到纸色。
+   指针滑动搅水，空白处点按落墨；不拦截滚动与表单交互。
+   ═══════════════════════════════════════════════════════ */
+(function inkMarbling() {
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canvas = document.getElementById('fluid');
+  let gl = null;
+  try {
+    gl = canvas.getContext('webgl2', { alpha: false, depth: false, stencil: false, antialias: false });
+  } catch (e) { /* fall through */ }
+  if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
+    document.body.classList.add('no-webgl');
+    return;
+  }
+
+  const MOBILE = matchMedia('(max-width:600px)').matches;
+  const config = {
+    SIM_RES: MOBILE ? 112 : 144,
+    DYE_RES: MOBILE ? 512 : 720,
+    VELOCITY_DISSIPATION: 0.22,
+    DYE_DISSIPATION: 0.018,
+    PRESSURE: 0.8,
+    PRESSURE_ITER: 22,
+    CURL: 9,
+    POINTER_FORCE: 5200,
+    TIME_SCALE: 0.38,
+  };
+
+  function absorb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => {
+      const c = Math.min(0.96, Math.max(0.04, v / 255));
+      return -Math.log(c);
+    });
+  }
+  const PALETTE = [
+    { abs: absorb('#4f7d5a') },  // 木·石绿
+    { abs: absorb('#b03a26') },  // 火·朱砂
+    { abs: absorb('#9c5f36') },  // 土·赭石
+    { abs: absorb('#d0a848') },  // 金·金箔
+    { abs: absorb('#3f5e8f') },  // 水·石青
+  ];
+  let inkBag = [];
+  function nextInk() {
+    if (inkBag.length === 0) {
+      inkBag = PALETTE.map((_, i) => i);
+      for (let i = inkBag.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        [inkBag[i], inkBag[j]] = [inkBag[j], inkBag[i]];
+      }
+    }
+    return PALETTE[inkBag.pop()].abs;
+  }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  function compileShader(type, source) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, source);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  function createProgram(vsSrc, fsSrc) {
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    const uniforms = {};
+    const count = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < count; i++) {
+      const name = gl.getActiveUniform(prog, i).name;
+      uniforms[name] = gl.getUniformLocation(prog, name);
+    }
+    return { prog, uniforms, bind() { gl.useProgram(prog); } };
+  }
+
+  const VERT = `#version 300 es
+precision highp float;
+in vec2 aPosition;
+out vec2 vUv, vL, vR, vT, vB;
+uniform vec2 texelSize;
+void main () {
+  vUv = aPosition * 0.5 + 0.5;
+  vL = vUv - vec2(texelSize.x, 0.0);
+  vR = vUv + vec2(texelSize.x, 0.0);
+  vT = vUv + vec2(0.0, texelSize.y);
+  vB = vUv - vec2(0.0, texelSize.y);
+  gl_Position = vec4(aPosition, 0.0, 1.0);
+}`;
+
+  const FRAG_ADVECT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uVelocity, uSource;
+uniform vec2 texelSize;
+uniform float dt, dissipation;
+out vec4 fragColor;
+void main () {
+  vec2 coord = vUv - dt * texture(uVelocity, vUv).xy * texelSize;
+  fragColor = texture(uSource, coord) / (1.0 + dissipation * dt);
+}`;
+
+  const FRAG_DIVERGENCE = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uVelocity;
+out vec4 fragColor;
+void main () {
+  float L = texture(uVelocity, vL).x;
+  float R = texture(uVelocity, vR).x;
+  float T = texture(uVelocity, vT).y;
+  float B = texture(uVelocity, vB).y;
+  vec2 C = texture(uVelocity, vUv).xy;
+  if (vL.x < 0.0) L = -C.x;
+  if (vR.x > 1.0) R = -C.x;
+  if (vT.y > 1.0) T = -C.y;
+  if (vB.y < 0.0) B = -C.y;
+  fragColor = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
+}`;
+
+  const FRAG_CURL = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uVelocity;
+out vec4 fragColor;
+void main () {
+  float L = texture(uVelocity, vL).y;
+  float R = texture(uVelocity, vR).y;
+  float T = texture(uVelocity, vT).x;
+  float B = texture(uVelocity, vB).x;
+  fragColor = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);
+}`;
+
+  const FRAG_VORTICITY = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uVelocity, uCurl;
+uniform float curl, dt;
+out vec4 fragColor;
+void main () {
+  float L = texture(uCurl, vL).x;
+  float R = texture(uCurl, vR).x;
+  float T = texture(uCurl, vT).x;
+  float B = texture(uCurl, vB).x;
+  float C = texture(uCurl, vUv).x;
+  vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+  force /= length(force) + 0.0001;
+  force *= curl * C;
+  force.y *= -1.0;
+  vec2 velocity = texture(uVelocity, vUv).xy + force * dt;
+  fragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0);
+}`;
+
+  const FRAG_PRESSURE = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uPressure, uDivergence;
+out vec4 fragColor;
+void main () {
+  float L = texture(uPressure, vL).x;
+  float R = texture(uPressure, vR).x;
+  float T = texture(uPressure, vT).x;
+  float B = texture(uPressure, vB).x;
+  float divergence = texture(uDivergence, vUv).x;
+  fragColor = vec4((L + R + B + T - divergence) * 0.25, 0.0, 0.0, 1.0);
+}`;
+
+  const FRAG_GRADIENT = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uPressure, uVelocity;
+out vec4 fragColor;
+void main () {
+  float L = texture(uPressure, vL).x;
+  float R = texture(uPressure, vR).x;
+  float T = texture(uPressure, vT).x;
+  float B = texture(uPressure, vB).x;
+  vec2 velocity = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
+  fragColor = vec4(velocity, 0.0, 1.0);
+}`;
+
+  const FRAG_CLEAR = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uTexture;
+uniform float value;
+out vec4 fragColor;
+void main () { fragColor = value * texture(uTexture, vUv); }`;
+
+  const FRAG_SPLAT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uTarget;
+uniform float aspectRatio, radius, uMax;
+uniform vec2 point;
+uniform vec3 color;
+out vec4 fragColor;
+void main () {
+  vec2 p = vUv - point;
+  p.x *= aspectRatio;
+  vec3 splat = exp(-dot(p, p) / radius) * color;
+  vec3 base = texture(uTarget, vUv).xyz;
+  fragColor = vec4(clamp(base + splat, vec3(-uMax), vec3(uMax)), 1.0);
+}`;
+
+  const FRAG_DISPLAY = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uDye;
+uniform vec2 uResolution;
+out vec4 fragColor;
+
+float hash (vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+float vnoise (vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash(i), b = hash(i + vec2(1, 0));
+  float c = hash(i + vec2(0, 1)), d = hash(i + vec2(1, 1));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+float dsum (vec3 v) { return v.r + v.g + v.b; }
+
+void main () {
+  vec3 d  = texture(uDye, vUv).rgb;
+  vec3 dl = texture(uDye, vL).rgb;
+  vec3 dr = texture(uDye, vR).rgb;
+  vec3 dt_ = texture(uDye, vT).rgb;
+  vec3 db = texture(uDye, vB).rgb;
+
+  vec2 grad = vec2(dsum(dr) - dsum(dl), dsum(dt_) - dsum(db));
+  float edge = smoothstep(0.04, 0.9, length(grad));
+
+  vec2 px = vUv * uResolution;
+  float g1 = vnoise(px * 0.33);
+  float g2 = vnoise(px * 0.09 + 7.3);
+  d *= (0.80 + 0.36 * g1) * (0.88 + 0.24 * g2);
+  d *= 1.0 + 0.9 * edge;
+
+  float fiber = vnoise(vec2(px.x * 0.012, px.y * 0.13));
+  float tooth = vnoise(px * 0.55 + 3.1);
+  vec3 paper = vec3(0.937, 0.898, 0.803);
+  paper *= 0.97 + 0.038 * tooth;
+  paper *= 0.988 + 0.02 * fiber;
+
+  vec2 q = vUv - 0.5;
+  float vign = 1.0 - 0.5 * dot(q, q);
+
+  fragColor = vec4(paper * exp(-d) * vign, 1.0);
+}`;
+
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
+  const ibo = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  function blit(target) {
+    if (target == null) {
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    } else {
+      gl.viewport(0, 0, target.width, target.height);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    }
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+  }
+
+  function createFBO(w, h) {
+    const texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return {
+      texture, fbo, width: w, height: h,
+      texelSizeX: 1 / w, texelSizeY: 1 / h,
+      attach(id) {
+        gl.activeTexture(gl.TEXTURE0 + id);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        return id;
+      },
+    };
+  }
+  function createDoubleFBO(w, h) {
+    let fbo1 = createFBO(w, h);
+    let fbo2 = createFBO(w, h);
+    return {
+      width: w, height: h,
+      texelSizeX: fbo1.texelSizeX, texelSizeY: fbo1.texelSizeY,
+      get read() { return fbo1; },
+      get write() { return fbo2; },
+      swap() { const t = fbo1; fbo1 = fbo2; fbo2 = t; },
+    };
+  }
+
+  function getResolution(resolution) {
+    let aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+    if (aspect < 1) aspect = 1 / aspect;
+    const min = Math.round(resolution);
+    const max = Math.round(resolution * aspect);
+    return gl.drawingBufferWidth > gl.drawingBufferHeight
+      ? { width: max, height: min }
+      : { width: min, height: max };
+  }
+
+  const advectProg = createProgram(VERT, FRAG_ADVECT);
+  const divergenceProg = createProgram(VERT, FRAG_DIVERGENCE);
+  const curlProg = createProgram(VERT, FRAG_CURL);
+  const vorticityProg = createProgram(VERT, FRAG_VORTICITY);
+  const pressureProg = createProgram(VERT, FRAG_PRESSURE);
+  const gradientProg = createProgram(VERT, FRAG_GRADIENT);
+  const clearProg = createProgram(VERT, FRAG_CLEAR);
+  const splatProg = createProgram(VERT, FRAG_SPLAT);
+  const displayProg = createProgram(VERT, FRAG_DISPLAY);
+
+  let velocity, dye, divergence, curl, pressure;
+
+  function initFramebuffers() {
+    const simRes = getResolution(config.SIM_RES);
+    const dyeRes = getResolution(config.DYE_RES);
+    velocity = createDoubleFBO(simRes.width, simRes.height);
+    dye = createDoubleFBO(dyeRes.width, dyeRes.height);
+    divergence = createFBO(simRes.width, simRes.height);
+    curl = createFBO(simRes.width, simRes.height);
+    pressure = createDoubleFBO(simRes.width, simRes.height);
+  }
+
+  function resizeCanvas() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(canvas.clientWidth * dpr);
+    canvas.height = Math.floor(canvas.clientHeight * dpr);
+  }
+
+  function correctRadius(r) {
+    const aspect = canvas.width / canvas.height;
+    return aspect > 1 ? r * aspect : r;
+  }
+
+  function splatVelocity(x, y, dx, dy, radius) {
+    splatProg.bind();
+    gl.uniform2f(splatProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(splatProg.uniforms.uTarget, velocity.read.attach(0));
+    gl.uniform1f(splatProg.uniforms.aspectRatio, canvas.width / canvas.height);
+    gl.uniform2f(splatProg.uniforms.point, x, y);
+    gl.uniform3f(splatProg.uniforms.color, dx, dy, 0);
+    gl.uniform1f(splatProg.uniforms.radius, correctRadius(radius));
+    gl.uniform1f(splatProg.uniforms.uMax, 1000);
+    blit(velocity.write);
+    velocity.swap();
+  }
+  function splatDye(x, y, abs, intensity, radius) {
+    splatProg.bind();
+    gl.uniform2f(splatProg.uniforms.texelSize, dye.texelSizeX, dye.texelSizeY);
+    gl.uniform1i(splatProg.uniforms.uTarget, dye.read.attach(0));
+    gl.uniform1f(splatProg.uniforms.aspectRatio, canvas.width / canvas.height);
+    gl.uniform2f(splatProg.uniforms.point, x, y);
+    gl.uniform3f(splatProg.uniforms.color, abs[0] * intensity, abs[1] * intensity, abs[2] * intensity);
+    gl.uniform1f(splatProg.uniforms.radius, correctRadius(radius));
+    gl.uniform1f(splatProg.uniforms.uMax, 3.5);
+    blit(dye.write);
+    dye.swap();
+  }
+
+  function step(dt) {
+    gl.disable(gl.BLEND);
+
+    curlProg.bind();
+    gl.uniform2f(curlProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(curlProg.uniforms.uVelocity, velocity.read.attach(0));
+    blit(curl);
+
+    vorticityProg.bind();
+    gl.uniform2f(vorticityProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(vorticityProg.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(vorticityProg.uniforms.uCurl, curl.attach(1));
+    gl.uniform1f(vorticityProg.uniforms.curl, config.CURL);
+    gl.uniform1f(vorticityProg.uniforms.dt, dt);
+    blit(velocity.write);
+    velocity.swap();
+
+    divergenceProg.bind();
+    gl.uniform2f(divergenceProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(divergenceProg.uniforms.uVelocity, velocity.read.attach(0));
+    blit(divergence);
+
+    clearProg.bind();
+    gl.uniform2f(clearProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(clearProg.uniforms.uTexture, pressure.read.attach(0));
+    gl.uniform1f(clearProg.uniforms.value, config.PRESSURE);
+    blit(pressure.write);
+    pressure.swap();
+
+    pressureProg.bind();
+    gl.uniform2f(pressureProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(pressureProg.uniforms.uDivergence, divergence.attach(0));
+    for (let i = 0; i < config.PRESSURE_ITER; i++) {
+      gl.uniform1i(pressureProg.uniforms.uPressure, pressure.read.attach(1));
+      blit(pressure.write);
+      pressure.swap();
+    }
+
+    gradientProg.bind();
+    gl.uniform2f(gradientProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(gradientProg.uniforms.uPressure, pressure.read.attach(0));
+    gl.uniform1i(gradientProg.uniforms.uVelocity, velocity.read.attach(1));
+    blit(velocity.write);
+    velocity.swap();
+
+    advectProg.bind();
+    gl.uniform2f(advectProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(advectProg.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(advectProg.uniforms.uSource, velocity.read.attach(0));
+    gl.uniform1f(advectProg.uniforms.dt, dt);
+    gl.uniform1f(advectProg.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+    blit(velocity.write);
+    velocity.swap();
+
+    gl.uniform1i(advectProg.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(advectProg.uniforms.uSource, dye.read.attach(1));
+    gl.uniform1f(advectProg.uniforms.dissipation, config.DYE_DISSIPATION);
+    blit(dye.write);
+    dye.swap();
+  }
+
+  function render() {
+    displayProg.bind();
+    gl.uniform2f(displayProg.uniforms.texelSize, dye.texelSizeX, dye.texelSizeY);
+    gl.uniform1i(displayProg.uniforms.uDye, dye.read.attach(0));
+    gl.uniform2f(displayProg.uniforms.uResolution, canvas.width, canvas.height);
+    blit(null);
+  }
+
+  function inkDrop(x, y, abs, intensity, radius) {
+    splatDye(x, y, abs, intensity, radius);
+    const n = 3 + (Math.random() * 5) | 0;
+    for (let i = 0; i < n; i++) {
+      const ang = rand(0, Math.PI * 2);
+      const dist = rand(0.02, 0.09);
+      splatDye(x + Math.cos(ang) * dist, y + Math.sin(ang) * dist,
+        abs, intensity * rand(0.4, 0.9), rand(0.00002, 0.0002));
+    }
+  }
+
+  function ringDrop(x, y, abs, intensity) {
+    const aspect = canvas.width / canvas.height;
+    splatDye(x, y, abs, intensity, 0.0006);
+    const rings = 2 + (Math.random() * 2) | 0;
+    let rr = rand(0.02, 0.032);
+    for (let ri = 0; ri < rings; ri++) {
+      const n = 20 + ri * 12;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        splatDye(x + Math.cos(a) * rr / aspect, y + Math.sin(a) * rr,
+          abs, intensity * (1 - ri * 0.22) * rand(0.75, 1), 0.0004);
+      }
+      rr += rand(0.025, 0.04);
+    }
+  }
+
+  function bezier(p0, p1, p2, p3, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+      y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+    };
+  }
+  function prerunStroke(p0, p1, p2, p3, steps, force, radius) {
+    for (let i = 0; i < steps; i++) {
+      const a = bezier(p0, p1, p2, p3, i / steps);
+      const b = bezier(p0, p1, p2, p3, (i + 1) / steps);
+      splatVelocity(a.x, a.y, (b.x - a.x) * force, (b.y - a.y) * force, radius);
+      step(1 / 60);
+    }
+  }
+
+  function seedScene() {
+    const seeds = [
+      { x: 0.78, y: 0.55, ink: PALETTE[0].abs, i: 1.6 },
+      { x: 0.45, y: 0.22, ink: PALETTE[1].abs, i: 1.9 },
+      { x: 0.88, y: 0.78, ink: PALETTE[1].abs, i: 1.4 },
+      { x: 0.30, y: 0.72, ink: PALETTE[2].abs, i: 1.1 },
+      { x: 0.18, y: 0.60, ink: PALETTE[3].abs, i: 1.4 },
+      { x: 0.55, y: 0.80, ink: PALETTE[4].abs, i: 2.1 },
+      { x: 0.30, y: 0.35, ink: PALETTE[4].abs, i: 1.7 },
+    ];
+    for (const s of seeds) ringDrop(s.x, s.y, s.ink, s.i);
+    for (let i = 0; i < 8; i++) {
+      splatDye(rand(0.05, 0.95), rand(0.05, 0.95), nextInk(), rand(0.4, 0.8), rand(0.00003, 0.0003));
+    }
+
+    prerunStroke(
+      { x: 0.05, y: 0.75 }, { x: 0.4, y: 1.05 }, { x: 0.6, y: 0.45 }, { x: 0.95, y: 0.7 },
+      55, 3200, 0.005
+    );
+    prerunStroke(
+      { x: 0.9, y: 0.2 }, { x: 0.5, y: -0.05 }, { x: 0.45, y: 0.55 }, { x: 0.08, y: 0.35 },
+      55, 3000, 0.004
+    );
+
+    for (let i = 0; i < 70; i++) step(1 / 60);
+  }
+
+  const stirrers = [
+    { cx: 0.42, cy: 0.5, ax: 0.3, ay: 0.26, fx: 0.00019, fy: 0.00013, p1: 0.0, p2: 1.4, px: 0, py: 0 },
+    { cx: 0.6, cy: 0.45, ax: 0.24, ay: 0.3, fx: 0.00011, fy: 0.00017, p1: 2.2, p2: 4.0, px: 0, py: 0 },
+    { cx: 0.5, cy: 0.6, ax: 0.34, ay: 0.2, fx: 0.00008, fy: 0.00021, p1: 4.5, p2: 0.7, px: 0, py: 0 },
+  ];
+  let tine = null;
+  let nextTineAt = 9000;
+  let nextDropAt = 5000;
+
+  function applyAmbient(now) {
+    for (const s of stirrers) {
+      const x = s.cx + s.ax * Math.sin(now * s.fx + s.p1);
+      const y = s.cy + s.ay * Math.sin(now * s.fy + s.p2);
+      if (s.px !== 0 || s.py !== 0) {
+        const dx = x - s.px, dy = y - s.py;
+        splatVelocity(x, y, dx * config.POINTER_FORCE * 1.3, dy * config.POINTER_FORCE * 1.3, 0.018);
+      }
+      s.px = x; s.py = y;
+    }
+
+    if (tine) {
+      const k = (now - tine.t0) / tine.duration;
+      if (k >= 1) {
+        tine = null;
+      } else {
+        const pos = 0.04 + 0.92 * k;
+        const wave = Math.sin(k * Math.PI * 3 + tine.phase) * 0.03;
+        if (tine.horizontal) {
+          splatVelocity(pos, tine.at + wave, tine.dir * 20, wave * 110, 0.0018);
+        } else {
+          splatVelocity(tine.at + wave, pos, wave * 110, tine.dir * 20, 0.0018);
+        }
+      }
+    } else if (now >= nextTineAt) {
+      tine = {
+        t0: now,
+        duration: rand(4500, 6500),
+        at: rand(0.18, 0.82),
+        horizontal: Math.random() < 0.5,
+        dir: Math.random() < 0.5 ? 1 : -1,
+        phase: rand(0, 6.28),
+      };
+      nextTineAt = now + rand(14000, 22000);
+    }
+
+    if (now >= nextDropAt) {
+      if (Math.random() < 0.4) {
+        ringDrop(rand(0.12, 0.88), rand(0.15, 0.85), nextInk(), rand(0.8, 1.3));
+      } else {
+        inkDrop(rand(0.1, 0.9), rand(0.12, 0.88), nextInk(), rand(0.8, 1.4), rand(0.0012, 0.004));
+      }
+      nextDropAt = now + rand(5000, 9000);
+    }
+  }
+
+  /* 指针：滑动搅水；空白处点按落墨。不拦截滚动与表单交互。 */
+  let pointer = { x: 0, y: 0, down: false, moved: false, ink: PALETTE[0].abs };
+  const INTERACTIVE = 'input,select,button,a,label,textarea,.rel-row,.dayun-item,.rel-modal,.rel-modal-overlay,.tips-today,.tips-item';
+
+  function uvFromEvent(e) {
+    return { x: e.clientX / innerWidth, y: 1 - e.clientY / innerHeight };
+  }
+
+  addEventListener('pointerdown', (e) => {
+    const p = uvFromEvent(e);
+    pointer.x = p.x; pointer.y = p.y; pointer.moved = true;
+    if (e.target.closest(INTERACTIVE)) return;
+    pointer.down = true;
+    pointer.ink = nextInk();
+    inkDrop(p.x, p.y, pointer.ink, rand(1.4, 2.0), rand(0.002, 0.004));
+  });
+  addEventListener('pointermove', (e) => {
+    const p = uvFromEvent(e);
+    if (!pointer.moved) {
+      pointer.x = p.x; pointer.y = p.y; pointer.moved = true;
+      return;
+    }
+    let dx = p.x - pointer.x;
+    let dy = p.y - pointer.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 0.03) { dx *= 0.03 / len; dy *= 0.03 / len; }
+    splatVelocity(p.x, p.y, dx * config.POINTER_FORCE, dy * config.POINTER_FORCE, pointer.down ? 0.0035 : 0.005);
+    if (pointer.down && len > 0.002) {
+      splatDye(p.x, p.y, pointer.ink, Math.min(1.1, len * 40), 0.0014);
+    }
+    pointer.x = p.x; pointer.y = p.y;
+  });
+  addEventListener('pointerup', () => { pointer.down = false; });
+
+  let lastTime = performance.now();
+  let raf = 0;
+  function frame(now) {
+    const dt = Math.min((now - lastTime) / 1000, 1 / 40);
+    lastTime = now;
+    applyAmbient(now);
+    step(dt * config.TIME_SCALE);
+    render();
+    raf = requestAnimationFrame(frame);
+  }
+
+  let rt;
+  addEventListener('resize', () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => {
+      resizeCanvas();
+      initFramebuffers();
+      seedScene();
+      if (REDUCED) render();
+    }, 220);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else if (!REDUCED) { lastTime = performance.now(); raf = requestAnimationFrame(frame); }
+  });
+
+  resizeCanvas();
+  initFramebuffers();
+  seedScene();
+  if (REDUCED) {
+    for (let i = 0; i < 120; i++) step(1 / 60);
+    render();
+  } else {
+    lastTime = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+})();
 </script>
 </body>
 </html>
