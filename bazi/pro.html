@@ -2635,7 +2635,9 @@ ${periodInfo}
 // RELATIONSHIP DETAIL MODAL (PRO - with AI Analysis)
 // ═══════════════════════════════════════════════════════════
 
-const BAZI_CHAT_ENDPOINT = '/api/bazi-chat';
+const BAZI_CHAT_ENDPOINT = (typeof location !== 'undefined' && location.protocol.startsWith('http'))
+  ? `${location.origin}/api/bazi-chat`
+  : '/api/bazi-chat';
 
 // 共享命盘上下文：给所有 AI 路径提供与"复制提示词"同等深度的原局画像
 function buildChartContext() {
@@ -2865,26 +2867,38 @@ async function streamAI(systemPrompt, userPrompt, outputEl, signal) {
   const code = localStorage.getItem('bazi_vip_code');
   if (!code) throw new Error('请先输入激活码');
 
+  if (typeof location !== 'undefined' && location.protocol === 'file:') {
+    throw new Error('请在线上打开（matchstick-ai.xyz），本地文件无法调用 AI 接口');
+  }
+
   let fullText = '';
-  const response = await fetch(BAZI_CHAT_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      code,
-      deviceId: getDeviceId(),
-      systemPrompt,
-      userPrompt
-    }),
-    signal
-  });
+  let response;
+  try {
+    response = await fetch(BAZI_CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        deviceId: getDeviceId(),
+        systemPrompt,
+        userPrompt
+      }),
+      signal
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    throw new Error(`网络请求失败（${err?.message || 'Failed to fetch'}）。请确认在 https://matchstick-ai.xyz/bazi/pro.html 打开，并检查网络/广告拦截插件`);
+  }
   if (!response.ok) {
     let message = `请求失败 ${response.status}`;
     try {
       const err = await response.json();
       if (err?.error) message = err.error;
     } catch (e) {
-      const t = await response.text();
-      if (t) message = t.slice(0, 200);
+      try {
+        const t = await response.text();
+        if (t) message = t.slice(0, 200);
+      } catch (_) {}
     }
     throw new Error(message);
   }
