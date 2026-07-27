@@ -53,3 +53,11 @@ CREATE POLICY "codes_update_anon" ON activation_codes FOR UPDATE USING (true);
 
 -- 给自己先插一个码
 INSERT INTO activation_codes (code, type, note) VALUES ('HANBO-VIP-2026', 'vip', '韩博自用');
+
+-- ============================================
+-- AI 代理（Vercel 环境变量，非 Supabase）
+-- ============================================
+-- 在 Vercel Dashboard → matchstick-ai → Settings → Environment Variables 添加：
+--   DEEPSEEK_API_KEY = sk-xxxxxxxx
+-- 前端 /bazi/pro.html 调用 /api/bazi-chat，服务端校验激活码后代为请求 DeepSeek。
+-- 用户只需激活码，无需自行填写 API Key。

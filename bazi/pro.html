@@ -812,15 +812,6 @@ select option { background: #efe6cd; }
 
     <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。</p>
 
-    <div class="card" style="margin-top:24px">
-      <div class="card-title" style="font-size:12px;color:var(--text2)">AI 模型设置</div>
-      <div style="margin-bottom:8px;font-size:12px;color:var(--text2)">DeepSeek V4 Pro</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="password" id="apiKeyInput" placeholder="DeepSeek API Key" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px">
-        <button class="btn" style="font-size:11px;padding:6px 12px" onclick="saveApiKey()">保存</button>
-      </div>
-      <div id="apiKeyStatus" style="font-size:11px;color:var(--text2);margin-top:4px"></div>
-    </div>
   </div>
 
   <div class="card" id="tipsCard">
@@ -2471,11 +2462,6 @@ async function analyzeDailyFortune() {
     </div>`;
     return;
   }
-  if (!getApiKey()) {
-    document.getElementById('dailyFortuneResult').innerHTML = '<div style="color:var(--rel-chong);font-size:13px">请先在页面底部设置 API Key</div>';
-    return;
-  }
-
   const [cy, cm, cd] = getCheckDate();
   if (!cy || !cm || !cd) return;
 
@@ -2548,12 +2534,6 @@ async function predictEvent() {
 
   if (!isActivated()) {
     document.getElementById('eventResult').innerHTML = `<div style="color:var(--rel-chong);font-size:13px">需要激活码才能使用事件预测。添加微信 <strong>18512566097</strong> 获取。</div>`;
-    return;
-  }
-
-  const apiKey = localStorage.getItem('ds_api_key') || '';
-  if (!apiKey) {
-    document.getElementById('eventResult').innerHTML = '<div style="color:var(--rel-chong);font-size:13px">请先在页面底部填入 API Key</div>';
     return;
   }
 
@@ -2699,33 +2679,11 @@ ${periodInfo}
 - 坦诚不确定性：如果信息不足以判断，明确说明`;
 }
 
-// API key management
-function loadKeyForProvider() {
-  const saved = localStorage.getItem('ds_api_key') || '';
-  document.getElementById('apiKeyInput').value = saved;
-  document.getElementById('apiKeyStatus').textContent = saved ? '已从本地加载' : '';
-}
-
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (key) {
-    localStorage.setItem('ds_api_key', key);
-    document.getElementById('apiKeyStatus').textContent = '✓ 已保存到本地';
-    setTimeout(() => document.getElementById('apiKeyStatus').textContent = '', 2000);
-  }
-}
-(function initApiKey() { loadKeyForProvider(); })();
-
 // ═══════════════════════════════════════════════════════════
 // RELATIONSHIP DETAIL MODAL (PRO - with AI Analysis)
 // ═══════════════════════════════════════════════════════════
 
-const DEEPSEEK_MODEL = 'deepseek-v4-pro';
-const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions';
-
-function getApiKey() {
-  return localStorage.getItem('ds_api_key') || '';
-}
+const BAZI_CHAT_ENDPOINT = '/api/bazi-chat';
 
 const SYSTEM_PROMPT_DETAIL = `你是一位精通八字命理的分析师，遵循以下核心框架进行分析。
 
@@ -2848,24 +2806,32 @@ function copyRelPrompt() {
 }
 
 async function streamAI(systemPrompt, userPrompt, outputEl, signal) {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error('请先在页面底部设置 API Key');
+  const code = localStorage.getItem('bazi_vip_code');
+  if (!code) throw new Error('请先输入激活码');
 
   let fullText = '';
-  const response = await fetch(DEEPSEEK_ENDPOINT, {
+  const response = await fetch(BAZI_CHAT_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      stream: true, thinking: { type: 'disabled' }, temperature: 0.7, max_tokens: 4096
+      code,
+      deviceId: getDeviceId(),
+      systemPrompt,
+      userPrompt
     }),
     signal
   });
-  if (!response.ok) { const t = await response.text(); throw new Error(`DeepSeek API 错误 ${response.status}: ${t.slice(0,200)}`); }
+  if (!response.ok) {
+    let message = `请求失败 ${response.status}`;
+    try {
+      const err = await response.json();
+      if (err?.error) message = err.error;
+    } catch (e) {
+      const t = await response.text();
+      if (t) message = t.slice(0, 200);
+    }
+    throw new Error(message);
+  }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -2894,12 +2860,6 @@ async function analyzeRel() {
 
   if (!isActivated()) {
     showCodePrompt();
-    return;
-  }
-
-  if (!getApiKey()) {
-    const section = document.getElementById('relAiSection');
-    section.innerHTML = '<div class="modal-section" style="color:var(--rel-chong)">请先在页面底部设置 API Key</div>';
     return;
   }
 
