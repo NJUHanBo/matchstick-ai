@@ -2906,21 +2906,27 @@ async function streamAI(systemPrompt, userPrompt, outputEl, signal) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop();
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6);
-      if (data === '[DONE]') break;
-      try {
-        const delta = JSON.parse(data).choices?.[0]?.delta?.content;
-        if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
-      } catch(e) {}
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+          if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
+        } catch(e) {}
+      }
     }
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    if (fullText) return fullText; // partial success
+    throw new Error(`流式输出中断（${err?.message || 'network'}）。可重试一次`);
   }
   return fullText;
 }
