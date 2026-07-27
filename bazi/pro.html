@@ -2465,55 +2465,34 @@ async function analyzeDailyFortune() {
   const [cy, cm, cd] = getCheckDate();
   if (!cy || !cm || !cd) return;
 
-  const { pillars, dayGan, dayunList, birthYear, gender } = STATE;
-  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
-  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
-  const age = cy - birthYear;
-
-  let dayunGz = '';
-  for (const du of dayunList) {
-    if (age >= du.ageStart && age <= du.ageEnd) {
-      dayunGz = `${TG[du.stem]}${DZ[du.branch]}`;
-      break;
-    }
-  }
-
+  const { dayGan } = STATE;
   const [lyG, lyZ] = getLiunianGanzhi(cy);
   const [lmG, lmZ] = getLiuyueGanzhi(cy, cm, cd);
   const [ldG, ldZ] = getLiuriGanzhi(cy, cm, cd);
 
-  const dayRels = lastRels.filter(r => r.score >= 20).slice(0, 10).map(r => {
+  // 原局关系已包含在共享命盘上下文里，这里只列流运（大运/流年/流月/流日）激活的关系
+  const dayRels = lastRels.filter(r => r.source !== '原局' && r.score >= 20).slice(0, 12).map(r => {
     const ss = getRelShishenTag(r).replace(/<[^>]+>/g, '');
-    return `- ${r.desc}${ss ? '（' + ss + '）' : ''}${r.interaction ? '【' + r.interaction + '】' : ''}`;
+    return `- ${r.desc}（来源：${r.source}${ss ? '，' + ss : ''}）${r.interaction ? '【' + r.interaction + '】' : ''}`;
   }).join('\n');
 
-  const anchorCtx = getAnchorContext();
+  const ldStemSS = getShishen(dayGan, ldG);
+  const ldBranchSS = getShishen(dayGan, CANGGAN[ldZ][0][0]);
 
-  const prompt = `请为以下命主分析选定日期的运势。
+  const prompt = `请为以下命主做选定日期的流日分析。
 
-【命盘】
-四柱：${fourPillars}，日主${dmName}，${gender === 'male' ? '男' : '女'}，${age}岁
-当前大运：${dayunGz}
+${buildChartContext()}
 
 【选定日期】${cy}年${cm}月${cd}日
 流年：${TG[lyG]}${DZ[lyZ]}
 流月：${TG[lmG]}${DZ[lmZ]}
-流日：${TG[ldG]}${DZ[ldZ]}
+流日：${TG[ldG]}${DZ[ldZ]}（流日干对日主为${ldStemSS}，流日支本气为${ldBranchSS}）
 
-【当日干支关系（已计算）】
-${dayRels || '无显著关系'}
-${anchorCtx ? '\n【命主现状】\n' + anchorCtx : ''}
+【当日流运激活的干支关系（已计算，原局固有关系见上方命盘信息）】
+${dayRels || '- 无显著新增关系'}
 
 【分析要求】
-这是"单日"运势分析（300-500字）。大运、流年、流月干支只用来校准背景强弱，不是今天的内容——不要把年运、月运层面的主题写成今天会发生的事，结论里不要出现对全年或当月的判断。分析主角是流日${TG[ldG]}${DZ[ldZ]}与命局的互动。
-
-输出结构：
-
-### 今日速览
-3-5 句白话，零命理术语：今天整体状态如何（顺/平/紧）、适合推进什么、应该避开什么、给一条具体行动建议。像一个懂命理的朋友早上发来的提醒，完全不懂命理的人也能照着做。
-
-### 分析依据
-简短说明上面判断的来由（此处可用术语）：流日干支与日主及原局的生克合冲、今天被激活的十神功能。大运流年最多一句背景交代，不展开。`;
+这是"单日"分析（400-600字）。按流日分析三步走：先用上方命盘信息判断原局核心结构（哪些功能模块过载、哪些不足、瓶颈在哪），再判断流日${TG[ldG]}${DZ[ldZ]}落进这个结构激活或压制了什么、是疏通瓶颈还是加码过载，最后落到今日排程和内在提醒。大运流年流月只做一句背景校准，流日是唯一主角。输出严格用"### 今日速览 / ### 今日排程 / ### 分析依据"三段结构。`;
 
   const resultEl = document.getElementById('dailyFortuneResult');
   resultEl.innerHTML = '<div class="rel-ai-loading">分析中...</div>';
@@ -2521,7 +2500,7 @@ ${anchorCtx ? '\n【命主现状】\n' + anchorCtx : ''}
   try {
     resultEl.innerHTML = '<div class="rel-ai-output streaming"></div>';
     const outputEl = resultEl.querySelector('.rel-ai-output');
-    const fullText = await streamAI(SYSTEM_PROMPT_PREDICT, prompt, outputEl);
+    const fullText = await streamAI(SYSTEM_PROMPT_DAILY, prompt, outputEl);
     outputEl.classList.remove('streaming');
     saveAnalysis(`日运：${cy}-${cm}-${cd}`, fullText);
   } catch(err) {
@@ -2569,19 +2548,7 @@ async function predictEvent() {
 }
 
 function generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me) {
-  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
-  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
-  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
-  const genderText = gender === 'male' ? '男命' : '女命';
-
-  const pLabels = ['年', '月', '日', '时'];
-  const cangganStr = pillars.map(([, z], i) =>
-    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
-  ).join(' ');
-
-  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
-  wxPairs.sort((a, b) => b.amp - a.amp);
-  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+  const { dayunList, birthYear } = STATE;
 
   const startYear = parseInt(ys);
   const endYear = ye ? parseInt(ye) : startYear;
@@ -2611,24 +2578,9 @@ function generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me) {
     }
   }
 
-  const anchorCtx = getAnchorContext();
-
-  const natalRels = lastRels.filter(r => r.source === '原局');
-  const relLines = natalRels.length > 0
-    ? natalRels.slice(0, 8).map(r => `- ${r.desc}（${r.posNames.join('·')}）`).join('\n')
-    : '- 原局无显著干支关系';
-
   return `请根据以下八字命盘，对命主提出的具体事件进行时机预测分析。
 
-【命盘信息】
-出生：${birthYear}年${birthMonth}月${birthDay}日 ${genderText}
-四柱：${fourPillars}
-日主：${dmName}
-藏干：${cangganStr}
-五行能量（高→低）：${wxStr}
-${anchorCtx ? '\n【命主现状】\n' + anchorCtx + '\n' : ''}
-原局主要关系：
-${relLines}
+${buildChartContext()}
 
 【预测时段的运势环境】
 ${periodInfo}
@@ -2685,78 +2637,182 @@ ${periodInfo}
 
 const BAZI_CHAT_ENDPOINT = '/api/bazi-chat';
 
-const SYSTEM_PROMPT_DETAIL = `你是一位精通八字命理的分析师，遵循以下核心框架进行分析。
+// 共享命盘上下文：给所有 AI 路径提供与"复制提示词"同等深度的原局画像
+function buildChartContext() {
+  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
+  const pLabels = ['年', '月', '日', '时'];
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
 
-【十神功能光谱】十神是能量交互模式，不是社会角色。正官≠公务员，正财≠妻子，七杀≠小人。每种十神都有适度/过载/不足三态，没有绝对吉凶，只有相对于系统需求的平衡与失衡。
-- 正印=知识输入轴（过载→分析瘫痪；不足→碎片化）
-- 偏印=直觉认知轴（过载→发散失焦；不足→线性死板）
-- 食神=稳定输出轴（过载→舒适区惰性；不足→产出断流）。食神旺≠外在高产，区分"泄"（被动流失）和"发"（主动表达），是否转化为可见产出取决于下游财星是否有接收系统
-- 伤官=颠覆输出轴（过载→无差别破坏；不足→不敢挑战）
-- 正财=持续经营轴（过载→事必躬亲；不足→虎头蛇尾）
-- 偏财=机会杠杆轴（过载→投机散漫；不足→过度保守）
-- 正官=有序约束轴（过载→教条僵化；不足→缺乏纪律）
-- 七杀=极端压力轴（过载→慢性焦虑；不足→缺乏驱动）
-- 比肩=同行协作轴（过载→从众丧失独立；不足→孤立无法借力）
-- 劫财=竞争驱动轴（过载→零和思维；不足→被动退让）
+  const cangganStr = pillars.map(([, z], i) =>
+    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
+  ).join(' ');
 
-【"生"的双面性】产物呈现子的质感，生者体验的是消耗。泄=被动无意识流失；发=主动有方向表达。从泄转发需要有明确回报的接收系统。
+  const ssItems = [];
+  for (let i = 0; i < 4; i++) {
+    if (i === 2) continue;
+    ssItems.push(`${pLabels[i]}干${TG[pillars[i][0]]}=${getShishen(dayGan, pillars[i][0])}`);
+  }
 
-【用神=系统瓶颈】不是"对我好的五行"。诊断：找淤积点（能量堆积流不动）和枯竭点（严重供血不足），瓶颈=淤积到枯竭之间的通道。用神建议必须落地为具体行为，不停留在"喜木火"。忌神=已过载的功能模块，继续强化等于加剧失衡。
+  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
+  wxPairs.sort((a, b) => b.amp - a.amp);
+  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+  const missing = wxPairs.filter(p => p.amp === 0).map(p => p.name);
 
-【调候与取用路由】先看月令定季节：冬生（亥子丑月）局寒需火暖，夏生（巳午未月）局燥需水润——季节极端时，调候优先于能量强弱判断。取用思路依次检查：格局可定则以护格为先；寒燥失衡则调候优先；干支有显著冲合做功结构则从做功切入；以上都不明确时再看能量分布找瓶颈。不要机械套用身强身弱二分法。
+  const monthBranch = DZ[pillars[1][1]];
+  const monthWx = WX[DZ_WX[pillars[1][1]]];
 
-【宫位现代映射】年柱=初始条件（家庭/时代）；月柱=生态位（行业/圈子/竞争格局）；日柱=核心自我与亲密关系；时柱=产出与遗产（作品/影响力/想去的方向）
+  const [cy] = getCheckDate();
+  const age = cy - birthYear;
+  let curDayunLabel = '';
+  for (const du of dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      curDayunLabel = `${TG[du.stem]}${DZ[du.branch]}（${du.ageStart}-${du.ageEnd}岁，干${getShishen(dayGan, du.stem)}）`;
+      break;
+    }
+  }
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
 
-【感情以日支为核心】不套用"男命财为妻、女命官为夫"。关注：日支藏干的十神功能→关系模式；日支与日主生克→互动动态；日支受刑冲合害→稳定性。
+  const dayunStrs = dayunList.map(du =>
+    `${TG[du.stem]}${DZ[du.branch]}(${du.ageStart}-${du.ageEnd},${getShishen(dayGan, du.stem)})`
+  );
+
+  const natalRels = lastRels.filter(r => r.source === '原局');
+  const relLines = natalRels.length > 0
+    ? natalRels.map(r => {
+        let line = `- ${r.desc}（${r.posNames.join('·')}`;
+        const ssText = getRelShishenText(r);
+        if (ssText) line += `，${ssText}`;
+        line += '）';
+        if (r.interaction) line += `【${r.interaction}】`;
+        return line;
+      }).join('\n')
+    : '- 原局无显著干支关系';
+
+  const dayBranch = pillars[2][1];
+  const dbCg = CANGGAN[dayBranch].map(([si]) => TG[si]);
+  const dbMainStem = CANGGAN[dayBranch][0][0];
+  const dbMainSS = getShishen(dayGan, dbMainStem);
+  const dbWxI = TG_WX[dbMainStem], dmWxI = TG_WX[dayGan];
+  const wxDiff = mod(dmWxI - dbWxI, 5);
+  const dbRelDesc = wxDiff === 0 ? '同气比助' :
+    wxDiff === 1 ? `${WX[dbWxI]}生${WX[dmWxI]}，生助日主` :
+    wxDiff === 4 ? `${WX[dmWxI]}生${WX[dbWxI]}，日主泄气` :
+    wxDiff === 2 ? `${WX[dbWxI]}克${WX[dmWxI]}，克制日主` :
+    `${WX[dmWxI]}克${WX[dbWxI]}，日主所克`;
+
+  const anchorCtx = getAnchorContext();
+
+  return `【命盘信息】
+出生：${birthYear}年${birthMonth}月${birthDay}日 ${gender === 'male' ? '男' : '女'}，${age}岁
+四柱：${fourPillars}
+日主：${dmName}，月令${monthBranch}（${monthWx}）
+藏干：${cangganStr}
+透干十神：${ssItems.join(' ')}
+五行能量（高→低）：${wxStr}${missing.length > 0 ? '，缺' + missing.join('、') : ''}
+大运：${dayunStrs.join(' → ')}
+当前大运：${curDayunLabel || '未知'}
+当前流年：${TG[lyG]}${DZ[lyZ]}（${cy}）
+
+原局干支关系：
+${relLines}
+
+日支（夫妻宫）：${DZ[dayBranch]}${WX[DZ_WX[dayBranch]]}，藏${dbCg.join('')}，本气${TG[dbMainStem]}（${dbMainSS}），${dbRelDesc}${anchorCtx ? '\n\n【命主现状】\n' + anchorCtx : ''}`;
+}
+
+// 共享分析框架底座：所有 AI 路径的系统提示词都建立在这之上
+const PROMPT_CORE = `你是一位精通八字命理的分析师。你做的是基于命盘结构的心理动力学分析与决策支持，不是吉凶宣判。你的输出应该像一位深刻理解命主结构、说话具体的朋友，而不是黄历。遵循以下框架。
+
+【十神功能光谱】十神是能量交互模式，不是社会角色（正官≠公务员，正财≠妻子，七杀≠小人）。每种十神都有适度/过载/不足三态，没有绝对吉凶，只有相对于系统需求的平衡与失衡：
+- 正印=知识输入轴：适度=深度理解、系统性学习；过载=分析瘫痪、"没学够不敢动手"、过度依赖权威；不足=学习碎片化、缺乏理论支撑
+- 偏印=直觉认知轴：适度=跨域洞察、模式识别、顿悟式理解；过载=发散失焦、过度解读；不足=思维线性死板、创意枯竭
+- 食神=稳定输出轴：适度=持续自然产出、表达流畅；过载=舒适区惰性、做很多但不深入；不足=表达受堵、想法多落地少
+- 伤官=颠覆输出轴：适度=建设性创新、重定义规则；过载=为反而反、与一切权威为敌；不足=不敢挑战、只做安全的事
+- 正财=持续经营轴：适度=耐心长线投入、日拱一卒；过载=事必躬亲、无法委托；不足=虎头蛇尾、不维护已有成果
+- 偏财=机会杠杆轴：适度=识别非对称机会、平台思维；过载=投机散漫、追逐热点；不足=过度保守、不敢下注
+- 正官=有序约束轴：适度=自律、结构化、对规范敏感；过载=教条僵化、讨好权威；不足=缺乏纪律与承诺感
+- 七杀=极端压力轴：适度=压力激发潜能、危机行动力；过载=慢性焦虑、身心透支；不足=缺乏驱动、温水煮蛙
+- 比肩=同行协作轴：适度=同侪互助、良性竞争；过载=从众、丧失独立判断；不足=孤立、无法借力
+- 劫财=竞争驱动轴：适度=市场敏锐、迭代动力；过载=零和思维、资源焦虑；不足=被动退让、不争取
+
+【十神组合动态】分析模块间交互，不贴吉凶标签：食神制杀=有节奏的持续输出本身是高压下的心理稳定器；枭神夺食=输入过载压制输出（无限学习永不动手，"我还没准备好"）；伤官佩印=颠覆有知识深度支撑，成为有理论基础的创新；官印相生=外部评价驱动学习的正反馈（隐患：脱离评价体系后失去自驱）；杀印相生=高压被转化为认知升级（前提是印够强、消化跟得上）；食伤生财=输出接入回报系统（有输出没回报时，问题常在管道对接不在能力）；比劫夺财=同质竞争稀释回报（解法是差异化定位，不是加倍投入）。
+
+【"生"的双面性】产物呈现子的质感，生者体验的是消耗。泄=被动无意识的流失（精力弥散到琐事、内耗、为人操心）；发=主动有方向的表达。同一个食伤旺，可以是泄也可以是发；从泄转发需要一个有明确回报的接收系统（财星/目标）。食神旺≠外在高产。
+
+【用神=系统瓶颈】不是"对我好的五行"。诊断路径：画五行流通图→找淤积点（能量堆积流不动）和枯竭点（严重供血不足）→瓶颈=淤积到枯竭之间的通道。用神建议必须落地为具体行为（输出不足→定期发表、允许不完美地产出；约束不足→外部期限、进入有评价体系的环境；输入不足→安排纯学习时间、找导师），不停留在"喜木火"。忌神=已过载的功能模块，继续强化等于加剧失衡。
+
+【调候与取用路由】先看月令定季节：冬生（亥子丑月）局寒需火暖，夏生（巳午未月）局燥需水润——季节极端时调候优先于能量强弱判断。取用依次检查：格局可定则护格为先；寒燥失衡则调候优先；干支有显著冲合做功结构则从做功切入；都不明确再看能量分布找瓶颈。不要机械套用身强身弱二分法。
+
+【宫位现代映射】年柱=初始条件（家庭/时代/先天资源）；月柱=生态位（行业/圈子/竞争格局），月令决定核心能量应季还是反季；日柱=核心自我与亲密关系；时柱=产出与遗产（作品/影响力/想去的方向）。
+
+【感情以日支为核心】不套用"男命财为妻、女命官为夫"。看三层：日支藏干的十神功能→关系里的互动模式；日支与日主的生克方向→谁付出、谁滋养、谁控制；日支受刑冲合害→稳定性与外部干扰来源。
 
 【决策咨询原则】
-- 借强补弱是顺命：改造方案必须架在命主配置强的模块上，架在最弱模块上的方案注定失败
-- 无制之神需要外置调节器：过载模块靠意志力对抗无效，需要外置机制（清单/签发人/期限/容器）
-- 警惕忌神收编解盘结论：命主的过载模块会把建议本身消化为新的过载素材
-- 核心矛盾会换装重现：同一结构在作品/社交/目标/评价等处以变体反复出现
-- 内部感受不是校准信号：印重者的"不足感"、杀旺者的"紧迫感"是常驻运行状态，不反映外部实际
+- 借强补弱是顺命：改造方案必须架在命主配置强的模块上；让官杀弱的人靠自律、让食伤弱的人靠表达欲，注定失败
+- 无制之神需要外置调节器：过载模块没有内在停机条件，靠意志力对抗等于让它自己审自己；解法一律外置——事先写死的清单、有资格的签发人、固定节奏的交付容器、带后果的期限
+- 内部感受不是校准信号：印重者的"不足感"、杀旺者的"紧迫感"、劫旺者的"资源焦虑"是各自配置的常驻运行状态，永远给出同一个答案，不反映外部实际；判断要用外部可核查的标准
+- 核心矛盾会换装重现：原局关键结构（合绊、克制、缺失）会在作品打磨、社交联系、目标宣告、自我评价等处以变体反复出现；帮命主认出这个系列，比解决单个事件更有价值
+- 警惕忌神收编：命主的过载模块会把建议本身消化成新的过载素材（"适度打磨"变成新的完美主义课题）；给建议时预判它会被如何收编，提前点破变形的样子
+- 给内心声音做十神归属：把冲动、自我否定、焦虑、犹豫归到具体十神（"那个说不够好的声音是印在说话""这股突然想干的劲是食伤被激活"）；内部状态外部化之后，命主才能与它拉开距离
+- 冲=激活与重组，看战场宫位：冲不必然凶，对能量淤积的盘适度的冲是治疗；冲日支=自我与亲密关系领域震荡，冲时支=产出与事业领域震荡
+- 合=能量绑定，不必然吉：合而不化是牵绊不是助力；多个同类天干争合一字=注意力多线程振荡，解法是拆分分工，不是选边
 
-【关键要求】你的回答必须严格使用prompt中提供的命盘数据（大运、流年、流月干支），不要自行推算或编造干支信息。如果prompt中已给出具体大运流年信息，直接引用，不要重新计算。
+【表达伦理】判断用"倾向""可能""有迹象"，不用"一定""注定""必然"。不预测生死，不预测重大疾病时点，不渲染恐慌；提示凶象必须同时给出具体应对路径。命理提供结构诊断和时机参考，不提供"能不能成"的预言，决策权在命主。
+
+【关键要求】严格使用prompt中提供的命盘数据（四柱、藏干、五行能量、大运、流年、流月、流日干支、已计算的干支关系），不要自行推算或编造干支信息。`;
+
+const SYSTEM_PROMPT_DETAIL = PROMPT_CORE + `
+
+【本次任务】深度解读命盘中的一条特定干支关系。先把这条关系放回原局结构中（它连接哪些宫位、涉及哪些十神功能、改变了哪条能量通路），再分析它被大运流年激活或松绑的条件，最后落到对现实生活的具体影响。记住核心矛盾会换装重现：这条关系很可能是命主某个反复出现的生活主题的结构根源，把这个系列点出来。
 
 【输出结构】（严格遵守，顺序不可颠倒）
-第一层「结论」：回答开头用"### 结论"标题，2-5 句白话直接回答对方关心的事。这一段禁止出现任何命理术语（干支名、十神名、五行、大运流年流月流日、用神忌神、刑冲合害、生克、月令、藏干等一律不可出现）。像对一个完全不懂命理的朋友说话：直接给程度判断、说清对生活的实际影响、该做什么、该防什么。
-第二层「分析依据」：用"### 分析依据"标题，之后才允许使用命理术语展开推理。
+第一层：开头用"### 结论"标题，2-5 句白话直接回答这条关系对生活意味着什么。这一段禁止出现任何命理术语（干支名、十神名、五行、大运流年流月流日、用神忌神、刑冲合害、生克、月令、藏干等一律不可出现）。像对完全不懂命理的朋友说话：直接给程度判断、说清实际影响、该做什么、该防什么。
+第二层：用"### 分析依据"标题，之后才允许使用命理术语展开推理。
 读者只看第一层就能行动；第二层是给想深究的人看的。
-
-【表达伦理】判断用"倾向""可能""有迹象"表述，不用"一定""注定""必然"。不预测生死，不预测重大疾病的时点，不渲染恐慌；提示凶象时必须同时给出具体的应对路径，让读者拿到的是可行动的提醒而不是焦虑。
 
 【分析风格】结构清晰，用现代语言解释传统概念，不回避不确定性，给出具体可操作的建议。回答用中文。`;
 
-const SYSTEM_PROMPT_PREDICT = `你是一位精通八字命理的预测分析师，遵循以下核心框架。
+const SYSTEM_PROMPT_PREDICT = PROMPT_CORE + `
 
-【十神功能光谱】十神是能量交互模式，不是社会角色。每种都有适度/过载/不足三态。食神=稳定输出轴，伤官=颠覆输出轴，正财=持续经营轴，偏财=机会杠杆轴，正官=有序约束轴，七杀=极端压力轴，正印=知识输入轴，偏印=直觉认知轴，比肩=同行协作轴，劫财=竞争驱动轴。
+【本次任务】对命主询问的具体事件做时机分析。
 
-【事件-十神对应逻辑】考试升学=印星（输入消化力）+食伤（输出表达力）；求财创业=食伤生财链+偏财（机会识别）；婚恋=日支互动+财官的合化关系；求职=官杀（外部评价系统）+食伤（展示能力）；诉讼=官杀（制度力量）+比劫（博弈能力）；健康=五行受克方位+大运流年激活条件。
+【事件-十神对应】考试升学=印星（输入消化力）+食伤（输出表达力）；求财创业=食伤生财链+偏财（机会识别）；婚恋=日支互动+财官的合化关系；求职=官杀（外部评价系统）+食伤（展示能力）；诉讼=官杀（制度力量）+比劫（博弈能力）；健康=五行受克方位+大运流年激活条件。先判断原局中这些模块的先天状态（旺/弱/受制/得用），再看时段内的流运如何改变它们。
 
-【时机判断原则】
-- 流月流日做排程，不做断言。它们是能量窗口，不是吉凶判决
-- 节气切换是行为突变点：换月前后冲动的出现/消失常可追溯到新月干支激活的十神
-- 大运改写力量对比，不删除结构：行运补根让碾压变博弈，命主"更有力量顶住"，不是问题消失
-- 冲=激活与重组，不必然凶。对能量淤积的盘，适度的冲是治疗
-- 合=能量绑定，不必然吉。合而不化时是牵绊而非助力
-- 调候背景：冬生（亥子丑月）局寒喜火暖，夏生（巳午未月）局燥喜水润。季节极端的命局，调候优先于能量强弱判断；流月走到调候用神当令的时段，往往是天然的行动窗口
+【时机判断原则】流月流日做排程，不做断言——它们是能量窗口，不是吉凶判决。节气切换是行为突变点：换月前后冲动的出现/消失常可追溯到新月干支激活的十神。大运改写力量对比，不删除结构：行运补根让碾压变博弈，命主"更有力量顶住"，不是问题消失。流月走到调候用神当令的时段，往往是天然的行动窗口。低不可逆性的决定不需要高自信：有止损和回滚机制的事，按期望值决策即可，"感觉没把握"不构成否决理由。
 
-【用神=系统瓶颈】找淤积点和枯竭点，瓶颈=淤积到枯竭之间的通道。建议落地为具体行为。借强补弱是顺命——改造方案架在命主最强模块上。
-
-【宫位映射】年=初始条件；月=生态位；日=核心自我与亲密关系；时=产出与想去的方向
-
-【关键要求】你的回答必须严格使用prompt中提供的大运、流年、流月、流日干支数据，不要自行推算或编造。直接引用已提供的干支信息进行分析。
+【层级纪律】回答什么时段的问题，就聚焦什么时段。分析某几个月就以流月为主角，大运流年只作背景权重。不要把长周期层面的主题当成短周期会发生的事。
 
 【输出结构】（严格遵守，顺序不可颠倒）
-第一层「结论」：回答开头先用白话直接回答对方问的事，2-6 句。这一段禁止出现任何命理术语（干支名、十神名、五行、大运流年流月流日、用神忌神、刑冲合害、生克等一律不可出现）。直接给程度判断（顺/一般/偏紧/需谨慎）、时间点、该做什么、该防什么。问财运就先明说财运如何，问考试就先明说成算多大、何时发力。
-第二层「分析依据」：之后才允许使用命理术语展开具体推理。
+第一层：开头先用白话直接回答对方问的事，3-6 句。这一段禁止任何命理术语。直接给程度判断（顺/一般/偏紧/需谨慎）、最佳时间窗、最大风险、现在该做什么。问财运就先明说财运如何，问考试就先明说成算多大、何时发力。
+第二层：之后才允许用命理术语逐段展开（事件对应模块的先天状态→大运背景→逐月时机→综合判断→具体建议）。
 读者只看第一层就能行动；第二层是给想深究的人看的。
 
-【层级纪律】回答什么时段的问题，就聚焦什么时段。分析单日就以流日为主角，大运流年只作背景权重、一句带过；分析某几个月就以流月为主角。不要把长周期（大运、流年）层面的主题当成短周期（当日、当月）会发生的事。
+【分析风格】逐月具体，给出行动窗口和避开时段，吉凶并陈。预测不是宿命论，是概率倾向+时机把握。回答用中文。`;
 
-【表达伦理】判断用"倾向""可能""有迹象"表述，不用"一定""注定""必然"。不预测生死，不预测重大疾病的时点，不渲染恐慌；提示不利时段必须同时给出应对方式，让读者拿到的是可执行的排程而不是焦虑。
+const SYSTEM_PROMPT_DAILY = PROMPT_CORE + `
 
-【分析风格】结构清晰，逐月具体，不回避不确定性，给出时间窗口建议和注意事项。预测不是宿命论，是概率倾向+时机把握。回答用中文。`;
+【本次任务】做单日流日分析。这是最考验深度的任务：必须先吃透原局结构（哪些模块过载、哪些不足、瓶颈在哪），再判断今天的流日干支落进这个结构里会发生什么。同一个流日对不同的盘意义完全不同——流日透印，对印重的盘是"审查模块又被加码"，对印弱的盘是"难得的消化吸收窗口"。禁止脱离原局谈流日。
+
+【流日分析三步】
+1. 定位：流日干支激活/压制了原局的哪个功能模块？与日主及原局关键结构（合绊、冲、通根）发生什么互动？
+2. 定性：这股能量在这个盘里是顺着瓶颈疏通（用神方向被点亮），还是往已过载的模块加码（忌神被喂食）？倾向表现为"泄"还是"发"？
+3. 排程：据此，今天适合安排哪类动作（输出交付/学习吸收/联络发出/规则宣告/收尾整理/休整），应该推迟哪类动作。
+
+【去认同化】点出今天可能冒出来的内在体验，并做十神归属："今天那股想反复检查的劲是印被流日点亮""突然想找人聊的冲动是食伤被激活"。让读者明白：冲动是结构给的，有窗口期，会关闭——值得跟的乘着做，不值得跟的知道它从哪来就不必当真。
+
+【层级纪律】流日是唯一主角。大运流年流月只做一句背景校准，不展开；不要把年运、月运层面的主题写成今天会发生的事；结论里不许出现对全年或当月的判断。
+
+【输出结构】（严格遵守，顺序不可颠倒）
+### 今日速览
+3-5 句白话，零命理术语：今天整体状态（顺/平/紧）、今天内心可能出现什么情绪或冲动、它值不值得跟、最该做的一件事。像一个懂命理又懂你的朋友早上发来的消息，不是黄历。
+### 今日排程
+- 优先做：（动作类型+为什么今天做顺，白话）
+- 推迟做：（动作类型+为什么今天做费劲，白话）
+- 内在提醒：（今天可能冒出的声音/冲动，一句话点破，白话）
+### 分析依据
+此处才可用术语：流日干支与日主及原局的生克合冲、被激活的十神落在这个盘光谱的哪一端、是疏通瓶颈还是加码过载。大运流年流月各最多一句。
+
+【分析风格】具体、贴身、可执行。判断用"倾向""可能"，凶象必须带应对。回答用中文。`;
 
 let currentRelPrompt = '';
 let currentRelIdx = -1;
@@ -2915,19 +2971,7 @@ function renderMarkdown(text) {
 }
 
 function generateRelDetailPrompt(r) {
-  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
-  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
-  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
-  const genderText = gender === 'male' ? '男命' : '女命';
-
-  const pLabels = ['年', '月', '日', '时'];
-  const cangganStr = pillars.map(([, z], i) =>
-    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
-  ).join(' ');
-
-  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
-  wxPairs.sort((a, b) => b.amp - a.amp);
-  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+  const { dayunList, birthYear } = STATE;
 
   const ssTag = getRelShishenTag(r).replace(/<[^>]+>/g, '');
   const meaning = getRelMeaning(r);
@@ -2946,36 +2990,22 @@ function generateRelDetailPrompt(r) {
     }
   }
 
-  const monthBranch = DZ[pillars[1][1]];
-  const monthWx = WX[DZ_WX[pillars[1][1]]];
-
   let relContext = `关系类型：${r.subtype}\n描述：${r.desc}\n十神关系：${ssTag || '无'}\n位置：${posDetail}（来源：${sourceLabel}）`;
   if (intLabel) relContext += `\n${intLabel}`;
   if (meaning) relContext += `\n传统象意：${meaning}`;
 
-  const anchorCtx = getAnchorContext();
-
   return `请针对以下八字命盘中的【一条特定干支关系】进行深度解读。
 
-【命盘信息】
-出生：${birthYear}年${birthMonth}月${birthDay}日 ${genderText}
-四柱：${fourPillars}
-日主：${dmName}，月令${monthBranch}（${monthWx}）
-藏干：${cangganStr}
-五行能量（高→低）：${wxStr}
-当前大运：${curDayunLabel || '未知'}
-${anchorCtx ? '\n【命主现状】\n' + anchorCtx + '\n' : ''}
+${buildChartContext()}
 
 【待分析的关系】
 ${relContext}
 
 【分析要求】
 
-0. 白话导语（必须放在回答最开头）
-   - 2-4 句白话说清：这条关系对这个人的实际生活意味着什么、是助力还是消耗、程度如何、最该注意什么
-   - 禁止任何命理术语，让完全不懂命理的人一读就懂；下面 1-4 才是展开推理
+第一层"### 结论"（必须放在回答最开头）：2-4 句白话说清这条关系对这个人的实际生活意味着什么、是助力还是消耗、程度如何、最该注意什么。禁止任何命理术语，让完全不懂命理的人一读就懂。
 
-请围绕这一条关系，从以下维度展开深度分析：
+第二层"### 分析依据"：围绕这一条关系，从以下维度展开深度分析：
 
 1. 这条关系的本质含义
    - ${r.type === 'he' || r.type === 'liuhe' ? '合的条件是否成立？是真合、假合还是合而不化？合化后对原局力量格局的改变' : r.type === 'chong' ? '冲的力度如何？是动冲（引发实际变动）还是克冲（纯消耗）？谁冲谁——谁是主动方谁是被动方' : r.type === 'xing' ? '刑的成立条件和力度。刑的实质是什么——是惩罚、折磨还是激发？对命主的实际影响路径' : r.type === 'hai' ? '害的暗伤机制——通过什么路径产生暗中损耗？表面看不出来但实际在消耗什么' : r.type === 'ke' ? '克的力度判断（有情/无情、得令/失令）。克的实际后果——被克方是否有根可承受？是制约还是摧毁' : '这个关系对原局整体格局的结构性影响'}
