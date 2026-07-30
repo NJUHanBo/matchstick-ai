@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05060f">
+<title>慢客松 · 全球最慢黑客松</title>
+<meta name="description" content="别人四十八小时，我们两个月。8月起随时加入，免费。奇奇妙妙屋 · 南京仙林万达茂">
+<style>
+:root{
+  --bg:#05060f;
+  --panel:rgba(10,13,28,.60);
+  --pink:#ff54c0;
+  --pink-soft:#ff9ede;
+  --cyan:#52e8ff;
+  --cyan-soft:#aef4ff;
+  --purple:#a866ff;
+  --yellow:#ffe95c;
+  --text:#e9edf6;
+  --dim:#8f99b3;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  line-height:1.7;
+  overflow-x:hidden;
+}
+
+/* ---------- 背景层：流体霓虹 + 数据雨 + 扫描线 ---------- */
+#fluid{position:fixed;inset:0;width:100%;height:100%;z-index:-3;display:block}
+#rain{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:.30}
+.scanlines{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.14) 3px 4px);
+  mix-blend-mode:multiply;
+}
+/* WebGL 不可用时的静态霓虹底 */
+body.no-webgl #fluid{display:none}
+body.no-webgl{
+  background:
+    radial-gradient(ellipse 60% 40% at 85% 8%, rgba(255,84,192,.12), transparent 60%),
+    radial-gradient(ellipse 50% 35% at 10% 30%, rgba(82,232,255,.10), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(120,60,200,.10), transparent 65%),
+    var(--bg);
+}
+
+.wrap{max-width:640px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+
+/* ---------- hero ---------- */
+.hero{padding:72px 0 44px;text-align:center;position:relative}
+.hero .kicker{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px;letter-spacing:.35em;color:var(--cyan);
+  text-shadow:0 0 8px rgba(82,232,255,.6);opacity:.85;
+}
+.hero h1{
+  margin-top:10px;
+  font-size:clamp(64px,17vw,104px);
+  font-weight:900;letter-spacing:.04em;line-height:1.1;
+  color:#ffd7f1;position:relative;display:inline-block;
+  text-shadow:0 0 8px rgba(255,84,192,.9),0 0 28px rgba(255,84,192,.65),0 0 80px rgba(255,84,192,.4);
+  animation:glitch 7s infinite;
+}
+@keyframes glitch{
+  0%,93%,100%{transform:none;text-shadow:0 0 8px rgba(255,84,192,.9),0 0 28px rgba(255,84,192,.65),0 0 80px rgba(255,84,192,.4)}
+  94%{transform:translate(-3px,1px) skewX(-2deg);text-shadow:-4px 0 0 rgba(82,232,255,.85),4px 0 0 rgba(255,60,90,.85)}
+  95%{transform:translate(3px,-1px);text-shadow:4px 0 0 rgba(82,232,255,.85),-4px 0 0 rgba(255,60,90,.85)}
+  96%{transform:none;text-shadow:0 0 8px rgba(255,84,192,.9),0 0 28px rgba(255,84,192,.65)}
+  97.5%{transform:translate(-2px,0) skewX(1.5deg);text-shadow:3px 0 0 rgba(82,232,255,.8),-3px 0 0 rgba(255,60,90,.8)}
+}
+.hero .sub{
+  display:inline-block;margin-top:18px;padding:9px 26px;
+  font-size:clamp(19px,5vw,26px);font-weight:800;letter-spacing:.12em;
+  color:var(--cyan-soft);
+  border:2px solid var(--cyan);
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  background:rgba(6,10,24,.55);
+  box-shadow:0 0 14px rgba(82,232,255,.45),inset 0 0 16px rgba(82,232,255,.15);
+  text-shadow:0 0 10px rgba(82,232,255,.8);
+}
+.hero .slogan{
+  margin-top:18px;font-size:clamp(15px,4.2vw,19px);font-weight:700;
+  color:var(--pink-soft);text-shadow:0 0 12px rgba(255,84,192,.6);
+}
+.hero .meta{margin-top:10px;color:var(--dim);font-size:14px}
+.snail-box{margin:28px auto 0;display:flex;align-items:center;justify-content:center;gap:12px}
+.snail{font-size:44px;filter:drop-shadow(0 0 10px rgba(82,232,255,.6))}
+.bubble{
+  position:relative;padding:6px 14px;font-size:13px;color:var(--cyan-soft);
+  border:1.5px solid var(--cyan);border-radius:2px;
+  background:rgba(6,10,24,.6);
+  box-shadow:0 0 8px rgba(82,232,255,.35);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.bubble::before{
+  content:"";position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  border:5px solid transparent;border-right-color:var(--cyan);
+}
+.progress{margin:16px auto 0;width:210px}
+.progress .bar{
+  height:9px;border:1px solid var(--pink);overflow:hidden;
+  clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%);
+  box-shadow:0 0 8px rgba(255,84,192,.4);
+}
+.progress .fill{width:2%;height:100%;background:var(--pink);box-shadow:0 0 10px var(--pink)}
+.progress .label{
+  font-size:10.5px;color:var(--dim);margin-top:5px;text-align:right;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;
+}
+.cta{
+  display:inline-block;margin-top:32px;padding:15px 48px;
+  font-size:18px;font-weight:900;letter-spacing:.1em;color:#180312;
+  background:linear-gradient(135deg,var(--pink),#ff8ad4);
+  border:none;text-decoration:none;
+  clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+  box-shadow:0 0 20px rgba(255,84,192,.7),0 0 56px rgba(255,84,192,.35);
+  transition:transform .15s ease,filter .15s;
+}
+.cta:hover{filter:brightness(1.08)}
+.cta:active{transform:scale(.97)}
+.cta small{display:block;font-size:11px;font-weight:600;opacity:.75;letter-spacing:.04em}
+
+/* ---------- sections ---------- */
+section{padding:36px 0}
+.sec-title{
+  display:flex;align-items:baseline;gap:12px;margin-bottom:18px;
+}
+.sec-title .no{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12px;color:var(--pink);letter-spacing:.15em;
+  text-shadow:0 0 8px rgba(255,84,192,.6);
+}
+.sec-title .t{
+  font-size:23px;font-weight:900;color:var(--cyan-soft);
+  text-shadow:0 0 14px rgba(82,232,255,.7);letter-spacing:.06em;
+}
+.sec-title .line{
+  flex:1;height:1px;align-self:center;
+  background:linear-gradient(90deg,rgba(82,232,255,.5),transparent);
+}
+
+/* HUD 角标卡片 */
+.card{
+  position:relative;
+  background:var(--panel);
+  -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
+  border:1px solid rgba(82,232,255,.22);
+  padding:18px 20px;margin-bottom:14px;
+  box-shadow:0 4px 30px rgba(0,0,0,.45);
+}
+.card::before,.card::after{
+  content:"";position:absolute;width:14px;height:14px;pointer-events:none;
+}
+.card::before{top:-1px;left:-1px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan)}
+.card::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan)}
+.card.pink{border-color:rgba(255,84,192,.3)}
+.card.pink::before{border-color:var(--pink)}
+.card.pink::after{border-color:var(--pink)}
+.card h3{font-size:16px;font-weight:800;color:var(--pink-soft);margin-bottom:6px}
+.card p{font-size:14.5px;color:var(--text)}
+.card .note{color:var(--dim);font-size:13px;margin-top:6px}
+
+/* 滚动淡入 */
+.fade{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.fade.in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .fade{opacity:1;transform:none;transition:none}
+  .hero h1{animation:none}
+}
+
+/* timeline */
+.tl-item{display:flex;gap:14px;margin-bottom:16px}
+.tl-badge{
+  flex:none;width:80px;text-align:center;padding:11px 4px;align-self:flex-start;
+  border:2px solid var(--pink);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+  background:rgba(20,6,18,.6);
+  color:var(--pink-soft);font-weight:900;font-size:15px;line-height:1.35;
+  box-shadow:0 0 12px rgba(255,84,192,.35);
+}
+.tl-badge small{display:block;font-size:10.5px;font-weight:600;color:var(--dim)}
+.tl-body{flex:1}
+.tl-body .card{margin-bottom:0}
+.tl-get{
+  margin-top:9px;font-size:13px;color:var(--yellow);
+  text-shadow:0 0 8px rgba(255,233,92,.4);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+
+/* awards */
+.award{display:flex;gap:12px;align-items:flex-start}
+.award .a-icon{font-size:24px;flex:none;filter:drop-shadow(0 0 6px rgba(255,233,92,.5))}
+.award h3{color:var(--yellow);text-shadow:0 0 8px rgba(255,233,92,.35)}
+.zero{
+  text-align:center;margin-top:18px;padding:18px;
+  border:2px dashed rgba(255,233,92,.5);
+  background:rgba(20,16,4,.35);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.zero .big{font-size:30px;font-weight:900;color:var(--yellow);text-shadow:0 0 16px rgba(255,233,92,.6)}
+.zero .sm{font-size:13px;color:var(--dim)}
+
+/* form */
+#signup .card{padding:26px 22px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:14px;font-weight:700;color:var(--cyan-soft);margin-bottom:6px}
+.field label em{font-style:normal;color:var(--dim);font-weight:500;font-size:12px;margin-left:6px}
+.field input,.field textarea{
+  width:100%;padding:12px 14px;font-size:16px;color:var(--text);
+  background:rgba(4,6,16,.75);
+  border:1.5px solid rgba(82,232,255,.35);
+  outline:none;font-family:inherit;
+  transition:border-color .15s, box-shadow .15s;
+}
+.field input:focus,.field textarea:focus{border-color:var(--pink);box-shadow:0 0 12px rgba(255,84,192,.35)}
+.field textarea{resize:vertical;min-height:64px}
+.hp{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
+.submit{
+  width:100%;padding:15px;font-size:17px;font-weight:900;letter-spacing:.14em;
+  color:#180312;background:linear-gradient(135deg,var(--pink),#ff8ad4);
+  border:none;cursor:pointer;
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  box-shadow:0 0 18px rgba(255,84,192,.55);
+  transition:transform .15s ease,opacity .15s,filter .15s;
+}
+.submit:hover{filter:brightness(1.07)}
+.submit:active{transform:scale(.98)}
+.submit:disabled{opacity:.55;cursor:default}
+.form-msg{margin-top:12px;font-size:14px;text-align:center;min-height:22px}
+.form-msg.ok{color:#7dffb0;text-shadow:0 0 10px rgba(125,255,176,.5)}
+.form-msg.err{color:#ff8a8a}
+.success-box{text-align:center;padding:14px 0}
+.success-box .big{font-size:24px;font-weight:900;color:#7dffb0;text-shadow:0 0 16px rgba(125,255,176,.6)}
+.success-box p{margin-top:10px;font-size:14.5px;color:var(--text)}
+
+/* works wall placeholder */
+.wall{
+  text-align:center;padding:36px 20px;
+  border:2px dashed rgba(82,232,255,.35);color:var(--dim);
+  background:rgba(6,12,24,.35);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.wall .t{font-size:17px;font-weight:800;color:var(--cyan-soft);text-shadow:0 0 10px rgba(82,232,255,.5)}
+.wall p{font-size:13.5px;margin-top:8px}
+
+/* qa + footer */
+.qa p{font-size:14.5px;margin-bottom:8px}
+.qa b{color:var(--pink-soft)}
+footer{
+  position:relative;z-index:1;
+  margin-top:20px;padding:38px 20px 52px;text-align:center;
+  border-top:1px solid rgba(82,232,255,.18);
+  background:linear-gradient(180deg,transparent,rgba(4,5,12,.7));
+}
+footer .place{font-size:17px;font-weight:800;color:var(--cyan-soft);text-shadow:0 0 10px rgba(82,232,255,.5)}
+footer .join{margin-top:8px;font-size:14px;color:var(--pink-soft)}
+footer .tiny{
+  margin-top:14px;font-size:11px;color:var(--dim);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+}
+</style>
+</head>
+<body>
+
+<canvas id="fluid"></canvas>
+<canvas id="rain"></canvas>
+<div class="scanlines" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <!-- hero -->
+  <header class="hero">
+    <div class="kicker">SLOWATHON // EST. 2026 // NANJING</div>
+    <h1>慢客松</h1>
+    <div><span class="sub">全球最慢黑客松</span></div>
+    <div class="slogan">别人四十八小时，我们两个月</div>
+    <div class="meta">8月起随时加入 · 免费 · 个人或组队都行</div>
+    <div class="snail-box">
+      <span class="snail">🐌</span>
+      <span class="bubble">别催，我在爬了</span>
+    </div>
+    <div class="progress">
+      <div class="bar"><div class="fill"></div></div>
+      <div class="label">PROGRESS 2%</div>
+    </div>
+    <a class="cta" href="#signup">报名占坑<small>只需30秒，没想好也能报</small></a>
+  </header>
+
+  <!-- 谁能来 / 交什么 -->
+  <section class="fade">
+    <div class="sec-title"><span class="no">SEC.01</span><span class="t">谁能来</span><span class="line"></span></div>
+    <div class="card">
+      <p>欢迎任何背景来参赛～设计、产品、学生等等……AI时代代码或许重要，但更重要的是你的想法！</p>
+      <p class="note">共61天，1464小时——是别人48小时的30.5倍</p>
+    </div>
+    <div class="sec-title" style="margin-top:26px"><span class="no">SEC.02</span><span class="t">交什么</span><span class="line"></span></div>
+    <div class="card">
+      <p>是从一个idea，到一段开发过程，到一个产品——app、工具、网站、硬件、装置、能跑的原型都算。两个月慢慢做～</p>
+    </div>
+  </section>
+
+  <!-- 怎么玩 -->
+  <section class="fade">
+    <div class="sec-title"><span class="no">SEC.03</span><span class="t">怎么玩</span><span class="line"></span></div>
+
+    <div class="tl-item">
+      <div class="tl-badge">8月<small>画饼期<br>～8/31</small></div>
+      <div class="tl-body">
+        <div class="card pink">
+          <p>做一张A4纸，贴到店里墙上，形式不限，说清楚自己想做什么就好。欢迎来店里看别人写了啥、做了啥～</p>
+          <p class="note">任何人都可以在你的纸旁边留一个问题或想法～ 8/23–29 投票，8月底读纸会当场颁<b style="color:var(--yellow)">画大饼奖</b>！</p>
+          <div class="tl-get">&gt;&gt; 这阶段结束，你手里有：一页贴在墙上的纸，和一堆别人的问题</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-badge">9月<small>实干期<br>9/1–9/25</small></div>
+      <div class="tl-body">
+        <div class="card pink">
+          <p>这个月就是闷头做啦。但是欢迎到店交流，每周会组织讨论，大家可以交流进展，聊想法，互相给反馈～</p>
+          <p class="note">希望大家能尽可能用各种形式记录自己做东西的过程！</p>
+          <div class="tl-get">&gt;&gt; 这阶段结束，你手里有：一个做出来的东西</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-badge">9月底<small>收官日<br>国庆前</small></div>
+      <div class="tl-body">
+        <div class="card pink">
+          <p>每人提交一个可用产品（形式不限），当天到店可以试用、观看、体验。参赛者互投5票，客人也能投人气票～</p>
+          <p class="note">当天下午6点大奖揭晓！</p>
+          <div class="tl-get">&gt;&gt; 你手里可能有：一款以你命名的酸奶</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 奖 -->
+  <section class="fade">
+    <div class="sec-title"><span class="no">SEC.04</span><span class="t">奖</span><span class="line"></span></div>
+    <div class="card award"><span class="a-icon">🥞</span><div><h3>画大饼奖</h3><p>8月投票第一 → 超级大饼一张（真的饼，很大）</p></div></div>
+    <div class="card award"><span class="a-icon">🐌</span><div><h3>金蜗牛奖</h3><p>收官票第一 → 你的名字<b>永久</b>留在菜单上——冠名店里一款酸奶</p></div></div>
+    <div class="card award"><span class="a-icon">🍜</span><div><h3>真香奖</h3><p>8、9月分差最大的选手 → 真香宴：带朋友来，这顿我们请＋产品在店里摆一个月</p></div></div>
+    <div class="card award"><span class="a-icon">🎁</span><div><h3>其他大奖</h3><p>到时候看情况，现场颁～ 各有各的怪奖品（比如Bug最多奖？跳跳糖酸奶一份！）</p></div></div>
+    <div class="card"><p>完赛都有：<b style="color:var(--cyan-soft)">慢客松通行证</b>——收官后一个月，每周一张免费酸奶/饮品券！</p></div>
+    <div class="zero">
+      <div class="big">奖金：0 元</div>
+      <div class="sm">（钱都换成上面这些啦）</div>
+    </div>
+  </section>
+
+  <!-- 报名 -->
+  <section id="signup" class="fade">
+    <div class="sec-title"><span class="no">SEC.05</span><span class="t">报名占坑</span><span class="line"></span></div>
+    <div class="card" id="formCard">
+      <form id="signupForm" novalidate>
+        <div class="field">
+          <label for="nickname">网名</label>
+          <input type="text" id="nickname" maxlength="30" placeholder="怎么称呼你" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="wechat">微信号<em>用来拉你进群，不会公开</em></label>
+          <input type="text" id="wechat" maxlength="50" placeholder="你的微信号" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="idea">一句话想做什么<em>选填</em></label>
+          <textarea id="idea" maxlength="200" placeholder='没想好可以写"还在想"'></textarea>
+        </div>
+        <div class="hp"><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
+        <button type="submit" class="submit" id="submitBtn">占坑！</button>
+        <div class="form-msg" id="formMsg"></div>
+      </form>
+      <p style="margin-top:14px;font-size:12.5px;color:var(--dim);text-align:center">完全无门槛～整个8月随时可以报名</p>
+    </div>
+  </section>
+
+  <!-- 作品墙占位 -->
+  <section class="fade">
+    <div class="sec-title"><span class="no">SEC.06</span><span class="t">作品墙</span><span class="line"></span></div>
+    <div class="wall">
+      <div class="t">线上作品墙 9月开放</div>
+      <p>线下作品墙在奇奇妙妙屋 · 仙林万达茂店～</p>
+    </div>
+  </section>
+
+  <!-- QA -->
+  <section class="qa fade">
+    <div class="sec-title"><span class="no">SEC.07</span><span class="t">Q &amp; A</span><span class="line"></span></div>
+    <div class="card">
+      <p><b>没想法？</b>—— 先来坐坐，不着急</p>
+      <p><b>没做完怎么办？</b>—— 体面奖等你拿哈哈</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="place">📍 奇奇妙妙屋 · 南京仙林万达茂</div>
+  <div class="join">8月起随时加入</div>
+  <div class="tiny">SLOW IS SMOOTH · SMOOTH IS FAST · 慢慢做，好东西值得等 🐌</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* ═══════════════════ 报名表单 ═══════════════════ */
+const SB_URL = 'https://ccepjmfhlanlwgowwxqu.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZXBqbWZobGFubHdnb3d3eHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDc5NzksImV4cCI6MjA5NzE4Mzk3OX0.3X5JVXwqGJDDkDuQvc9rnM2CVP6x9O6PYMTTUnu9aXo';
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+const form = document.getElementById('signupForm');
+const btn = document.getElementById('submitBtn');
+const msg = document.getElementById('formMsg');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  msg.className = 'form-msg';
+  msg.textContent = '';
+  if (document.getElementById('website').value) return; // 蜜罐
+
+  const nickname = document.getElementById('nickname').value.trim();
+  const wechat = document.getElementById('wechat').value.trim();
+  const idea = document.getElementById('idea').value.trim();
+
+  if (!nickname) { msg.textContent = '留个网名呗～'; msg.className = 'form-msg err'; return; }
+  if (!wechat)   { msg.textContent = '微信号忘填啦，不然没法拉你进群～'; msg.className = 'form-msg err'; return; }
+  if (!sb) { msg.textContent = '页面没加载全，刷新一下再试～'; msg.className = 'form-msg err'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '慢慢提交中…';
+
+  const { error } = await sb.from('slowathon_signups').insert({ nickname, wechat, idea: idea || '还在想' });
+
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = '占坑！';
+    msg.textContent = '没提交上，等一会儿再试试？';
+    msg.className = 'form-msg err';
+    return;
+  }
+
+  document.getElementById('formCard').innerHTML = `
+    <div class="success-box">
+      <div class="big">占坑成功！🐌</div>
+      <p>我们会加你微信、拉你进群～<br>8月找个时间来店里，把你的一页纸贴上墙吧。</p>
+      <p style="margin-top:8px;color:var(--dim);font-size:13px">奇奇妙妙屋 · 南京仙林万达茂</p>
+    </div>`;
+});
+
+/* ═══════════════════ 滚动淡入 ═══════════════════ */
+const io = new IntersectionObserver((entries) => {
+  for (const en of entries) if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+}, { threshold: 0.08 });
+document.querySelectorAll('.fade').forEach(el => io.observe(el));
+
+/* ═══════════════════ 数据雨（攻壳层） ═══════════════════ */
+(function () {
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (REDUCED) return;
+  const c = document.getElementById('rain');
+  const ctx = c.getContext('2d');
+  const GLYPHS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉ0123456789慢';
+  let cols = [], fw = 16, dpr = 1;
+
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+    const n = Math.floor(innerWidth / (matchMedia('(max-width:600px)').matches ? 46 : 34));
+    fw = innerWidth / n;
+    cols = Array.from({ length: n }, () => ({
+      y: Math.random() * -innerHeight,
+      v: 30 + Math.random() * 55,
+      trail: 6 + (Math.random() * 8 | 0),
+      on: Math.random() < 0.55,
+    }));
+  }
+  resize();
+  addEventListener('resize', () => { ctx.setTransform(1,0,0,1,0,0); resize(); });
+
+  let last = 0;
+  function tick(now) {
+    requestAnimationFrame(tick);
+    if (now - last < 80) return; // ~12fps，够用且省电
+    const dt = Math.min((now - last) / 1000, 0.2); last = now;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    ctx.font = '11px ui-monospace, Menlo, monospace';
+    for (let i = 0; i < cols.length; i++) {
+      const col = cols[i];
+      if (!col.on) { if (Math.random() < 0.004) col.on = true; continue; }
+      col.y += col.v * dt;
+      if (col.y - col.trail * 14 > innerHeight) {
+        col.y = Math.random() * -200; col.v = 30 + Math.random() * 55;
+        col.on = Math.random() < 0.8;
+      }
+      const x = i * fw + fw / 2;
+      for (let t = 0; t < col.trail; t++) {
+        const y = col.y - t * 14;
+        if (y < -14 || y > innerHeight + 14) continue;
+        const a = t === 0 ? 0.9 : (1 - t / col.trail) * 0.42;
+        ctx.fillStyle = t === 0 ? `rgba(190,255,255,${a})` : `rgba(82,232,255,${a})`;
+        ctx.fillText(GLYPHS[(Math.random() * GLYPHS.length) | 0], x, y);
+      }
+    }
+  }
+  requestAnimationFrame(tick);
+})();
+
+/* ═══════════════════ 霓虹流体引擎 ═══════════════════
+   移植自 /bazi/pro.html 的水墨流体引擎（WebGL2 GPU 流体模拟）。
+   物理部分原样保留；显示层从"纸上吸墨"（减色）改为
+   "黑底霓虹"（加色发光 + 边缘增亮 + 色差 + 扫描线）。 */
+(function () {
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canvas = document.getElementById('fluid');
+  let gl = null;
+  try {
+    gl = canvas.getContext('webgl2', { alpha: false, depth: false, stencil: false, antialias: false });
+  } catch (e) { /* fall through */ }
+  if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
+    document.body.classList.add('no-webgl');
+    return;
+  }
+
+  const MOBILE = matchMedia('(max-width:600px)').matches;
+  const config = {
+    SIM_RES: MOBILE ? 112 : 144,
+    DYE_RES: MOBILE ? 512 : 720,
+    VELOCITY_DISSIPATION: 0.22,
+    DYE_DISSIPATION: 0.075,   // 霓虹光比墨消散快：雨夜灯光流走的感觉
+    PRESSURE: 0.8,
+    PRESSURE_ITER: 22,
+    CURL: 9,
+    POINTER_FORCE: 5200,
+    TIME_SCALE: 0.38,
+  };
+
+  /* 色板：五行五色 → 霓虹（dye 存线性光强，加色模型） */
+  function glow(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => v / 255);
+  }
+  const PALETTE = [
+    { c: glow('#ff54c0') },  // 霓虹粉
+    { c: glow('#52e8ff') },  // 电子青
+    { c: glow('#a866ff') },  // 义体紫
+    { c: glow('#ffe95c') },  // 警示黄
+    { c: glow('#3d7bff') },  // 深海蓝
+  ];
+  let inkBag = [];
+  function nextInk() {
+    if (inkBag.length === 0) {
+      inkBag = PALETTE.map((_, i) => i);
+      for (let i = inkBag.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        [inkBag[i], inkBag[j]] = [inkBag[j], inkBag[i]];
+      }
+    }
+    return PALETTE[inkBag.pop()].c;
+  }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  function compileShader(type, source) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, source);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  function createProgram(vsSrc, fsSrc) {
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    const uniforms = {};
+    const count = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < count; i++) {
+      const name = gl.getActiveUniform(prog, i).name;
+      uniforms[name] = gl.getUniformLocation(prog, name);
+    }
+    return { prog, uniforms, bind() { gl.useProgram(prog); } };
+  }
+
+  const VERT = `#version 300 es
+precision highp float;
+in vec2 aPosition;
+out vec2 vUv, vL, vR, vT, vB;
+uniform vec2 texelSize;
+void main () {
+  vUv = aPosition * 0.5 + 0.5;
+  vL = vUv - vec2(texelSize.x, 0.0);
+  vR = vUv + vec2(texelSize.x, 0.0);
+  vT = vUv + vec2(0.0, texelSize.y);
+  vB = vUv - vec2(0.0, texelSize.y);
+  gl_Position = vec4(aPosition, 0.0, 1.0);
+}`;
+
+  const FRAG_ADVECT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uVelocity, uSource;
+uniform vec2 texelSize;
+uniform float dt, dissipation;
+out vec4 fragColor;
+void main () {
+  vec2 coord = vUv - dt * texture(uVelocity, vUv).xy * texelSize;
+  fragColor = texture(uSource, coord) / (1.0 + dissipation * dt);
+}`;
+
+  const FRAG_DIVERGENCE = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uVelocity;
+out vec4 fragColor;
+void main () {
+  float L = texture(uVelocity, vL).x;
+  float R = texture(uVelocity, vR).x;
+  float T = texture(uVelocity, vT).y;
+  float B = texture(uVelocity, vB).y;
+  vec2 C = texture(uVelocity, vUv).xy;
+  if (vL.x < 0.0) L = -C.x;
+  if (vR.x > 1.0) R = -C.x;
+  if (vT.y > 1.0) T = -C.y;
+  if (vB.y < 0.0) B = -C.y;
+  fragColor = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
+}`;
+
+  const FRAG_CURL = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uVelocity;
+out vec4 fragColor;
+void main () {
+  float L = texture(uVelocity, vL).y;
+  float R = texture(uVelocity, vR).y;
+  float T = texture(uVelocity, vT).x;
+  float B = texture(uVelocity, vB).x;
+  fragColor = vec4(R - L - T + B, 0.0, 0.0, 1.0);
+}`;
+
+  const FRAG_VORTICITY = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uVelocity, uCurl;
+uniform float curl, dt;
+out vec4 fragColor;
+void main () {
+  float L = texture(uCurl, vL).x;
+  float R = texture(uCurl, vR).x;
+  float T = texture(uCurl, vT).x;
+  float B = texture(uCurl, vB).x;
+  float C = texture(uCurl, vUv).x;
+  vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+  force /= length(force) + 0.0001;
+  force *= curl * C;
+  force.y *= -1.0;
+  vec2 velocity = texture(uVelocity, vUv).xy + force * dt;
+  fragColor = vec4(velocity, 0.0, 1.0);
+}`;
+
+  const FRAG_PRESSURE = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uPressure, uDivergence;
+out vec4 fragColor;
+void main () {
+  float L = texture(uPressure, vL).x;
+  float R = texture(uPressure, vR).x;
+  float T = texture(uPressure, vT).x;
+  float B = texture(uPressure, vB).x;
+  float divergence = texture(uDivergence, vUv).x;
+  fragColor = vec4((L + R + B + T - divergence) * 0.25, 0.0, 0.0, 1.0);
+}`;
+
+  const FRAG_GRADIENT = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uPressure, uVelocity;
+out vec4 fragColor;
+void main () {
+  float L = texture(uPressure, vL).x;
+  float R = texture(uPressure, vR).x;
+  float T = texture(uPressure, vT).x;
+  float B = texture(uPressure, vB).x;
+  vec2 velocity = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
+  fragColor = vec4(velocity, 0.0, 1.0);
+}`;
+
+  const FRAG_CLEAR = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uTexture;
+uniform float value;
+out vec4 fragColor;
+void main () { fragColor = value * texture(uTexture, vUv); }`;
+
+  const FRAG_SPLAT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uTarget;
+uniform float aspectRatio, radius, uMax;
+uniform vec2 point;
+uniform vec3 color;
+out vec4 fragColor;
+void main () {
+  vec2 p = vUv - point;
+  p.x *= aspectRatio;
+  vec3 splat = exp(-dot(p, p) / radius) * color;
+  vec3 base = texture(uTarget, vUv).xyz;
+  fragColor = vec4(clamp(base + splat, vec3(-uMax), vec3(uMax)), 1.0);
+}`;
+
+  /* 显示层：黑底 + 加色霓虹发光 + 边缘增亮 + 色差 + 噪点 + vignette
+     （水墨版是 paper * exp(-d)，这里是 base + tonemap(d)） */
+  const FRAG_DISPLAY = `#version 300 es
+precision highp float;
+in vec2 vUv, vL, vR, vT, vB;
+uniform sampler2D uDye;
+uniform vec2 uResolution;
+out vec4 fragColor;
+
+float hash (vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+float vnoise (vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash(i), b = hash(i + vec2(1, 0));
+  float c = hash(i + vec2(0, 1)), d = hash(i + vec2(1, 1));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+float dsum (vec3 v) { return v.r + v.g + v.b; }
+
+void main () {
+  vec3 d  = texture(uDye, vUv).rgb;
+  vec3 dl = texture(uDye, vL).rgb;
+  vec3 dr = texture(uDye, vR).rgb;
+  vec3 dt_ = texture(uDye, vT).rgb;
+  vec3 db = texture(uDye, vB).rgb;
+
+  vec2 grad = vec2(dsum(dr) - dsum(dl), dsum(dt_) - dsum(db));
+  float edge = smoothstep(0.05, 1.1, length(grad));
+
+  // 色差：红蓝通道横向错位，攻壳的全息感
+  float ca = 1.8 / uResolution.x;
+  float rr = texture(uDye, vUv + vec2(ca, 0.0)).r;
+  float bb = texture(uDye, vUv - vec2(ca, 0.0)).b;
+  vec3 neon = vec3(rr, d.g, bb);
+
+  neon *= 1.0 + 1.5 * edge;            // 流光边缘更亮：霓虹描边
+  neon = 1.0 - exp(-neon * 1.3);       // soft tonemap 防过曝
+
+  vec2 px = vUv * uResolution;
+  float g1 = vnoise(px * 0.42);
+  vec3 base = vec3(0.014, 0.017, 0.043) * (0.8 + 0.4 * g1);
+
+  vec2 q = vUv - 0.5;
+  float vign = 1.0 - 0.55 * dot(q, q);
+
+  fragColor = vec4((base + neon) * vign, 1.0);
+}`;
+
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
+  const ibo = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  function blit(target) {
+    if (target == null) {
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    } else {
+      gl.viewport(0, 0, target.width, target.height);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    }
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+  }
+
+  function createFBO(w, h) {
+    const texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return {
+      texture, fbo, width: w, height: h,
+      texelSizeX: 1 / w, texelSizeY: 1 / h,
+      attach(id) {
+        gl.activeTexture(gl.TEXTURE0 + id);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        return id;
+      },
+    };
+  }
+  function createDoubleFBO(w, h) {
+    let fbo1 = createFBO(w, h);
+    let fbo2 = createFBO(w, h);
+    return {
+      width: w, height: h,
+      texelSizeX: fbo1.texelSizeX, texelSizeY: fbo1.texelSizeY,
+      get read() { return fbo1; },
+      get write() { return fbo2; },
+      swap() { const t = fbo1; fbo1 = fbo2; fbo2 = t; },
+    };
+  }
+
+  function getResolution(resolution) {
+    let aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+    if (aspect < 1) aspect = 1 / aspect;
+    const min = Math.round(resolution);
+    const max = Math.round(resolution * aspect);
+    return gl.drawingBufferWidth > gl.drawingBufferHeight
+      ? { width: max, height: min }
+      : { width: min, height: max };
+  }
+
+  const advectProg = createProgram(VERT, FRAG_ADVECT);
+  const divergenceProg = createProgram(VERT, FRAG_DIVERGENCE);
+  const curlProg = createProgram(VERT, FRAG_CURL);
+  const vorticityProg = createProgram(VERT, FRAG_VORTICITY);
+  const pressureProg = createProgram(VERT, FRAG_PRESSURE);
+  const gradientProg = createProgram(VERT, FRAG_GRADIENT);
+  const clearProg = createProgram(VERT, FRAG_CLEAR);
+  const splatProg = createProgram(VERT, FRAG_SPLAT);
+  const displayProg = createProgram(VERT, FRAG_DISPLAY);
+
+  let velocity, dye, divergence, curl, pressure;
+
+  function initFramebuffers() {
+    const simRes = getResolution(config.SIM_RES);
+    const dyeRes = getResolution(config.DYE_RES);
+    velocity = createDoubleFBO(simRes.width, simRes.height);
+    dye = createDoubleFBO(dyeRes.width, dyeRes.height);
+    divergence = createFBO(simRes.width, simRes.height);
+    curl = createFBO(simRes.width, simRes.height);
+    pressure = createDoubleFBO(simRes.width, simRes.height);
+  }
+
+  function resizeCanvas() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(canvas.clientWidth * dpr);
+    canvas.height = Math.floor(canvas.clientHeight * dpr);
+  }
+
+  function splatVelocity(x, y, dx, dy, radius) {
+    splatProg.bind();
+    gl.uniform2f(splatProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(splatProg.uniforms.uTarget, velocity.read.attach(0));
+    gl.uniform1f(splatProg.uniforms.aspectRatio, canvas.width / canvas.height);
+    gl.uniform2f(splatProg.uniforms.point, x, y);
+    gl.uniform3f(splatProg.uniforms.color, dx, dy, 0);
+    gl.uniform1f(splatProg.uniforms.radius, radius);
+    gl.uniform1f(splatProg.uniforms.uMax, 9000.0);
+    blit(velocity.write);
+    velocity.swap();
+  }
+
+  function splatDye(x, y, rgb, intensity, radius) {
+    splatProg.bind();
+    gl.uniform2f(splatProg.uniforms.texelSize, dye.texelSizeX, dye.texelSizeY);
+    gl.uniform1i(splatProg.uniforms.uTarget, dye.read.attach(0));
+    gl.uniform1f(splatProg.uniforms.aspectRatio, canvas.width / canvas.height);
+    gl.uniform2f(splatProg.uniforms.point, x, y);
+    gl.uniform3f(splatProg.uniforms.color, rgb[0] * intensity, rgb[1] * intensity, rgb[2] * intensity);
+    gl.uniform1f(splatProg.uniforms.radius, radius);
+    gl.uniform1f(splatProg.uniforms.uMax, 5.0);
+    blit(dye.write);
+    dye.swap();
+  }
+
+  function step(dt) {
+    gl.disable(gl.BLEND);
+
+    curlProg.bind();
+    gl.uniform2f(curlProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(curlProg.uniforms.uVelocity, velocity.read.attach(0));
+    blit(curl);
+
+    vorticityProg.bind();
+    gl.uniform2f(vorticityProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(vorticityProg.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(vorticityProg.uniforms.uCurl, curl.attach(1));
+    gl.uniform1f(vorticityProg.uniforms.curl, config.CURL);
+    gl.uniform1f(vorticityProg.uniforms.dt, dt);
+    blit(velocity.write);
+    velocity.swap();
+
+    divergenceProg.bind();
+    gl.uniform2f(divergenceProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(divergenceProg.uniforms.uVelocity, velocity.read.attach(0));
+    blit(divergence);
+
+    clearProg.bind();
+    gl.uniform2f(clearProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(clearProg.uniforms.uTexture, pressure.read.attach(0));
+    gl.uniform1f(clearProg.uniforms.value, config.PRESSURE);
+    blit(pressure.write);
+    pressure.swap();
+
+    pressureProg.bind();
+    gl.uniform2f(pressureProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(pressureProg.uniforms.uDivergence, divergence.attach(0));
+    for (let i = 0; i < config.PRESSURE_ITER; i++) {
+      gl.uniform1i(pressureProg.uniforms.uPressure, pressure.read.attach(1));
+      blit(pressure.write);
+      pressure.swap();
+    }
+
+    gradientProg.bind();
+    gl.uniform2f(gradientProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(gradientProg.uniforms.uPressure, pressure.read.attach(0));
+    gl.uniform1i(gradientProg.uniforms.uVelocity, velocity.read.attach(1));
+    blit(velocity.write);
+    velocity.swap();
+
+    advectProg.bind();
+    gl.uniform2f(advectProg.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(advectProg.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(advectProg.uniforms.uSource, velocity.read.attach(0));
+    gl.uniform1f(advectProg.uniforms.dt, dt);
+    gl.uniform1f(advectProg.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+    blit(velocity.write);
+    velocity.swap();
+
+    gl.uniform1i(advectProg.uniforms.uVelocity, velocity.read.attach(0));
+    gl.uniform1i(advectProg.uniforms.uSource, dye.read.attach(1));
+    gl.uniform1f(advectProg.uniforms.dissipation, config.DYE_DISSIPATION);
+    blit(dye.write);
+    dye.swap();
+  }
+
+  function render() {
+    displayProg.bind();
+    gl.uniform2f(displayProg.uniforms.texelSize, dye.texelSizeX, dye.texelSizeY);
+    gl.uniform1i(displayProg.uniforms.uDye, dye.read.attach(0));
+    gl.uniform2f(displayProg.uniforms.uResolution, canvas.width, canvas.height);
+    blit(null);
+  }
+
+  function inkDrop(x, y, rgb, intensity, radius) {
+    splatDye(x, y, rgb, intensity, radius);
+    const n = 3 + (Math.random() * 5) | 0;
+    for (let i = 0; i < n; i++) {
+      const ang = rand(0, Math.PI * 2);
+      const dist = rand(0.02, 0.09);
+      splatDye(x + Math.cos(ang) * dist, y + Math.sin(ang) * dist,
+        rgb, intensity * rand(0.4, 0.9), rand(0.00002, 0.0002));
+    }
+  }
+
+  function ringDrop(x, y, rgb, intensity) {
+    const aspect = canvas.width / canvas.height;
+    splatDye(x, y, rgb, intensity, 0.0006);
+    const rings = 2 + (Math.random() * 2) | 0;
+    let rr = rand(0.02, 0.032);
+    for (let ri = 0; ri < rings; ri++) {
+      const n = 20 + ri * 12;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        splatDye(x + Math.cos(a) * rr / aspect, y + Math.sin(a) * rr,
+          rgb, intensity * (1 - ri * 0.22) * rand(0.75, 1), 0.0004);
+      }
+      rr += rand(0.025, 0.04);
+    }
+  }
+
+  function bezier(p0, p1, p2, p3, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+      y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+    };
+  }
+  function prerunStroke(p0, p1, p2, p3, steps, force, radius) {
+    for (let i = 0; i < steps; i++) {
+      const a = bezier(p0, p1, p2, p3, i / steps);
+      const b = bezier(p0, p1, p2, p3, (i + 1) / steps);
+      splatVelocity(a.x, a.y, (b.x - a.x) * force, (b.y - a.y) * force, radius);
+      step(1 / 60);
+    }
+  }
+
+  function seedScene() {
+    const seeds = [
+      { x: 0.80, y: 0.60, c: PALETTE[0].c, i: 1.3 },   // 粉
+      { x: 0.42, y: 0.25, c: PALETTE[1].c, i: 1.5 },   // 青
+      { x: 0.88, y: 0.80, c: PALETTE[2].c, i: 1.1 },   // 紫
+      { x: 0.28, y: 0.70, c: PALETTE[1].c, i: 1.2 },   // 青
+      { x: 0.16, y: 0.55, c: PALETTE[4].c, i: 1.2 },   // 蓝
+      { x: 0.58, y: 0.82, c: PALETTE[0].c, i: 1.6 },   // 粉
+      { x: 0.32, y: 0.38, c: PALETTE[2].c, i: 1.3 },   // 紫
+    ];
+    for (const s of seeds) ringDrop(s.x, s.y, s.c, s.i);
+    for (let i = 0; i < 8; i++) {
+      splatDye(rand(0.05, 0.95), rand(0.05, 0.95), nextInk(), rand(0.3, 0.6), rand(0.00003, 0.0003));
+    }
+
+    prerunStroke(
+      { x: 0.05, y: 0.75 }, { x: 0.4, y: 1.05 }, { x: 0.6, y: 0.45 }, { x: 0.95, y: 0.7 },
+      55, 3200, 0.005
+    );
+    prerunStroke(
+      { x: 0.9, y: 0.2 }, { x: 0.5, y: -0.05 }, { x: 0.45, y: 0.55 }, { x: 0.08, y: 0.35 },
+      55, 3000, 0.004
+    );
+
+    for (let i = 0; i < 70; i++) step(1 / 60);
+  }
+
+  const stirrers = [
+    { cx: 0.42, cy: 0.5, ax: 0.3, ay: 0.26, fx: 0.00019, fy: 0.00013, p1: 0.0, p2: 1.4, px: 0, py: 0 },
+    { cx: 0.6, cy: 0.45, ax: 0.24, ay: 0.3, fx: 0.00011, fy: 0.00017, p1: 2.2, p2: 4.0, px: 0, py: 0 },
+    { cx: 0.5, cy: 0.6, ax: 0.34, ay: 0.2, fx: 0.00008, fy: 0.00021, p1: 4.5, p2: 0.7, px: 0, py: 0 },
+  ];
+  let tine = null;
+  let nextTineAt = 9000;
+  let nextDropAt = 5000;
+
+  function applyAmbient(now) {
+    for (const s of stirrers) {
+      const x = s.cx + s.ax * Math.sin(now * s.fx + s.p1);
+      const y = s.cy + s.ay * Math.sin(now * s.fy + s.p2);
+      if (s.px !== 0 || s.py !== 0) {
+        const dx = x - s.px, dy = y - s.py;
+        splatVelocity(x, y, dx * config.POINTER_FORCE * 1.3, dy * config.POINTER_FORCE * 1.3, 0.018);
+      }
+      s.px = x; s.py = y;
+    }
+
+    if (tine) {
+      const k = (now - tine.t0) / tine.duration;
+      if (k >= 1) {
+        tine = null;
+      } else {
+        const pos = 0.04 + 0.92 * k;
+        const wave = Math.sin(k * Math.PI * 3 + tine.phase) * 0.03;
+        if (tine.horizontal) {
+          splatVelocity(pos, tine.at + wave, tine.dir * 20, wave * 110, 0.0018);
+        } else {
+          splatVelocity(tine.at + wave, pos, wave * 110, tine.dir * 20, 0.0018);
+        }
+      }
+    } else if (now >= nextTineAt) {
+      tine = {
+        t0: now,
+        duration: rand(4500, 6500),
+        at: rand(0.18, 0.82),
+        horizontal: Math.random() < 0.5,
+        dir: Math.random() < 0.5 ? 1 : -1,
+        phase: rand(0, 6.28),
+      };
+      nextTineAt = now + rand(14000, 22000);
+    }
+
+    if (now >= nextDropAt) {
+      if (Math.random() < 0.4) {
+        ringDrop(rand(0.12, 0.88), rand(0.15, 0.85), nextInk(), rand(0.6, 1.0));
+      } else {
+        inkDrop(rand(0.1, 0.9), rand(0.12, 0.88), nextInk(), rand(0.6, 1.1), rand(0.0012, 0.004));
+      }
+      nextDropAt = now + rand(5000, 9000);
+    }
+  }
+
+  /* 指针：滑动搅光；空白处点按滴一团霓虹。不拦截滚动与表单交互。 */
+  let pointer = { x: 0, y: 0, down: false, moved: false, ink: PALETTE[0].c };
+  const INTERACTIVE = 'input,select,button,a,label,textarea';
+
+  function uvFromEvent(e) {
+    return { x: e.clientX / innerWidth, y: 1 - e.clientY / innerHeight };
+  }
+
+  addEventListener('pointerdown', (e) => {
+    const p = uvFromEvent(e);
+    pointer.x = p.x; pointer.y = p.y; pointer.moved = true;
+    if (e.target.closest(INTERACTIVE)) return;
+    pointer.down = true;
+    pointer.ink = nextInk();
+    inkDrop(p.x, p.y, pointer.ink, rand(1.0, 1.5), rand(0.002, 0.004));
+  });
+  addEventListener('pointermove', (e) => {
+    const p = uvFromEvent(e);
+    if (!pointer.moved) {
+      pointer.x = p.x; pointer.y = p.y; pointer.moved = true;
+      return;
+    }
+    let dx = p.x - pointer.x;
+    let dy = p.y - pointer.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 0.03) { dx *= 0.03 / len; dy *= 0.03 / len; }
+    splatVelocity(p.x, p.y, dx * config.POINTER_FORCE, dy * config.POINTER_FORCE, pointer.down ? 0.0035 : 0.005);
+    if (pointer.down && len > 0.002) {
+      splatDye(p.x, p.y, pointer.ink, Math.min(0.9, len * 32), 0.0014);
+    }
+    pointer.x = p.x; pointer.y = p.y;
+  });
+  addEventListener('pointerup', () => { pointer.down = false; });
+
+  let lastTime = performance.now();
+  let raf = 0;
+  function frame(now) {
+    const dt = Math.min((now - lastTime) / 1000, 1 / 40);
+    lastTime = now;
+    applyAmbient(now);
+    step(dt * config.TIME_SCALE);
+    render();
+    raf = requestAnimationFrame(frame);
+  }
+
+  let rt;
+  addEventListener('resize', () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => {
+      resizeCanvas();
+      initFramebuffers();
+      seedScene();
+      if (REDUCED) render();
+    }, 220);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else if (!REDUCED) { lastTime = performance.now(); raf = requestAnimationFrame(frame); }
+  });
+
+  resizeCanvas();
+  initFramebuffers();
+  seedScene();
+  if (REDUCED) {
+    for (let i = 0; i < 120; i++) step(1 / 60);
+    render();
+  } else {
+    lastTime = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>
