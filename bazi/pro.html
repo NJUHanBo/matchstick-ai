@@ -400,6 +400,49 @@ select option { background: #efe6cd; }
 .btn-copy:hover { opacity: .85; }
 .btn-copy.copied { background: #3f6347; }
 
+/* ══ 档案面板 ══ */
+.profile-wrap { position: relative; display: inline-block; }
+.btn-profile {
+  padding: 11px 18px; letter-spacing: .18em; text-indent: .18em;
+  background: var(--card); color: var(--text); border: 1px solid var(--border);
+  border-radius: 3px; font-size: 12.5px; cursor: pointer; font-weight: 600;
+  font-family: inherit; transition: all .3s;
+}
+.btn-profile:hover { border-color: var(--accent); color: var(--accent); }
+.profile-panel {
+  display: none; position: absolute; top: calc(100% + 8px); right: 0; z-index: 100;
+  width: 280px; background: var(--card); border: 1px solid var(--border);
+  border-radius: 6px; box-shadow: 0 12px 40px rgba(43,38,32,.12);
+  padding: 14px; font-size: 13px;
+}
+.profile-panel.open { display: block; }
+.profile-list { max-height: 200px; overflow-y: auto; margin-bottom: 10px; }
+.profile-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 8px;
+  border-radius: 4px; cursor: pointer; transition: background .15s;
+}
+.profile-item:hover { background: var(--accent-light); }
+.profile-item-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-item-info { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.profile-item-del {
+  width: 20px; height: 20px; border: none; background: none; cursor: pointer;
+  color: var(--text2); font-size: 14px; line-height: 1; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+.profile-item-del:hover { background: rgba(176,58,38,.12); color: var(--rel-chong); }
+.profile-empty { color: var(--text2); text-align: center; padding: 12px 0; font-size: 12px; }
+.profile-save-row { display: flex; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+.profile-save-row input {
+  flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12.5px; background: transparent; color: var(--text); font-family: inherit;
+}
+.profile-save-row input::placeholder { color: var(--text2); }
+.profile-save-row button {
+  padding: 7px 14px; background: var(--accent); color: #f3ecdb; border: none;
+  border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; white-space: nowrap;
+}
+.profile-save-row button:hover { opacity: .85; }
+
 /* Services（prototype4 svc：左对齐 + 宋体价签 + 悬停浮起） */
 .svc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 8px; }
 .svc-card {
@@ -617,7 +660,19 @@ select option { background: #efe6cd; }
       </div>
       <div class="form-group">
         <label>&nbsp;</label>
-        <button class="btn" onclick="calculate()">排盘</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" onclick="calculate()">排盘</button>
+          <div class="profile-wrap">
+            <button class="btn-profile" onclick="toggleProfilePanel(event)">档案 ▾</button>
+            <div class="profile-panel" id="profilePanel">
+              <div class="profile-list" id="profileList"></div>
+              <div class="profile-save-row">
+                <input type="text" id="profileNameInput" placeholder="输入名字保存当前数据" maxlength="20">
+                <button onclick="saveProfile()">保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="anchor-row">
@@ -884,6 +939,105 @@ async function saveSession() {
     const { data } = await sb.from('bazi_sessions').insert(row).select('id').single();
     if (data) sessionId = data.id;
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOCAL PROFILES (localStorage)
+// ═══════════════════════════════════════════════════════════
+const PROFILE_KEY = 'bazi_profiles';
+
+function getProfiles() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || []; }
+  catch { return []; }
+}
+
+function setProfiles(list) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(list));
+}
+
+function toggleProfilePanel(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('profilePanel');
+  const open = panel.classList.toggle('open');
+  if (open) renderProfileList();
+}
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('profilePanel');
+  if (panel && !panel.contains(e.target) && !e.target.classList.contains('btn-profile')) {
+    panel.classList.remove('open');
+  }
+});
+
+function renderProfileList() {
+  const list = getProfiles();
+  const el = document.getElementById('profileList');
+  if (!list.length) {
+    el.innerHTML = '<div class="profile-empty">暂无保存的档案</div>';
+    return;
+  }
+  el.innerHTML = list.map((p, i) => `
+    <div class="profile-item" onclick="loadProfile(${i})">
+      <span class="profile-item-name">${escHtml(p.name)}</span>
+      <span class="profile-item-info">${p.year}.${p.month}.${p.day}</span>
+      <button class="profile-item-del" onclick="deleteProfile(${i},event)" title="删除">×</button>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function saveProfile() {
+  const nameEl = document.getElementById('profileNameInput');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return; }
+  const profile = {
+    name,
+    year: parseInt(document.getElementById('birthYear').value) || 1990,
+    month: parseInt(document.getElementById('birthMonth').value) || 1,
+    day: parseInt(document.getElementById('birthDay').value) || 1,
+    hour: parseInt(document.getElementById('birthHour').value) || 0,
+    gender: (document.querySelector('input[name="gender"]:checked') || {}).value || 'male',
+    anchorMarriage: document.getElementById('anchorMarriage').value,
+    anchorMarriageYear: document.getElementById('anchorMarriageYear').value,
+    anchorCareer: document.getElementById('anchorCareer').value,
+    anchorCareerYear: document.getElementById('anchorCareerYear').value,
+    anchorGoal: document.getElementById('anchorGoal').value
+  };
+  const list = getProfiles();
+  const existing = list.findIndex(p => p.name === name);
+  if (existing >= 0) list[existing] = profile;
+  else list.push(profile);
+  setProfiles(list);
+  nameEl.value = '';
+  renderProfileList();
+}
+
+function loadProfile(idx) {
+  const list = getProfiles();
+  const p = list[idx];
+  if (!p) return;
+  document.getElementById('birthYear').value = p.year;
+  document.getElementById('birthMonth').value = p.month;
+  document.getElementById('birthDay').value = p.day;
+  document.getElementById('birthHour').value = p.hour;
+  const radio = document.querySelector(`input[name="gender"][value="${p.gender}"]`);
+  if (radio) radio.checked = true;
+  if (p.anchorMarriage !== undefined) document.getElementById('anchorMarriage').value = p.anchorMarriage;
+  if (p.anchorMarriageYear !== undefined) document.getElementById('anchorMarriageYear').value = p.anchorMarriageYear;
+  if (p.anchorCareer !== undefined) document.getElementById('anchorCareer').value = p.anchorCareer;
+  if (p.anchorCareerYear !== undefined) document.getElementById('anchorCareerYear').value = p.anchorCareerYear;
+  if (p.anchorGoal !== undefined) document.getElementById('anchorGoal').value = p.anchorGoal;
+  document.getElementById('profilePanel').classList.remove('open');
+  calculate();
+}
+
+function deleteProfile(idx, e) {
+  e.stopPropagation();
+  const list = getProfiles();
+  list.splice(idx, 1);
+  setProfiles(list);
+  renderProfileList();
 }
 
 async function saveAnalysis(relDesc, aiResponse) {
