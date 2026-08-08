@@ -442,6 +442,8 @@ select option { background: #efe6cd; }
   border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; white-space: nowrap;
 }
 .profile-save-row button:hover { opacity: .85; }
+.profile-celeb-section { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; }
+.profile-celeb-title { font-size: 11px; color: var(--text2); letter-spacing: .15em; margin-bottom: 4px; }
 
 /* Services（prototype4 svc：左对齐 + 宋体价签 + 悬停浮起） */
 .svc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 8px; }
@@ -669,6 +671,10 @@ select option { background: #efe6cd; }
               <div class="profile-save-row">
                 <input type="text" id="profileNameInput" placeholder="输入名字保存当前数据" maxlength="20">
                 <button onclick="saveProfile()">保存</button>
+              </div>
+              <div class="profile-celeb-section">
+                <div class="profile-celeb-title">名人案例</div>
+                <div class="profile-list" id="celebList"></div>
               </div>
             </div>
           </div>
@@ -946,6 +952,13 @@ async function saveSession() {
 // ═══════════════════════════════════════════════════════════
 const PROFILE_KEY = 'bazi_profiles';
 
+const CELEB_PROFILES = [
+  { name: '毛泽东', year: 1893, month: 12, day: 26, hour: 4, gender: 'male' },
+  { name: '周星驰', year: 1962, month: 6, day: 22, hour: 4, gender: 'male' },
+  { name: '罗志祥', year: 1979, month: 7, day: 30, hour: 11, gender: 'male' },
+  { name: '汪精卫', year: 1883, month: 5, day: 4, hour: 5, gender: 'male' },
+];
+
 function getProfiles() {
   try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || []; }
   catch { return []; }
@@ -959,7 +972,7 @@ function toggleProfilePanel(e) {
   e.stopPropagation();
   const panel = document.getElementById('profilePanel');
   const open = panel.classList.toggle('open');
-  if (open) renderProfileList();
+  if (open) { renderProfileList(); renderCelebList(); }
 }
 
 document.addEventListener('click', (e) => {
@@ -1038,6 +1051,34 @@ function deleteProfile(idx, e) {
   list.splice(idx, 1);
   setProfiles(list);
   renderProfileList();
+}
+
+function renderCelebList() {
+  const el = document.getElementById('celebList');
+  el.innerHTML = CELEB_PROFILES.map((p, i) => `
+    <div class="profile-item" onclick="loadCeleb(${i})">
+      <span class="profile-item-name">${p.name}</span>
+      <span class="profile-item-info">${p.year}.${p.month}.${p.day}</span>
+    </div>
+  `).join('');
+}
+
+function loadCeleb(idx) {
+  const p = CELEB_PROFILES[idx];
+  if (!p) return;
+  document.getElementById('birthYear').value = p.year;
+  document.getElementById('birthMonth').value = p.month;
+  document.getElementById('birthDay').value = p.day;
+  document.getElementById('birthHour').value = p.hour;
+  const radio = document.querySelector(`input[name="gender"][value="${p.gender}"]`);
+  if (radio) radio.checked = true;
+  document.getElementById('anchorMarriage').value = '';
+  document.getElementById('anchorMarriageYear').value = '';
+  document.getElementById('anchorCareer').value = '';
+  document.getElementById('anchorCareerYear').value = '';
+  document.getElementById('anchorGoal').value = '';
+  document.getElementById('profilePanel').classList.remove('open');
+  calculate();
 }
 
 async function saveAnalysis(relDesc, aiResponse) {
