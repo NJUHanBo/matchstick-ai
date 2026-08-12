@@ -409,6 +409,34 @@ select option { background: #efe6cd; }
   font-family: inherit; transition: all .3s;
 }
 .btn-profile:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ══ 排盘旁兑换码 ══ */
+.redeem-wrap {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.redeem-wrap input {
+  width: 140px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 3px;
+  font-size: 12.5px; background: var(--card); color: var(--text); font-family: inherit;
+}
+.redeem-wrap input:focus { outline: none; border-color: var(--accent); }
+.redeem-wrap input::placeholder { color: var(--text2); letter-spacing: .04em; }
+.btn-redeem {
+  padding: 11px 16px; letter-spacing: .18em; text-indent: .18em;
+  background: var(--card); color: var(--text); border: 1px solid var(--border);
+  border-radius: 3px; font-size: 12.5px; cursor: pointer; font-weight: 600;
+  font-family: inherit; transition: all .3s; white-space: nowrap;
+}
+.btn-redeem:hover { border-color: var(--accent); color: var(--accent); }
+.btn-redeem:disabled { opacity: .55; cursor: default; }
+.redeem-status {
+  font-size: 11px; letter-spacing: .08em; white-space: nowrap;
+}
+.redeem-status.ok { color: var(--rel-he); }
+.redeem-status.err { color: var(--rel-chong); }
+.redeem-status.vip {
+  color: var(--accent); font-weight: 600; letter-spacing: .16em;
+}
+
 .profile-panel {
   display: none; position: absolute; top: calc(100% + 8px); right: 0; z-index: 100;
   width: 280px; background: var(--card); border: 1px solid var(--border);
@@ -662,7 +690,7 @@ select option { background: #efe6cd; }
       </div>
       <div class="form-group">
         <label>&nbsp;</label>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn" onclick="calculate()">排盘</button>
           <div class="profile-wrap">
             <button class="btn-profile" onclick="toggleProfilePanel(event)">档案 ▾</button>
@@ -677,6 +705,11 @@ select option { background: #efe6cd; }
                 <div class="profile-list" id="celebList"></div>
               </div>
             </div>
+          </div>
+          <div class="redeem-wrap" id="redeemWrap">
+            <input type="text" id="headerCodeInput" placeholder="兑换码" maxlength="40" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitHeaderCode();}">
+            <button class="btn-redeem" id="headerCodeBtn" onclick="submitHeaderCode()">兑换</button>
+            <span class="redeem-status" id="headerCodeStatus" aria-live="polite"></span>
           </div>
         </div>
       </div>
@@ -1150,6 +1183,7 @@ async function submitCode() {
   const result = await validateCode(code);
   if (result === true) {
     localStorage.setItem('bazi_vip_code', code);
+    refreshHeaderCodeUI();
     analyzeRel();
   } else if (result === 'already_bound') {
     errEl.textContent = '该激活码已绑定其他设备，请联系获取新码';
@@ -1159,6 +1193,64 @@ async function submitCode() {
     errEl.style.display = 'block';
   }
 }
+
+function refreshHeaderCodeUI() {
+  const input = document.getElementById('headerCodeInput');
+  const btn = document.getElementById('headerCodeBtn');
+  const status = document.getElementById('headerCodeStatus');
+  if (!input || !btn || !status) return;
+
+  if (isActivated()) {
+    input.style.display = 'none';
+    btn.style.display = 'none';
+    status.className = 'redeem-status vip';
+    status.textContent = '已激活';
+  } else {
+    input.style.display = '';
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '兑换';
+    status.className = 'redeem-status';
+    status.textContent = '';
+  }
+}
+
+async function submitHeaderCode() {
+  const input = document.getElementById('headerCodeInput');
+  const btn = document.getElementById('headerCodeBtn');
+  const status = document.getElementById('headerCodeStatus');
+  if (!input || !btn || !status) return;
+
+  const code = input.value.trim();
+  if (!code) {
+    status.className = 'redeem-status err';
+    status.textContent = '请输入兑换码';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '验证中';
+  status.className = 'redeem-status';
+  status.textContent = '';
+
+  const result = await validateCode(code);
+  if (result === true) {
+    localStorage.setItem('bazi_vip_code', code);
+    refreshHeaderCodeUI();
+  } else if (result === 'already_bound') {
+    btn.disabled = false;
+    btn.textContent = '兑换';
+    status.className = 'redeem-status err';
+    status.textContent = '已绑定其他设备';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '兑换';
+    status.className = 'redeem-status err';
+    status.textContent = '无效或已过期';
+  }
+}
+
+refreshHeaderCodeUI();
 
 // ═══════════════════════════════════════════════════════════
 // CONSTANTS
@@ -2633,6 +2725,7 @@ async function submitDailyCode() {
   const result = await validateCode(code);
   if (result === true) {
     localStorage.setItem('bazi_vip_code', code);
+    refreshHeaderCodeUI();
     analyzeDailyFortune();
   } else if (result === 'already_bound') {
     errEl.textContent = '该激活码已绑定其他设备，请联系获取新码';
