@@ -1,0 +1,2950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!-- 像素皮肤复刻自 pro.html，排盘 / 档案 / 兑换 / AI 逻辑未改 -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>墨里知几 · 像素排盘</title>
+<link rel="stylesheet" href="pixel.css">
+
+</head>
+<body>
+<div class="pixel-bg" aria-hidden="true">
+  <canvas id="pixelField"></canvas>
+  <div class="pixel-scanlines"></div>
+  <div class="pixel-vignette"></div>
+</div>
+<header class="hero">
+  <div class="hero-kicker">见几而作 · 不俟终日</div>
+  <div class="hero-title">墨里</div>
+  <div class="hero-name2">知几</div>
+  <p class="hero-sub">几者，动之微，吉凶之先见也<br>从一池乱墨中，理出你的人生主线</p>
+  <div class="hero-layers">
+    <div class="hl"><i class="hl-dot" style="background:var(--wx-water)"></i><span class="hl-name" style="color:var(--wx-water)">知命</span><span class="hl-star">见其纹</span></div>
+    <div class="hl"><i class="hl-dot" style="background:var(--wx-metal)"></i><span class="hl-name" style="color:var(--wx-metal)">算命</span><span class="hl-star">推其势</span></div>
+    <div class="hl"><i class="hl-dot" style="background:var(--wx-fire)"></i><span class="hl-name" style="color:var(--wx-fire)">改命</span><span class="hl-star">易其行</span></div>
+  </div>
+  <div class="scroll-hint"><span>SCROLL</span><i></i></div>
+</header>
+<div class="container">
+
+  <div class="card" style="position:relative;z-index:10">
+    <div class="form-row">
+      <div class="form-group">
+        <label>出生日期</label>
+        <div class="date-inputs">
+          <input type="number" id="birthYear" class="year-input" value="1990" min="1900" max="2099">
+          <span>年</span>
+          <input type="number" id="birthMonth" value="8" min="1" max="12">
+          <span>月</span>
+          <input type="number" id="birthDay" value="15" min="1" max="31">
+          <span>日</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>时辰</label>
+        <select id="birthHour">
+          <option value="0">子时 (23:00-00:59)</option>
+          <option value="1">丑时 (01:00-02:59)</option>
+          <option value="2">寅时 (03:00-04:59)</option>
+          <option value="3">卯时 (05:00-06:59)</option>
+          <option value="4">辰时 (07:00-08:59)</option>
+          <option value="5">巳时 (09:00-10:59)</option>
+          <option value="6">午时 (11:00-12:59)</option>
+          <option value="7" selected>未时 (13:00-14:59)</option>
+          <option value="8">申时 (15:00-16:59)</option>
+          <option value="9">酉时 (17:00-18:59)</option>
+          <option value="10">戌时 (19:00-20:59)</option>
+          <option value="11">亥时 (21:00-22:59)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>性别</label>
+        <div class="gender-group">
+          <label><input type="radio" name="gender" value="male" checked>男</label>
+          <label><input type="radio" name="gender" value="female">女</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn" onclick="calculate()">排盘</button>
+          <div class="profile-wrap">
+            <button class="btn-profile" onclick="toggleProfilePanel(event)">档案 ▾</button>
+            <div class="profile-panel" id="profilePanel">
+              <div class="profile-list" id="profileList"></div>
+              <div class="profile-save-row">
+                <input type="text" id="profileNameInput" placeholder="输入名字保存当前数据" maxlength="20">
+                <button onclick="saveProfile()">保存</button>
+              </div>
+              <div class="profile-celeb-section">
+                <div class="profile-celeb-title">名人案例</div>
+                <div class="profile-list" id="celebList"></div>
+              </div>
+            </div>
+          </div>
+          <div class="redeem-wrap" id="redeemWrap">
+            <input type="text" id="headerCodeInput" placeholder="兑换码" maxlength="40" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitHeaderCode();}">
+            <button class="btn-redeem" id="headerCodeBtn" onclick="submitHeaderCode()">兑换</button>
+            <span class="redeem-status" id="headerCodeStatus" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="anchor-row">
+      <div class="anchor-group">
+        <label>感情状态</label>
+        <select id="anchorMarriage">
+          <option value="">不填</option>
+          <option value="unmarried">未婚/单身</option>
+          <option value="relationship">恋爱中</option>
+          <option value="married">已婚</option>
+          <option value="divorced">离异</option>
+        </select>
+        <input type="number" id="anchorMarriageYear" class="anchor-year" placeholder="年份" min="1990" max="2099" style="display:none">
+      </div>
+      <div class="anchor-group">
+        <label>事业阶段</label>
+        <select id="anchorCareer">
+          <option value="">不填</option>
+          <option value="student">在读</option>
+          <option value="graduate">刚毕业/求职中</option>
+          <option value="employed">在职</option>
+          <option value="startup">创业中</option>
+          <option value="freelance">自由职业</option>
+          <option value="gap">间隔期/转型中</option>
+        </select>
+        <input type="number" id="anchorCareerYear" class="anchor-year" placeholder="起始年" min="1990" max="2099" style="display:none">
+      </div>
+      <div class="anchor-group">
+        <label>当前最大期望</label>
+        <select id="anchorGoal">
+          <option value="">不填</option>
+          <option value="money">赚钱</option>
+          <option value="stability">稳定</option>
+          <option value="creation">创造/表达</option>
+          <option value="freedom">自由/躺平</option>
+          <option value="growth">成长/突破</option>
+          <option value="enjoyment">享受生活</option>
+          <option value="relationship">经营关系</option>
+          <option value="meaning">找到方向</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="card">
+      <div class="card-title">四柱排盘</div>
+      <div id="basicInfo" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+      <div class="pillars" id="pillarsDisplay"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">五行能量</div>
+      <div class="wx-bars" id="wxBars"></div>
+      <div id="wxPentagon" style="margin-top:16px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">事件预测</div>
+      <div class="event-predict-form">
+        <div class="event-row">
+          <div class="event-field">
+            <label>想问的事</label>
+            <select id="eventType">
+              <option value="">选择类型...</option>
+              <option value="婚恋感情">婚恋感情</option>
+              <option value="求职面试">求职面试</option>
+              <option value="考试升学">考试升学</option>
+              <option value="创业项目">创业项目</option>
+              <option value="申请基金/贷款">申请基金/贷款</option>
+              <option value="跳槽转行">跳槽转行</option>
+              <option value="投资理财">投资理财</option>
+              <option value="健康手术">健康手术</option>
+              <option value="搬家迁移">搬家迁移</option>
+              <option value="诉讼纠纷">诉讼纠纷</option>
+              <option value="合作谈判">合作谈判</option>
+              <option value="other">其他（自填）</option>
+            </select>
+            <input type="text" id="eventCustom" placeholder="具体描述..." style="display:none;margin-top:6px">
+          </div>
+          <div class="event-field">
+            <label>时间范围</label>
+            <div class="event-time-row">
+              <input type="number" id="eventYearStart" class="year-input" placeholder="年" min="2024" max="2040">
+              <input type="number" id="eventMonthStart" min="1" max="12" placeholder="月" style="width:48px">
+              <span>—</span>
+              <input type="number" id="eventYearEnd" class="year-input" placeholder="年" min="2024" max="2040">
+              <input type="number" id="eventMonthEnd" min="1" max="12" placeholder="月" style="width:48px">
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn" onclick="predictEvent()">AI 预测分析</button>
+        </div>
+        <div id="eventResult" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">大运</div>
+      <div class="dayun-scroll"><div class="dayun-list" id="dayunList"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">流年 · 流月 · 流日</div>
+      <div class="period-grid" id="periodGrid"></div>
+    </div>
+
+    <div class="check-card">
+      <div class="check-header">
+        <span class="check-header-label">查看日期</span>
+        <span class="check-header-hint">选择任意日期，查看当天的干支关系与运势</span>
+      </div>
+      <div class="check-controls">
+        <button class="check-btn" onclick="shiftCheckDate(-1)">← 前一天</button>
+        <div class="date-inputs">
+          <input type="number" id="checkYear" class="year-input" min="1900" max="2099" onchange="onCheckDateChange()">
+          <span>年</span>
+          <input type="number" id="checkMonth" min="1" max="12" onchange="onCheckDateChange()">
+          <span>月</span>
+          <input type="number" id="checkDay" min="1" max="31" onchange="onCheckDateChange()">
+          <span>日</span>
+        </div>
+        <button class="check-btn" onclick="shiftCheckDate(1)">后一天 →</button>
+        <button class="check-btn" onclick="setCheckToday()">今天</button>
+      </div>
+      <div class="check-info" id="checkInfo"></div>
+      <div style="margin-top:10px">
+        <button class="btn" onclick="analyzeDailyFortune()">AI 今日运势</button>
+      </div>
+      <div id="dailyFortuneResult" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">干支关系</div>
+      <div class="rel-toolbar">
+        <div class="rel-toggle">
+          <button class="active" onclick="setRelMode('rank')">按重要性</button>
+          <button onclick="setRelMode('group')">按来源</button>
+        </div>
+      </div>
+      <div class="rel-legend">
+        <div class="rel-legend-row">
+          <span class="rel-legend-label">位置</span>
+          年=年柱 &nbsp;月=月柱 &nbsp;日=日柱 &nbsp;时=时柱 &nbsp;运=大运 &nbsp;年运=流年 &nbsp;月运=流月 &nbsp;日运=流日
+        </div>
+        <div class="rel-legend-row" style="margin-top:4px">
+          <span class="rel-legend-label">类型</span>
+          <span class="legend-badge tag-he">合</span>合化*
+          <span class="legend-badge tag-chong">冲</span>对冲
+          <span class="legend-badge tag-xing">刑</span>三刑
+          <span class="legend-badge tag-ke">克</span>相克
+          <span class="legend-badge tag-hai">害</span>暗害
+          <span class="legend-badge tag-po">破</span>六破
+        </div>
+        <div class="rel-legend-row" style="margin-top:4px">
+          <span class="rel-legend-label">强度</span>
+          <span class="legend-dot" style="color:var(--rel-chong)">●●●●●</span> 极重要 &nbsp;
+          <span class="legend-dot" style="color:#c77a20">●●●●</span> 重要 &nbsp;
+          <span class="legend-dot" style="color:var(--accent)">●●●</span> 中等 &nbsp;
+          <span class="legend-dot" style="color:var(--text2)">●●</span> 轻 &nbsp;
+          <span class="legend-dot" style="color:#ccc">●</span> 微
+        </div>
+      </div>
+      <div id="relDisplay"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI 分析提示词</div>
+      <div class="prompt-actions">
+        <button class="btn" onclick="generatePrompt()">生成提示词</button>
+        <button class="btn-copy" id="copyBtn" onclick="copyPrompt()">复制提示词</button>
+        <span id="copyFeedback" style="font-size:12px;color:var(--rel-he);display:none">✓ 已复制</span>
+      </div>
+      <textarea class="prompt-textarea" id="promptText" readonly></textarea>
+    </div>
+
+    <div class="svc-grid">
+      <div class="svc-card">
+        <div class="svc-title">不外传的八字命理笔记</div>
+        <div class="svc-desc">将传统命理与现代物理、生物学知识结合，用科学思维重构五行生克与十神体系，极大增强命理分析的信度与可解释性。适合想要自学新派命理的用户</div>
+        <div class="svc-price">¥96 <span>/ 份</span></div>
+        <div class="svc-contact">添加微信咨询<br><strong>18512566097</strong></div>
+      </div>
+      <div class="svc-card">
+        <div class="svc-title">深度线下命盘解读</div>
+        <div class="svc-desc">不止于预测吉凶，更专注于决策支持、适应命运节奏、找到自我改变的切入点。一对一深度解盘，给你可落地的行动方向</div>
+        <div class="svc-price">¥169 <span>/ 次</span></div>
+        <div class="svc-contact">添加微信预约<br><strong>18512566097</strong></div>
+      </div>
+    </div>
+
+    <p class="disclaimer">*天干合标注"合化X"为理论化神，是否真正合化成功需结合月令、通根、克神等条件人工判别。<br>节气以近似日期计算，交接日请核实精确时刻。命理仅供参考。<br>像素字体：缝合像素 Fusion Pixel 12px（OFL，TakWolf）</p>
+
+  </div>
+
+  <div class="card" id="tipsCard">
+    <div class="card-title">今日小帖士</div>
+    <div id="tipsToday"></div>
+    <div class="tips-archive-label">往期内容</div>
+    <div id="tipsArchive"></div>
+  </div>
+</div>
+
+<!-- 帖士全文弹窗 -->
+<div class="rel-modal-overlay" id="tipsModal" onclick="closeTipsModal(event)">
+  <div class="rel-modal">
+    <div class="rel-modal-header">
+      <span class="rel-modal-title" id="tipsModalTitle"></span>
+      <button class="rel-modal-close" onclick="closeTipsModal()">&times;</button>
+    </div>
+    <div class="rel-modal-body tips-article" id="tipsModalBody"></div>
+  </div>
+</div>
+
+<!-- 干支关系详解弹窗 -->
+<div class="rel-modal-overlay" id="relModal" onclick="closeRelModal(event)">
+  <div class="rel-modal">
+    <div class="rel-modal-header">
+      <span class="rel-modal-title" id="relModalTitle"></span>
+      <button class="rel-modal-close" onclick="closeRelModal()">&times;</button>
+    </div>
+    <div class="rel-modal-body" id="relModalBody"></div>
+    <div class="rel-modal-footer">
+      <button class="btn" id="relModalAnalyzeBtn" onclick="analyzeRel()">AI 深度分析</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// SUPABASE DATA COLLECTION
+// ═══════════════════════════════════════════════════════════
+const SB_URL = 'https://ccepjmfhlanlwgowwxqu.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZXBqbWZobGFubHdnb3d3eHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDc5NzksImV4cCI6MjA5NzE4Mzk3OX0.3X5JVXwqGJDDkDuQvc9rnM2CVP6x9O6PYMTTUnu9aXo';
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+let sessionId = null;
+
+async function saveSession() {
+  if (!sb || !STATE) return;
+  const { pillars, dayGan, birthYear, birthMonth, birthDay, gender } = STATE;
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+
+  const mv = document.getElementById('anchorMarriage').value;
+  const my = document.getElementById('anchorMarriageYear').value;
+  const cv = document.getElementById('anchorCareer').value;
+  const cy = document.getElementById('anchorCareerYear').value;
+  const gv = document.getElementById('anchorGoal').value;
+
+  const row = {
+    birth_year: birthYear, birth_month: birthMonth, birth_day: birthDay,
+    birth_hour: parseInt(document.getElementById('birthHour').value),
+    gender, four_pillars: fourPillars, day_master: dmName,
+    anchor_marriage: mv || null, anchor_marriage_year: my ? parseInt(my) : null,
+    anchor_career: cv || null, anchor_career_year: cy ? parseInt(cy) : null,
+    anchor_goal: gv || null
+  };
+
+  if (sessionId) {
+    await sb.from('bazi_sessions').update(row).eq('id', sessionId);
+  } else {
+    const { data } = await sb.from('bazi_sessions').insert(row).select('id').single();
+    if (data) sessionId = data.id;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOCAL PROFILES (localStorage)
+// ═══════════════════════════════════════════════════════════
+const PROFILE_KEY = 'bazi_profiles';
+
+const CELEB_PROFILES = [
+  { name: '毛泽东', year: 1893, month: 12, day: 26, hour: 4, gender: 'male' },
+  { name: '周星驰', year: 1962, month: 6, day: 22, hour: 4, gender: 'male' },
+  { name: '罗志祥', year: 1979, month: 7, day: 30, hour: 11, gender: 'male' },
+  { name: '汪精卫', year: 1883, month: 5, day: 4, hour: 5, gender: 'male' },
+];
+
+function getProfiles() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || []; }
+  catch { return []; }
+}
+
+function setProfiles(list) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(list));
+}
+
+function toggleProfilePanel(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('profilePanel');
+  const open = panel.classList.toggle('open');
+  if (open) { renderProfileList(); renderCelebList(); }
+}
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('profilePanel');
+  if (panel && !panel.contains(e.target) && !e.target.classList.contains('btn-profile')) {
+    panel.classList.remove('open');
+  }
+});
+
+function renderProfileList() {
+  const list = getProfiles();
+  const el = document.getElementById('profileList');
+  if (!list.length) {
+    el.innerHTML = '<div class="profile-empty">暂无保存的档案</div>';
+    return;
+  }
+  el.innerHTML = list.map((p, i) => `
+    <div class="profile-item" onclick="loadProfile(${i})">
+      <span class="profile-item-name">${escHtml(p.name)}</span>
+      <span class="profile-item-info">${p.year}.${p.month}.${p.day}</span>
+      <button class="profile-item-del" onclick="deleteProfile(${i},event)" title="删除">×</button>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function saveProfile() {
+  const nameEl = document.getElementById('profileNameInput');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return; }
+  const profile = {
+    name,
+    year: parseInt(document.getElementById('birthYear').value) || 1990,
+    month: parseInt(document.getElementById('birthMonth').value) || 1,
+    day: parseInt(document.getElementById('birthDay').value) || 1,
+    hour: parseInt(document.getElementById('birthHour').value) || 0,
+    gender: (document.querySelector('input[name="gender"]:checked') || {}).value || 'male',
+    anchorMarriage: document.getElementById('anchorMarriage').value,
+    anchorMarriageYear: document.getElementById('anchorMarriageYear').value,
+    anchorCareer: document.getElementById('anchorCareer').value,
+    anchorCareerYear: document.getElementById('anchorCareerYear').value,
+    anchorGoal: document.getElementById('anchorGoal').value
+  };
+  const list = getProfiles();
+  const existing = list.findIndex(p => p.name === name);
+  if (existing >= 0) list[existing] = profile;
+  else list.push(profile);
+  setProfiles(list);
+  nameEl.value = '';
+  renderProfileList();
+}
+
+function loadProfile(idx) {
+  const list = getProfiles();
+  const p = list[idx];
+  if (!p) return;
+  document.getElementById('birthYear').value = p.year;
+  document.getElementById('birthMonth').value = p.month;
+  document.getElementById('birthDay').value = p.day;
+  document.getElementById('birthHour').value = p.hour;
+  const radio = document.querySelector(`input[name="gender"][value="${p.gender}"]`);
+  if (radio) radio.checked = true;
+  if (p.anchorMarriage !== undefined) document.getElementById('anchorMarriage').value = p.anchorMarriage;
+  if (p.anchorMarriageYear !== undefined) document.getElementById('anchorMarriageYear').value = p.anchorMarriageYear;
+  if (p.anchorCareer !== undefined) document.getElementById('anchorCareer').value = p.anchorCareer;
+  if (p.anchorCareerYear !== undefined) document.getElementById('anchorCareerYear').value = p.anchorCareerYear;
+  if (p.anchorGoal !== undefined) document.getElementById('anchorGoal').value = p.anchorGoal;
+  document.getElementById('profilePanel').classList.remove('open');
+  calculate();
+}
+
+function deleteProfile(idx, e) {
+  e.stopPropagation();
+  const list = getProfiles();
+  list.splice(idx, 1);
+  setProfiles(list);
+  renderProfileList();
+}
+
+function renderCelebList() {
+  const el = document.getElementById('celebList');
+  el.innerHTML = CELEB_PROFILES.map((p, i) => `
+    <div class="profile-item" onclick="loadCeleb(${i})">
+      <span class="profile-item-name">${p.name}</span>
+      <span class="profile-item-info">${p.year}.${p.month}.${p.day}</span>
+    </div>
+  `).join('');
+}
+
+function loadCeleb(idx) {
+  const p = CELEB_PROFILES[idx];
+  if (!p) return;
+  document.getElementById('birthYear').value = p.year;
+  document.getElementById('birthMonth').value = p.month;
+  document.getElementById('birthDay').value = p.day;
+  document.getElementById('birthHour').value = p.hour;
+  const radio = document.querySelector(`input[name="gender"][value="${p.gender}"]`);
+  if (radio) radio.checked = true;
+  document.getElementById('anchorMarriage').value = '';
+  document.getElementById('anchorMarriageYear').value = '';
+  document.getElementById('anchorCareer').value = '';
+  document.getElementById('anchorCareerYear').value = '';
+  document.getElementById('anchorGoal').value = '';
+  document.getElementById('profilePanel').classList.remove('open');
+  calculate();
+}
+
+async function saveAnalysis(relDesc, aiResponse) {
+  if (!sb || !sessionId) return;
+  const { data } = await sb.from('bazi_sessions').select('analyses').eq('id', sessionId).single();
+  const analyses = (data?.analyses || []);
+  analyses.push({ rel: relDesc, response: aiResponse.slice(0, 5000), ts: new Date().toISOString() });
+  await sb.from('bazi_sessions').update({ analyses }).eq('id', sessionId);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIVATION CODE
+// ═══════════════════════════════════════════════════════════
+
+function isActivated() {
+  return !!localStorage.getItem('bazi_vip_code');
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem('bazi_device_id');
+  if (!id) {
+    id = 'dev_' + crypto.randomUUID();
+    localStorage.setItem('bazi_device_id', id);
+  }
+  return id;
+}
+
+async function validateCode(code) {
+  if (!sb) return false;
+  const { data } = await sb.from('activation_codes')
+    .select('code, is_active, type, used_by')
+    .eq('code', code.trim())
+    .eq('is_active', true)
+    .single();
+  if (!data) return false;
+
+  const deviceId = getDeviceId();
+  if (data.used_by && data.used_by !== deviceId) {
+    return 'already_bound';
+  }
+  if (!data.used_by) {
+    await sb.from('activation_codes').update({ used_by: deviceId }).eq('code', code.trim());
+  }
+  return true;
+}
+
+function showCodePrompt() {
+  const section = document.getElementById('relAiSection');
+  section.innerHTML = `<div class="modal-section">
+    <div class="modal-section-title">需要激活码</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px">AI 深度分析为付费功能，请输入激活码解锁</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="codeInput" placeholder="请输入激活码" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">
+      <button class="btn" onclick="submitCode()">验证</button>
+    </div>
+    <div id="codeError" style="font-size:12px;color:var(--rel-chong);margin-top:6px;display:none"></div>
+    <div style="font-size:11px;color:var(--text2);margin-top:10px">获取激活码：添加微信 <strong>18512566097</strong></div>
+  </div>`;
+}
+
+async function submitCode() {
+  const input = document.getElementById('codeInput');
+  const code = input.value.trim();
+  if (!code) return;
+
+  const errEl = document.getElementById('codeError');
+  errEl.style.display = 'none';
+
+  const result = await validateCode(code);
+  if (result === true) {
+    localStorage.setItem('bazi_vip_code', code);
+    refreshHeaderCodeUI();
+    analyzeRel();
+  } else if (result === 'already_bound') {
+    errEl.textContent = '该激活码已绑定其他设备，请联系获取新码';
+    errEl.style.display = 'block';
+  } else {
+    errEl.textContent = '激活码无效或已过期';
+    errEl.style.display = 'block';
+  }
+}
+
+function refreshHeaderCodeUI() {
+  const input = document.getElementById('headerCodeInput');
+  const btn = document.getElementById('headerCodeBtn');
+  const status = document.getElementById('headerCodeStatus');
+  if (!input || !btn || !status) return;
+
+  if (isActivated()) {
+    input.style.display = 'none';
+    btn.style.display = 'none';
+    status.className = 'redeem-status vip';
+    status.textContent = '已激活';
+  } else {
+    input.style.display = '';
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '兑换';
+    status.className = 'redeem-status';
+    status.textContent = '';
+  }
+}
+
+async function submitHeaderCode() {
+  const input = document.getElementById('headerCodeInput');
+  const btn = document.getElementById('headerCodeBtn');
+  const status = document.getElementById('headerCodeStatus');
+  if (!input || !btn || !status) return;
+
+  const code = input.value.trim();
+  if (!code) {
+    status.className = 'redeem-status err';
+    status.textContent = '请输入兑换码';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '验证中';
+  status.className = 'redeem-status';
+  status.textContent = '';
+
+  const result = await validateCode(code);
+  if (result === true) {
+    localStorage.setItem('bazi_vip_code', code);
+    refreshHeaderCodeUI();
+  } else if (result === 'already_bound') {
+    btn.disabled = false;
+    btn.textContent = '兑换';
+    status.className = 'redeem-status err';
+    status.textContent = '已绑定其他设备';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '兑换';
+    status.className = 'redeem-status err';
+    status.textContent = '无效或已过期';
+  }
+}
+
+refreshHeaderCodeUI();
+
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const TG = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const DZ = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const WX = ['木','火','土','金','水'];
+const SX = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const TG_WX = [0,0,1,1,2,2,3,3,4,4];
+const DZ_WX = [4,2,0,0,2,1,1,2,3,3,2,4];
+const TG_YY = [1,0,1,0,1,0,1,0,1,0]; // 1=阳 0=阴
+const WX_COLORS = ['var(--wx-wood)','var(--wx-fire)','var(--wx-earth)','var(--wx-metal)','var(--wx-water)'];
+const WX_CLASS = ['wx-wood','wx-fire','wx-earth','wx-metal','wx-water'];
+
+// 藏干: [stem_idx, proportion]
+const CANGGAN = [
+  [[9,1.0]],[[5,1.0],[9,0.5],[7,0.3]],[[0,1.0],[2,0.5],[4,0.3]],[[1,1.0]],
+  [[4,1.0],[1,0.5],[9,0.3]],[[2,1.0],[6,0.5],[4,0.3]],[[3,1.0],[5,0.3]],
+  [[5,1.0],[3,0.5],[1,0.3]],[[6,1.0],[8,0.5],[4,0.3]],[[7,1.0]],
+  [[4,1.0],[7,0.5],[3,0.3]],[[8,1.0],[0,0.3]]
+];
+
+// 节气(节)近似日期 [month, day] — 月柱起始
+const JIE_DATES = [
+  [2,4],[3,6],[4,5],[5,6],[6,6],[7,7],
+  [8,8],[9,8],[10,8],[11,8],[12,7],[1,6]
+];
+
+// 十神
+const SS_NAMES = {
+  '0s':'比肩','0d':'劫财','1s':'食神','1d':'伤官',
+  '2s':'偏财','2d':'正财','3s':'七杀','3d':'正官',
+  '4s':'偏印','4d':'正印'
+};
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP DATA
+// ═══════════════════════════════════════════════════════════
+
+// 天干五合: [stemA, stemB, 合化五行]
+const TG_WUHE = [[0,5,2],[1,6,3],[2,7,4],[3,8,0],[4,9,1]];
+
+// 地支六合: [branchA, branchB, 合化五行]
+const DZ_LIUHE = [[0,1,2],[2,11,0],[3,10,1],[4,9,3],[5,8,4],[6,7,2]];
+
+// 地支三合: [branch1, branch2, branch3, 合化五行]
+const DZ_SANHE = [[8,0,4,4],[11,3,7,0],[2,6,10,1],[5,9,1,3]];
+
+// 地支六冲
+const DZ_LIUCHONG = [[0,6],[1,7],[2,8],[3,9],[4,10],[5,11]];
+
+// 地支三刑
+const DZ_XING_WUEN = [2,5,8]; // 寅巳申 无恩之刑
+const DZ_XING_SHISHI = [1,10,7]; // 丑戌未 恃势之刑
+const DZ_XING_WULI = [0,3]; // 子卯 无礼之刑
+const DZ_ZIXING = [4,6,9,11]; // 辰午酉亥 自刑
+
+// 地支六害
+const DZ_LIUHAI = [[0,7],[1,6],[2,5],[3,4],[8,11],[9,10]];
+
+// 地支六破
+const DZ_LIUPO = [[0,9],[1,4],[2,11],[3,6],[5,8],[7,10]];
+
+// Position labels
+const POS_NAMES = ['年柱','月柱','日柱','时柱','大运','流年','流月','流日'];
+const POS_SHORT = ['年','月','日','时','运','年运','月运','日运'];
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP MEANINGS (传统象意参考)
+// ═══════════════════════════════════════════════════════════
+
+const TG_HE_MEANINGS = {
+  '0,5': '中正之合：仁德与信义相合，厚重守成，为人诚信',
+  '1,6': '仁义之合：柔木从刚金，果断精进，温和而有原则',
+  '2,7': '威制之合：烈火铸精金，威仪端正，刚中有柔',
+  '3,8': '淫泆之合：暗火恋长流，感性柔情，暗中相通',
+  '4,9': '无情之合：厚土拦弱水，形合神离，难以真正合化'
+};
+
+const DZ_LIUHE_MEANINGS = {
+  '0,1': '暗合收敛：内敛稳固，事缓而成，不显于外',
+  '2,11': '生旺之合：相生相助，进取扩展，有推动力',
+  '3,10': '合中带克：贪合忘克，犹豫牵绊，拖泥带水',
+  '4,9': '暗合精专：收敛内聚，专注精进，不事张扬',
+  '5,8': '刑合并存：既合又刑，关系复杂，暗流涌动',
+  '6,7': '合中带害：表面热络，实则消耗，虚情易散'
+};
+
+const DZ_CHONG_MEANINGS = {
+  '0,6': '水火对冲：心绪拉锯，情绪波动，选择冲突',
+  '1,7': '库库相冲：人事纷争，库门动摇，储蓄难聚',
+  '2,8': '驿马逢冲：奔波动荡，突发变迁，环境剧变',
+  '3,9': '金木交战：决断果敢，破旧立新，关系决裂',
+  '4,10': '天罗地网冲：大变革之兆，格局重组，脱胎换骨',
+  '5,11': '驿马逢冲：流动迁移，思想巨变，旧局不存'
+};
+
+const DZ_HAI_MEANINGS = {
+  '0,7': '六害穿心：隐患牵制，暗中拖累，好事多磨',
+  '1,6': '暗害伤情：情感暗伤，互相消耗，有苦难言',
+  '2,5': '恃势生嫌：互相猜忌，恩中生怨，合作有隙',
+  '3,4': '阴阳不合：口舌是非，小事化大，沟通不畅',
+  '8,11': '争进相嫌：竞争内耗，互不相让，各怀心思',
+  '9,10': '嫉妒暗伤：暗中使绊，表面平和，实则介怀'
+};
+
+const DZ_PO_MEANINGS = {
+  '0,9': '桃花带破：聚散无常，情缘虚花，难以长久',
+  '1,4': '湿土相破：根基松动，难以积蓄，反复无常',
+  '2,11': '合中有隙：助力打折，暗中生变，不可全信',
+  '3,6': '火木虚耗：热度不久，精力空转，虎头蛇尾',
+  '5,8': '合中生嫌：互有防备，面和心异，勾心斗角',
+  '7,10': '燥土相见：性急无润，冲动生弊，过刚易折'
+};
+
+const XING_MEANINGS = {
+  '无恩刑': '无恩之刑：恩将仇报，翻脸无情，帮助他人反遭反噬',
+  '恃势刑': '恃势之刑：倚强凌弱，权力碾压，以势压人终招祸',
+  '无礼刑': '无礼之刑：以下犯上，不守规矩，僭越失序',
+  '自刑': '自我折磨：反复内耗，同类相残，自己为难自己'
+};
+
+const DZ_SANHE_MEANINGS = {
+  4: '水局三合：智慧汇聚，主思虑深远，流动变通',
+  0: '木局三合：仁善扩展，主生发进取，贵人助力',
+  1: '火局三合：礼明彰显，主名声远播，热情奔放',
+  3: '金局三合：义气凝聚，主肃杀果决，收获有力'
+};
+
+// ═══════════════════════════════════════════════════════════
+// CORE: Date → Pillars
+// ═══════════════════════════════════════════════════════════
+
+function mod(n, m) { return ((n % m) + m) % m; }
+
+function getJieqiMonth(year, month, day) {
+  const jieIdx = [
+    [2,4],[3,6],[4,5],[5,6],[6,6],[7,7],
+    [8,8],[9,8],[10,8],[11,8],[12,7],[1,6]
+  ];
+  const monthMap = {2:1,3:2,4:3,5:4,6:5,7:6,8:7,9:8,10:9,11:10,12:11,1:12};
+  let jieDay = 6;
+  for (const [m, d] of jieIdx) {
+    if (m === month) { jieDay = d; break; }
+  }
+  if (day >= jieDay) {
+    return monthMap[month] || 1;
+  } else {
+    const prevMonth = month > 1 ? month - 1 : 12;
+    return monthMap[prevMonth] || 12;
+  }
+}
+
+function getYearGanzhi(year, month, day) {
+  const lichunDay = 4;
+  if (month < 2 || (month === 2 && day < lichunDay)) year--;
+  const offset = year - 1984;
+  return [mod(offset, 10), mod(offset, 12)];
+}
+
+function getMonthGanzhi(yearGan, jieqiMonth) {
+  const monthZhi = mod(jieqiMonth + 1, 12);
+  const starts = {0:2,1:4,2:6,3:8,4:0,5:2,6:4,7:6,8:8,9:0};
+  const monthGan = mod(starts[yearGan] + jieqiMonth - 1, 10);
+  return [monthGan, monthZhi];
+}
+
+function getDayGanzhi(year, month, day) {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  const jd = day + Math.floor((153 * m + 2) / 5) + 365 * y +
+             Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  const offset = jd - 2445701;
+  return [mod(offset, 10), mod(offset + 6, 12)];
+}
+
+function getHourGanzhi(dayGan, shiIdx) {
+  const hourZhi = shiIdx;
+  const starts = {0:0,1:2,2:4,3:6,4:8,5:0,6:2,7:4,8:6,9:8};
+  const hourGan = mod(starts[dayGan] + hourZhi, 10);
+  return [hourGan, hourZhi];
+}
+
+function getFourPillars(year, month, day, shiIdx) {
+  const [yg, yz] = getYearGanzhi(year, month, day);
+  const jm = getJieqiMonth(year, month, day);
+  const [mg, mz] = getMonthGanzhi(yg, jm);
+  const [dg, dz] = getDayGanzhi(year, month, day);
+  const [hg, hz] = getHourGanzhi(dg, shiIdx);
+  return {
+    pillars: [[yg,yz],[mg,mz],[dg,dz],[hg,hz]],
+    jieqiMonth: jm
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEN GODS
+// ═══════════════════════════════════════════════════════════
+
+function getShishen(dayGan, targetGan) {
+  if (dayGan === targetGan) return '比肩';
+  const dw = Math.floor(dayGan / 2), tw = Math.floor(targetGan / 2);
+  const dy = dayGan % 2, ty = targetGan % 2;
+  const rel = mod(tw - dw, 5);
+  const pm = (dy === ty) ? 's' : 'd';
+  return SS_NAMES[rel + pm] || '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIVE ELEMENTS ENERGY (bazi_vector.py weights)
+// ═══════════════════════════════════════════════════════════
+
+const WEIGHTS = { stem: 1.5, monthLord: 3.0, branchMain: 1.5, hiddenMid: 0.75, hiddenMinor: 0.45 };
+
+function calcWuxingEnergy(pillars, jieqiMonth) {
+  const amps = [0,0,0,0,0]; // 木火土金水
+  const monthIdx = 1;
+  for (let i = 0; i < 4; i++) {
+    const [g, z] = pillars[i];
+    amps[TG_WX[g]] += WEIGHTS.stem;
+    const isMonth = (i === monthIdx);
+    CANGGAN[z].forEach((pair, j) => {
+      const [hsIdx, prop] = pair;
+      const hWx = TG_WX[hsIdx];
+      if (isMonth && j === 0) amps[hWx] += WEIGHTS.monthLord;
+      else if (j === 0) amps[hWx] += WEIGHTS.branchMain;
+      else if (prop >= 0.5) amps[hWx] += WEIGHTS.hiddenMid;
+      else amps[hWx] += WEIGHTS.hiddenMinor;
+    });
+  }
+  return amps;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP DETECTION
+// ═══════════════════════════════════════════════════════════
+
+function findAllRelationships(positions) {
+  // positions: [{stem, branch, posIdx}]
+  // posIdx: 0=年,1=月,2=日,3=时,4=大运,5=流年,6=流月,7=流日
+  const rels = [];
+  const n = positions.length;
+
+  // --- 天干关系 ---
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const si = positions[i].stem, sj = positions[j].stem;
+      const pi = positions[i].posIdx, pj = positions[j].posIdx;
+
+      // 天干五合
+      for (const [a, b, wxResult] of TG_WUHE) {
+        if ((si === a && sj === b) || (si === b && sj === a)) {
+          rels.push({
+            type: 'he', subtype: '天干合',
+            desc: `${TG[a]}${TG[b]}合化${WX[wxResult]}*`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            wxResult, baseScore: 85, tagClass: 'tag-he', stems: [si, sj]
+          });
+        }
+      }
+
+      // 天干相克
+      const wxi = TG_WX[si], wxj = TG_WX[sj];
+      if (mod(wxj - wxi, 5) === 2) {
+        rels.push({
+          type: 'ke', subtype: '天干克',
+          desc: `${TG[si]}${WX[wxi]}克${TG[sj]}${WX[wxj]}`,
+          positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+          baseScore: 55, tagClass: 'tag-ke', stems: [si, sj]
+        });
+      } else if (mod(wxi - wxj, 5) === 2) {
+        rels.push({
+          type: 'ke', subtype: '天干克',
+          desc: `${TG[sj]}${WX[wxj]}克${TG[si]}${WX[wxi]}`,
+          positions: [pj, pi], posNames: [POS_SHORT[pj], POS_SHORT[pi]],
+          baseScore: 55, tagClass: 'tag-ke', stems: [sj, si]
+        });
+      }
+    }
+  }
+
+  // --- 地支关系 ---
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const bi = positions[i].branch, bj = positions[j].branch;
+      const pi = positions[i].posIdx, pj = positions[j].posIdx;
+
+      // 六合
+      for (const [a, b, wxR] of DZ_LIUHE) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'liuhe', subtype: '六合',
+            desc: `${DZ[a]}${DZ[b]}合化${WX[wxR]}`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            wxResult: wxR, baseScore: 78, tagClass: 'tag-he'
+          });
+        }
+      }
+
+      // 六冲
+      for (const [a, b] of DZ_LIUCHONG) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'chong', subtype: '六冲',
+            desc: `${DZ[a]}${DZ[b]}冲`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 90, tagClass: 'tag-chong'
+          });
+        }
+      }
+
+      // 六害
+      for (const [a, b] of DZ_LIUHAI) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'hai', subtype: '六害',
+            desc: `${DZ[a]}${DZ[b]}害`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 50, tagClass: 'tag-hai'
+          });
+        }
+      }
+
+      // 六破
+      for (const [a, b] of DZ_LIUPO) {
+        if ((bi === a && bj === b) || (bi === b && bj === a)) {
+          rels.push({
+            type: 'po', subtype: '六破',
+            desc: `${DZ[a]}${DZ[b]}破`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 35, tagClass: 'tag-po'
+          });
+        }
+      }
+
+      // 无礼之刑 子卯
+      if ((bi === 0 && bj === 3) || (bi === 3 && bj === 0)) {
+        rels.push({
+          type: 'xing', subtype: '无礼刑',
+          desc: `子卯刑（无礼）`,
+          positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+          baseScore: 65, tagClass: 'tag-xing'
+        });
+      }
+
+      // 自刑
+      if (bi === bj && DZ_ZIXING.includes(bi)) {
+        rels.push({
+          type: 'xing', subtype: '自刑',
+          desc: `${DZ[bi]}${DZ[bj]}自刑`,
+          positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+          baseScore: 30, tagClass: 'tag-xing'
+        });
+      }
+    }
+  }
+
+  // 三刑 (无恩/恃势) - check two and three
+  checkSanxing(positions, rels, DZ_XING_WUEN, '无恩刑');
+  checkSanxing(positions, rels, DZ_XING_SHISHI, '恃势刑');
+
+  // 三合 & 半合
+  checkSanhe(positions, rels);
+
+  return rels;
+}
+
+function checkSanxing(positions, rels, xingSet, label) {
+  const found = {};
+  positions.forEach(p => {
+    if (xingSet.includes(p.branch)) {
+      if (!found[p.branch]) found[p.branch] = [];
+      found[p.branch].push(p.posIdx);
+    }
+  });
+  const presentBranches = Object.keys(found).map(Number);
+
+  if (presentBranches.length >= 3) {
+    const allPos = presentBranches.flatMap(b => found[b]);
+    rels.push({
+      type: 'xing', subtype: label,
+      desc: `${xingSet.map(b=>DZ[b]).join('')}三刑（${label}）`,
+      positions: allPos, posNames: allPos.map(p=>POS_SHORT[p]),
+      baseScore: 85, tagClass: 'tag-xing', isThreeWay: true
+    });
+  } else if (presentBranches.length === 2) {
+    const allPos = presentBranches.flatMap(b => found[b]);
+    for (let i = 0; i < allPos.length; i++) {
+      for (let j = i + 1; j < allPos.length; j++) {
+        const pi = allPos[i], pj = allPos[j];
+        const bi = positions.find(p => p.posIdx === pi)?.branch;
+        const bj = positions.find(p => p.posIdx === pj)?.branch;
+        if (bi !== undefined && bj !== undefined && bi !== bj) {
+          rels.push({
+            type: 'xing', subtype: label,
+            desc: `${DZ[bi]}${DZ[bj]}刑（${label}）`,
+            positions: [pi, pj], posNames: [POS_SHORT[pi], POS_SHORT[pj]],
+            baseScore: 65, tagClass: 'tag-xing'
+          });
+        }
+      }
+    }
+  }
+}
+
+function checkSanhe(positions, rels) {
+  for (const [b1, b2, b3, wxR] of DZ_SANHE) {
+    const trio = [b1, b2, b3];
+    const found = {};
+    positions.forEach(p => {
+      if (trio.includes(p.branch)) {
+        if (!found[p.branch]) found[p.branch] = [];
+        found[p.branch].push(p.posIdx);
+      }
+    });
+    const presentBranches = Object.keys(found).map(Number);
+
+    if (presentBranches.length === 3) {
+      const allPos = presentBranches.flatMap(b => found[b]);
+      rels.push({
+        type: 'sanhe', subtype: '三合',
+        desc: `${DZ[b1]}${DZ[b2]}${DZ[b3]}三合${WX[wxR]}局`,
+        positions: allPos, posNames: allPos.map(p=>POS_SHORT[p]),
+        wxResult: wxR, baseScore: 95, tagClass: 'tag-sanhe', isThreeWay: true
+      });
+    } else if (presentBranches.length === 2) {
+      const pair = presentBranches;
+      const allPos = pair.flatMap(b => found[b]);
+      const uniquePos = [...new Set(allPos)];
+      if (uniquePos.length >= 2) {
+        rels.push({
+          type: 'banhe', subtype: '半合',
+          desc: `${pair.map(b=>DZ[b]).join('')}半合${WX[wxR]}局`,
+          positions: uniquePos.slice(0,2), posNames: uniquePos.slice(0,2).map(p=>POS_SHORT[p]),
+          wxResult: wxR, baseScore: 40, tagClass: 'tag-banhe'
+        });
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP SCORING
+// ═══════════════════════════════════════════════════════════
+
+// 位置权重: 原局=1, 大运=0.9, 流年=0.7, 流月=0.35, 流日=0.15
+const POS_WEIGHT = [1,1,1,1, 0.9, 0.7, 0.35, 0.15];
+const MIN_SCORE = 12;
+
+function scoreRelationships(rels) {
+  return rels.map(r => {
+    let score = r.baseScore;
+
+    // 日主参与加成
+    const involvesDayPillar = r.positions.some(p => p === 2);
+    if (involvesDayPillar) score *= 1.5;
+
+    // 月令参与加成
+    const involvesMonth = r.positions.some(p => p === 1);
+    if (involvesMonth && !involvesDayPillar) score *= 1.2;
+
+    // 位置邻近加成 (原局内)
+    const natalPos = r.positions.filter(p => p <= 3);
+    if (natalPos.length >= 2) {
+      const sorted = [...natalPos].sort((a,b) => a-b);
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (sorted[i+1] - sorted[i] === 1) { score *= 1.1; break; }
+      }
+    }
+
+    // 来源层级 — 核心区分
+    const maxPos = Math.max(...r.positions);
+    const minPos = Math.min(...r.positions);
+    const hasNatal = minPos <= 3;
+    const transitWeight = POS_WEIGHT[maxPos];
+
+    // 有原局参与: 以最弱运限层级定权重
+    // 无原局参与: 再打5折（纯运限凑成，缺乏根基）
+    const srcMul = hasNatal ? transitWeight : transitWeight * 0.5;
+    score *= srcMul;
+
+    let source;
+    if (maxPos <= 3) source = '原局';
+    else if (maxPos === 4) source = '大运';
+    else if (maxPos === 5) source = '流年';
+    else if (maxPos === 6) source = '流月';
+    else source = '流日';
+
+    return { ...r, score: Math.round(score), source };
+  })
+  .filter(r => r.score >= MIN_SCORE)
+  .sort((a, b) => b.score - a.score);
+}
+
+function deduplicateRels(rels) {
+  const seen = new Set();
+  return rels.filter(r => {
+    const key = r.subtype + ':' + [...r.positions].sort().join(',') + ':' + r.desc;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP INTERACTIONS (互动裁决)
+// ═══════════════════════════════════════════════════════════
+
+function resolveInteractions(rels, positions) {
+  const posLookup = {};
+  for (const p of positions) posLookup[p.posIdx] = p;
+
+  const dzRels = [];
+  for (const r of rels) {
+    r.interaction = null;
+    r.intClass = '';
+    if (!isTianganRel(r)) {
+      r._branches = r.positions.map(pi => posLookup[pi]?.branch).filter(b => b !== undefined);
+      dzRels.push(r);
+    }
+  }
+
+  // branch → [rels involving it]
+  const bMap = {};
+  for (const r of dzRels) {
+    for (const b of r._branches) {
+      if (!bMap[b]) bMap[b] = [];
+      bMap[b].push(r);
+    }
+  }
+
+  const HE_TYPES = new Set(['liuhe','sanhe','banhe']);
+
+  // --- Rule 1: 三合成局 > 一切 ---
+  const sanheRels = dzRels.filter(r => r.type === 'sanhe');
+  for (const sh of sanheRels) {
+    const shSet = new Set(sh._branches);
+    if (!sh.interaction) {
+      sh.interaction = '局成力大';
+      sh.intClass = 'int-strengthened';
+      sh.score = Math.round(sh.score * 1.15);
+    }
+    for (const r of dzRels) {
+      if (r === sh || r.interaction) continue;
+      if (r.type === 'liuhe' && r._branches.some(b => shSet.has(b))) {
+        r.interaction = '三合优先';
+        r.intClass = 'int-weakened';
+        r.score = Math.round(r.score * 0.4);
+      }
+      if (r.type === 'chong' && r._branches.some(b => shSet.has(b))) {
+        r.interaction = '三合解冲';
+        r.intClass = 'int-weakened';
+        r.score = Math.round(r.score * 0.3);
+      }
+    }
+  }
+
+  // --- Rule 2: 贪合忘冲 / 贪合忘刑 ---
+  for (const rList of Object.values(bMap)) {
+    const hes = rList.filter(r => HE_TYPES.has(r.type) && !r.interaction);
+    const chongs = rList.filter(r => r.type === 'chong' && !r.interaction);
+    const xings = rList.filter(r => r.type === 'xing' && !r.interaction);
+
+    if (hes.length > 0 && chongs.length > 0) {
+      for (const c of chongs) {
+        c.interaction = '贪合忘冲';
+        c.intClass = 'int-weakened';
+        c.score = Math.round(c.score * 0.4);
+      }
+      for (const h of hes) {
+        if (!h.interaction) { h.interaction = '合解冲'; h.intClass = 'int-noted'; }
+      }
+    }
+
+    if (hes.length > 0 && xings.length > 0) {
+      for (const x of xings) {
+        x.interaction = '合解刑';
+        x.intClass = 'int-weakened';
+        x.score = Math.round(x.score * 0.5);
+      }
+    }
+  }
+
+  // --- Rule 3: 三刑三方聚齐 → 力量极大 ---
+  for (const r of dzRels) {
+    if (r.isThreeWay && r.type === 'xing' && !r.interaction) {
+      r.interaction = '三方聚刑';
+      r.intClass = 'int-strengthened';
+      r.score = Math.round(r.score * 1.3);
+    }
+  }
+
+  // --- Rule 4: 天干合克共存 → 合化解克 ---
+  const tgHe = rels.filter(r => r.type === 'he');
+  const tgKe = rels.filter(r => r.type === 'ke');
+  for (const he of tgHe) {
+    const heSet = new Set(he.positions);
+    for (const ke of tgKe) {
+      if (ke.interaction) continue;
+      if (ke.positions.length === 2 && ke.positions.every(p => heSet.has(p))) {
+        ke.interaction = '被合化解';
+        ke.intClass = 'int-weakened';
+        ke.score = Math.round(ke.score * 0.3);
+      }
+    }
+  }
+
+  // --- Rule 5: 冲能散害/散破（冲的力量压制害和破） ---
+  for (const rList of Object.values(bMap)) {
+    const chongs = rList.filter(r => r.type === 'chong' && !r.interaction);
+    const hais = rList.filter(r => r.type === 'hai' && !r.interaction);
+    const pos = rList.filter(r => r.type === 'po' && !r.interaction);
+    if (chongs.length > 0) {
+      for (const h of hais) { h.interaction = '冲散害'; h.intClass = 'int-weakened'; h.score = Math.round(h.score * 0.4); }
+      for (const p of pos) { p.interaction = '冲散破'; p.intClass = 'int-weakened'; p.score = Math.round(p.score * 0.3); }
+    }
+  }
+
+  rels.sort((a, b) => b.score - a.score);
+  return rels;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DAYUN / LIUNIAN / LIUYUE / LIURI
+// ═══════════════════════════════════════════════════════════
+
+function calcDayunStartAge(yearGan, gender, birthYear, birthMonth, birthDay) {
+  const isYang = TG_YY[yearGan] === 1;
+  const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
+
+  // Approximate: count days to next/prev 节
+  const allJie = [];
+  for (let yr = birthYear - 1; yr <= birthYear + 1; yr++) {
+    JIE_DATES.forEach(([m, d]) => {
+      allJie.push(new Date(yr, m - 1, d));
+    });
+  }
+  allJie.sort((a, b) => a - b);
+
+  const birthDate = new Date(birthYear, birthMonth - 1, birthDay);
+  let days;
+  if (forward) {
+    const nextJie = allJie.find(d => d > birthDate);
+    days = nextJie ? Math.round((nextJie - birthDate) / 86400000) : 30;
+  } else {
+    const prevJie = [...allJie].reverse().find(d => d <= birthDate);
+    days = prevJie ? Math.round((birthDate - prevJie) / 86400000) : 30;
+  }
+
+  return Math.round(days / 3);
+}
+
+function calcDayunList(monthGan, monthZhi, yearGan, gender, startAge, n = 8) {
+  const isYang = TG_YY[yearGan] === 1;
+  const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
+  const step = forward ? 1 : -1;
+  const list = [];
+  for (let i = 1; i <= n; i++) {
+    const g = mod(monthGan + step * i, 10);
+    const z = mod(monthZhi + step * i, 12);
+    list.push({
+      stem: g, branch: z,
+      ageStart: startAge + (i - 1) * 10,
+      ageEnd: startAge + i * 10 - 1
+    });
+  }
+  return list;
+}
+
+function getLiunianGanzhi(year) {
+  const offset = year - 1984;
+  return [mod(offset, 10), mod(offset, 12)];
+}
+
+function getLiuyueGanzhi(year, month, day) {
+  const jm = getJieqiMonth(year, month, day);
+  const [yg] = getYearGanzhi(year, month, day);
+  return getMonthGanzhi(yg, jm);
+}
+
+function getLiuriGanzhi(year, month, day) {
+  return getDayGanzhi(year, month, day);
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+
+let STATE = null;
+
+// ═══════════════════════════════════════════════════════════
+// MAIN CALCULATION
+// ═══════════════════════════════════════════════════════════
+
+function getCheckDate() {
+  return [
+    parseInt(document.getElementById('checkYear').value),
+    parseInt(document.getElementById('checkMonth').value),
+    parseInt(document.getElementById('checkDay').value)
+  ];
+}
+function setCheckDate(y, m, d) {
+  document.getElementById('checkYear').value = y;
+  document.getElementById('checkMonth').value = m;
+  document.getElementById('checkDay').value = d;
+}
+
+// Anchor field interactions
+document.getElementById('anchorMarriage').addEventListener('change', function() {
+  const yearEl = document.getElementById('anchorMarriageYear');
+  yearEl.style.display = (this.value === 'married' || this.value === 'divorced') ? 'block' : 'none';
+});
+document.getElementById('anchorCareer').addEventListener('change', function() {
+  const yearEl = document.getElementById('anchorCareerYear');
+  yearEl.style.display = (this.value === 'employed' || this.value === 'startup' || this.value === 'freelance') ? 'block' : 'none';
+});
+
+function getAnchorContext() {
+  const marriageLabels = { unmarried: '未婚/单身', relationship: '恋爱中', married: '已婚', divorced: '离异' };
+  const careerLabels = { student: '在读', graduate: '刚毕业/求职中', employed: '在职', startup: '创业中', freelance: '自由职业', gap: '间隔期/转型中' };
+  const goalLabels = { money: '赚钱', stability: '稳定', creation: '创造/表达', freedom: '自由/躺平', growth: '成长/突破', enjoyment: '享受生活', relationship: '经营关系', meaning: '找到方向' };
+
+  const parts = [];
+  const mv = document.getElementById('anchorMarriage').value;
+  if (mv) {
+    let s = '感情状态：' + marriageLabels[mv];
+    const my = document.getElementById('anchorMarriageYear').value;
+    if (my && (mv === 'married' || mv === 'divorced')) s += `（${my}年）`;
+    parts.push(s);
+  }
+  const cv = document.getElementById('anchorCareer').value;
+  if (cv) {
+    let s = '事业阶段：' + careerLabels[cv];
+    const cy = document.getElementById('anchorCareerYear').value;
+    if (cy && (cv === 'employed' || cv === 'startup' || cv === 'freelance')) s += `（${cy}年起）`;
+    parts.push(s);
+  }
+  const gv = document.getElementById('anchorGoal').value;
+  if (gv) parts.push('当前最大期望：' + goalLabels[gv]);
+
+  return parts.length > 0 ? parts.join('\n') : '';
+}
+
+function calculate() {
+  const year = parseInt(document.getElementById('birthYear').value);
+  const month = parseInt(document.getElementById('birthMonth').value);
+  const day = parseInt(document.getElementById('birthDay').value);
+  if (!year || !month || !day) return;
+  const shiIdx = parseInt(document.getElementById('birthHour').value);
+  const gender = document.querySelector('input[name="gender"]:checked').value;
+
+  const { pillars, jieqiMonth } = getFourPillars(year, month, day, shiIdx);
+  const dayGan = pillars[2][0];
+
+  const energy = calcWuxingEnergy(pillars, jieqiMonth);
+  const startAge = calcDayunStartAge(pillars[0][0], gender, year, month, day);
+  const dayunList = calcDayunList(pillars[1][0], pillars[1][1], pillars[0][0], gender, startAge);
+
+  STATE = { pillars, jieqiMonth, dayGan, energy, dayunList, startAge, birthYear: year, birthMonth: month, birthDay: day, gender };
+
+  const today = new Date();
+  setCheckDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
+
+  document.getElementById('results').style.display = 'block';
+  renderPillars();
+  renderWxBars();
+  renderWxPentagon();
+  renderDayun();
+  onCheckDateChange();
+  saveSession();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI RENDERING
+// ═══════════════════════════════════════════════════════════
+
+function renderPillars() {
+  const { pillars, dayGan, birthYear, birthMonth, birthDay } = STATE;
+  const [,yz] = pillars[0];
+  document.getElementById('basicInfo').textContent = `${birthYear}年${birthMonth}月${birthDay}日 · ${SX[yz]}年 · 日主${TG[dayGan]}${WX[TG_WX[dayGan]]}`;
+  const labels = ['年柱','月柱','日柱','时柱'];
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const [g, z] = pillars[i];
+    const gWx = TG_WX[g], zWx = DZ_WX[z];
+    const ss = i === 2 ? '日主' : getShishen(dayGan, g);
+    const cgHtml = CANGGAN[z].map(([si]) => {
+      const cSs = getShishen(dayGan, si);
+      return `<div class="cg-item"><span class="cg-char ${WX_CLASS[TG_WX[si]]}">${TG[si]}${WX[TG_WX[si]]}</span><span class="cg-ss">${cSs}</span></div>`;
+    }).join('');
+    html += `<div class="pillar">
+      <div class="pillar-label">${labels[i]}</div>
+      <span class="pillar-char ${WX_CLASS[gWx]}">${TG[g]}${WX[gWx]}</span>
+      <span class="pillar-ss">${ss}</span>
+      <div class="pillar-divider"></div>
+      <span class="pillar-char ${WX_CLASS[zWx]}">${DZ[z]}${WX[zWx]}</span>
+      <div class="pillar-canggan">${cgHtml}</div>
+    </div>`;
+  }
+  document.getElementById('pillarsDisplay').innerHTML = html;
+}
+
+function renderWxBars() {
+  const amps = STATE.energy;
+  const maxAmp = Math.max(...amps, 1);
+  const pairs = WX.map((name, i) => ({ name, amp: amps[i], color: WX_COLORS[i], cls: WX_CLASS[i] }));
+  pairs.sort((a, b) => b.amp - a.amp);
+
+  let html = '';
+  for (const { name, amp, color, cls } of pairs) {
+    const pct = (amp / maxAmp * 100).toFixed(0);
+    html += `<div class="wx-bar-row">
+      <div class="wx-bar-label ${cls}">${name}</div>
+      <div class="wx-bar-track">
+        <div class="wx-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="wx-bar-val">${amp.toFixed(1)}</div>
+    </div>`;
+  }
+  document.getElementById('wxBars').innerHTML = html;
+}
+
+let wxPentMode = 'natal';
+
+function setWxPentMode(mode) {
+  wxPentMode = mode;
+  renderWxPentagon();
+}
+
+function calcDayunEnergy() {
+  const base = [...STATE.energy];
+  const checkY = getCheckDate()[0];
+  const age = checkY - STATE.birthYear;
+  for (const du of STATE.dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      base[TG_WX[du.stem]] += WEIGHTS.stem;
+      CANGGAN[du.branch].forEach(([hsIdx, prop], j) => {
+        const hWx = TG_WX[hsIdx];
+        if (j === 0) base[hWx] += WEIGHTS.branchMain;
+        else if (prop >= 0.5) base[hWx] += WEIGHTS.hiddenMid;
+        else base[hWx] += WEIGHTS.hiddenMinor;
+      });
+      return base;
+    }
+  }
+  return base;
+}
+
+function renderWxPentagon() {
+  if (!STATE) return;
+  const { dayGan } = STATE;
+  const dayWx = TG_WX[dayGan];
+  const energy = wxPentMode === 'dayun' ? calcDayunEnergy() : STATE.energy;
+
+  let modeLabel = '';
+  if (wxPentMode === 'dayun') {
+    const checkY = getCheckDate()[0];
+    const age = checkY - STATE.birthYear;
+    for (const du of STATE.dayunList) {
+      if (age >= du.ageStart && age <= du.ageEnd) {
+        modeLabel = `${TG[du.stem]}${DZ[du.branch]}运（${du.ageStart}-${du.ageEnd}岁）`;
+        break;
+      }
+    }
+  }
+
+  const W = 360, H = 330;
+  const cx = W / 2, cy = 160;
+  const R = 105, CR = 28;
+
+  const SS_GROUPS = ['比劫', '食伤', '财星', '官杀', '印枭'];
+  const pentWx = [1, 2, 3, 4, 0];
+  const angles = pentWx.map((_, i) => -Math.PI / 2 + i * 2 * Math.PI / 5);
+  const vx = angles.map(a => cx + R * Math.cos(a));
+  const vy = angles.map(a => cy + R * Math.sin(a));
+
+  const maxE = Math.max(...energy, 0.1);
+
+  function edgeSvg(i, j, color, n, dash) {
+    n = Math.min(n, 1);
+    const w = (0.4 + n * 7.6).toFixed(1);
+    const op = (0.05 + n * 0.85).toFixed(2);
+    const dx = vx[j] - vx[i], dy = vy[j] - vy[i];
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const ux = dx / len, uy = dy / len;
+    const x1 = (vx[i] + ux * CR).toFixed(1), y1 = (vy[i] + uy * CR).toFixed(1);
+    const x2 = (vx[j] - ux * CR).toFixed(1), y2 = (vy[j] - uy * CR).toFixed(1);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${w}" stroke-opacity="${op}" stroke-linecap="round"${dash ? ' stroke-dasharray="5,3"' : ''}/>`;
+  }
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:360px;margin:0 auto;display:block">`;
+
+  // 相生: i generates (i+1), flow determined by source energy
+  for (let i = 0; i < 5; i++) {
+    const srcE = energy[pentWx[i]];
+    s += edgeSvg(i, (i + 1) % 5, '#4a8a5a', Math.pow(srcE / maxE, 1.5), false);
+  }
+
+  // 相克: i controls j, strength = absolute power × relative dominance
+  const ke = [[0,2],[2,4],[4,1],[1,3],[3,0]];
+  for (const [i, j] of ke) {
+    const cE = energy[pentWx[i]], tE = energy[pentWx[j]];
+    const n = Math.pow(cE / maxE, 0.8) * Math.pow(cE / (cE + tE + 0.01), 1.0);
+    s += edgeSvg(i, j, '#c46a5a', n, true);
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const wx = pentWx[i];
+    const e = energy[wx];
+    const color = WX_COLORS[wx];
+    const ssGroup = SS_GROUPS[mod(wx - dayWx, 5)];
+
+    s += `<circle cx="${vx[i].toFixed(1)}" cy="${vy[i].toFixed(1)}" r="${CR}" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="2.5"/>`;
+    s += `<text x="${vx[i].toFixed(1)}" y="${(vy[i] - 4).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="16" font-weight="700" style="font-family:inherit">${WX[wx]}</text>`;
+    s += `<text x="${vx[i].toFixed(1)}" y="${(vy[i] + 12).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="12" style="font-family:inherit">${e.toFixed(1)}</text>`;
+
+    const lr = R + CR + 14;
+    const lx = cx + lr * Math.cos(angles[i]);
+    const ly = cy + lr * Math.sin(angles[i]);
+    s += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="var(--text2)" style="font-family:inherit">${ssGroup}</text>`;
+  }
+
+  s += `<text x="${W / 2}" y="${H - 10}" text-anchor="middle" fill="var(--text2)" font-size="10" style="font-family:inherit">`;
+  s += `<tspan fill="#4f7d5a" font-weight="600">——</tspan> 相生·流通量　<tspan fill="#b03a26" font-weight="600">- - -</tspan> 相克·制约力</text>`;
+  s += '</svg>';
+
+  const toggle = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">` +
+    `<div class="rel-toggle">` +
+    `<button class="${wxPentMode === 'natal' ? 'active' : ''}" onclick="setWxPentMode('natal')">原局</button>` +
+    `<button class="${wxPentMode === 'dayun' ? 'active' : ''}" onclick="setWxPentMode('dayun')">+大运</button>` +
+    `</div>` +
+    (modeLabel ? `<span style="font-size:11px;color:var(--text2)">${modeLabel}</span>` : '') +
+    `</div>`;
+
+  document.getElementById('wxPentagon').innerHTML = toggle + s;
+}
+
+function renderDayun() {
+  const { dayunList, dayGan, birthYear } = STATE;
+  let html = '';
+  dayunList.forEach((du, i) => {
+    const gWx = TG_WX[du.stem], zWx = DZ_WX[du.branch];
+    const yearStart = birthYear + du.ageStart;
+    const yearEnd = birthYear + du.ageEnd;
+    const ssStem = getShishen(dayGan, du.stem);
+    const ssBranch = getShishen(dayGan, CANGGAN[du.branch][0][0]);
+    html += `<div class="dayun-item" data-idx="${i}" onclick="selectDayun(${i})">
+      <div class="dayun-gz"><span class="${WX_CLASS[gWx]}">${TG[du.stem]}</span><span class="${WX_CLASS[zWx]}">${DZ[du.branch]}</span></div>
+      <div class="dayun-age">${du.ageStart}-${du.ageEnd}岁</div>
+      <div class="dayun-years">${yearStart}-${yearEnd}</div>
+      <div style="font-size:11px;color:var(--accent);margin-top:2px">${ssStem}·${ssBranch}</div>
+    </div>`;
+  });
+  document.getElementById('dayunList').innerHTML = html;
+}
+
+function selectDayun(idx) {
+  if (!STATE) return;
+  const du = STATE.dayunList[idx];
+  const yearMid = STATE.birthYear + du.ageStart + 5;
+  setCheckDate(yearMid, 1, 1);
+  onCheckDateChange();
+}
+
+function renderPeriods(checkYear, checkMonth, checkDay) {
+  const { dayGan } = STATE;
+  const [lyG, lyZ] = getLiunianGanzhi(checkYear);
+  const [lmG, lmZ] = getLiuyueGanzhi(checkYear, checkMonth, checkDay);
+  const [ldG, ldZ] = getLiuriGanzhi(checkYear, checkMonth, checkDay);
+
+  const items = [
+    { label: `流年 ${checkYear}`, g: lyG, z: lyZ },
+    { label: `流月`, g: lmG, z: lmZ },
+    { label: `流日`, g: ldG, z: ldZ },
+  ];
+
+  let html = '';
+  for (const { label, g, z } of items) {
+    const gWx = TG_WX[g], zWx = DZ_WX[z];
+    const ssStem = getShishen(dayGan, g);
+    const ssBranch = getShishen(dayGan, CANGGAN[z][0][0]);
+    html += `<div class="period-box">
+      <div class="period-label">${label}</div>
+      <div class="period-gz"><span class="${WX_CLASS[gWx]}">${TG[g]}</span><span class="${WX_CLASS[zWx]}">${DZ[z]}</span></div>
+      <div class="period-wx">${ssStem} · ${ssBranch}</div>
+    </div>`;
+  }
+  document.getElementById('periodGrid').innerHTML = html;
+}
+
+let relMode = 'rank';
+let lastRels = [];
+
+function setRelMode(mode) {
+  relMode = mode;
+  document.querySelectorAll('.rel-toggle button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.rel-toggle button[onclick="setRelMode('${mode}')"]`).classList.add('active');
+  renderRelationships(lastRels);
+}
+
+function scoreToDots(score) {
+  if (score >= 120) return '<span style="color:var(--rel-chong)">●●●●●</span>';
+  if (score >= 90)  return '<span style="color:#c77a20">●●●●<span style="opacity:.25">●</span></span>';
+  if (score >= 65)  return '<span style="color:var(--accent)">●●●<span style="opacity:.25">●●</span></span>';
+  if (score >= 45)  return '<span style="color:var(--text2)">●●<span style="opacity:.25">●●●</span></span>';
+  return '<span style="color:#ccc">●<span style="opacity:.25">●●●●</span></span>';
+}
+
+function shortBadge(subtype) {
+  const m = { '天干合':'合','天干克':'克','六合':'合','三合':'三合','半合':'半合',
+    '六冲':'冲','无恩刑':'刑','恃势刑':'刑','无礼刑':'刑','自刑':'自刑',
+    '六害':'害','六破':'破' };
+  return m[subtype] || subtype;
+}
+
+function isTianganRel(r) { return r.type === 'he' || r.type === 'ke'; }
+
+function getRelShishenTag(r) {
+  if (!STATE) return '';
+  const dg = STATE.dayGan;
+  const toSS = s => s === dg ? '日主' : getShishen(dg, s);
+
+  let stems;
+  if (r.stems) {
+    stems = r.stems;
+  } else if (STATE.currentPositions) {
+    const lookup = {};
+    for (const p of STATE.currentPositions) lookup[p.posIdx] = p;
+    stems = r.positions.slice(0, 2).map(pi => {
+      const pos = lookup[pi];
+      if (!pos) return undefined;
+      return CANGGAN[pos.branch][0][0];
+    }).filter(s => s !== undefined);
+  }
+  if (!stems || stems.length < 2) return '';
+
+  const a = toSS(stems[0]), b = toSS(stems[1]);
+  let text;
+  if (r.type === 'he') text = `${a}合${b}`;
+  else if (r.type === 'ke') text = `${a}克${b}`;
+  else if (r.type === 'chong') text = `${a}冲${b}`;
+  else if (r.type === 'xing') text = `${a}刑${b}`;
+  else if (r.type === 'liuhe') text = `${a}合${b}`;
+  else if (r.type === 'hai') text = `${a}害${b}`;
+  else if (r.type === 'po') text = `${a}破${b}`;
+  else if (r.type === 'sanhe' || r.type === 'banhe') text = `${a}·${b}`;
+  else text = `${a}·${b}`;
+  return `<span class="rel-ss">${text}</span>`;
+}
+
+function getRelMeaning(r) {
+  if (r.type === 'he') {
+    const key = [Math.min(r.stems[0], r.stems[1]), Math.max(r.stems[0], r.stems[1])].join(',');
+    return TG_HE_MEANINGS[key] || '';
+  }
+  if (r.type === 'ke') {
+    const s0 = r.stems[0], s1 = r.stems[1];
+    const samePolarity = (TG_YY[s0] === TG_YY[s1]);
+    return samePolarity
+      ? '偏克（无情）：力度猛烈，直接压制，不留余地'
+      : '正克（有情）：克中有制，管束有度，可以承受';
+  }
+  if (r.type === 'liuhe') {
+    const branches = r.positions.length >= 2 ? getBranchesForRel(r) : null;
+    if (branches) {
+      const key = [Math.min(branches[0], branches[1]), Math.max(branches[0], branches[1])].join(',');
+      return DZ_LIUHE_MEANINGS[key] || '';
+    }
+    return '';
+  }
+  if (r.type === 'chong') {
+    const branches = getBranchesForRel(r);
+    if (branches) {
+      const key = [Math.min(branches[0], branches[1]), Math.max(branches[0], branches[1])].join(',');
+      return DZ_CHONG_MEANINGS[key] || '';
+    }
+    return '';
+  }
+  if (r.type === 'hai') {
+    const branches = getBranchesForRel(r);
+    if (branches) {
+      const key = [Math.min(branches[0], branches[1]), Math.max(branches[0], branches[1])].join(',');
+      return DZ_HAI_MEANINGS[key] || '';
+    }
+    return '';
+  }
+  if (r.type === 'po') {
+    const branches = getBranchesForRel(r);
+    if (branches) {
+      const key = [Math.min(branches[0], branches[1]), Math.max(branches[0], branches[1])].join(',');
+      return DZ_PO_MEANINGS[key] || '';
+    }
+    return '';
+  }
+  if (r.type === 'xing') {
+    return XING_MEANINGS[r.subtype] || '';
+  }
+  if (r.type === 'sanhe') {
+    return DZ_SANHE_MEANINGS[r.wxResult] || '';
+  }
+  if (r.type === 'banhe') {
+    return (DZ_SANHE_MEANINGS[r.wxResult] || '').replace('三合', '半合：局势未全，力量不足但方向已定');
+  }
+  return '';
+}
+
+function getBranchesForRel(r) {
+  if (!STATE || !STATE.currentPositions) return null;
+  const lookup = {};
+  for (const p of STATE.currentPositions) lookup[p.posIdx] = p;
+  const branches = r.positions.slice(0, 2).map(pi => lookup[pi]?.branch).filter(b => b !== undefined);
+  return branches.length >= 2 ? branches : null;
+}
+
+function relRowHtml(r, showSource, idx) {
+  const srcTag = showSource ? `<span class="rel-src-tag">${r.source}</span>` : '';
+  const intTag = r.interaction ? `<span class="rel-int-tag ${r.intClass || ''}">${r.interaction}</span>` : '';
+  const ssTag = getRelShishenTag(r);
+  const meaning = getRelMeaning(r);
+  const meaningHtml = meaning ? `<div class="rel-meaning">${meaning}</div>` : '';
+  const rowCls = r.intClass === 'int-weakened' ? ' rel-row-weak' :
+                 r.intClass === 'int-strengthened' ? ' rel-row-strong' : '';
+  return `<div class="rel-row${rowCls}" onclick="openRelDetail(${idx})">
+    <div class="rel-row-main">
+      <span class="rel-badge ${r.tagClass}">${shortBadge(r.subtype)}</span>
+      <span class="rel-chars">${r.desc}${ssTag}${intTag}</span>
+      ${srcTag}
+      <span class="rel-pos">${r.posNames.join('·')}</span>
+      <span class="rel-dots">${scoreToDots(r.score)}</span>
+    </div>
+    ${meaningHtml}
+  </div>`;
+}
+
+function renderRelationships(allRels) {
+  lastRels = allRels;
+  if (allRels.length === 0) {
+    document.getElementById('relDisplay').innerHTML = '<div class="no-rel">当前无显著干支关系</div>';
+    return;
+  }
+
+  let html = '';
+
+  if (relMode === 'rank') {
+    const sorted = [...allRels].sort((a, b) => b.score - a.score);
+    for (let i = 0; i < sorted.length; i++) {
+      const idx = allRels.indexOf(sorted[i]);
+      html += relRowHtml(sorted[i], true, idx);
+    }
+  } else {
+    const sourceOrder = ['原局','大运','流年','流月','流日'];
+    const groups = {};
+    for (const s of sourceOrder) groups[s] = [];
+    for (const r of allRels) { (groups[r.source] || groups['流年']).push(r); }
+
+    for (const src of sourceOrder) {
+      const items = groups[src];
+      if (items.length === 0) continue;
+      const tgRels = items.filter(isTianganRel);
+      const dzRels = items.filter(r => !isTianganRel(r));
+      html += `<div class="rel-source-group"><div class="rel-source-title">${src}</div>`;
+      if (tgRels.length > 0) {
+        html += '<div class="rel-sub-title">天干</div>';
+        for (const r of tgRels) html += relRowHtml(r, false, allRels.indexOf(r));
+      }
+      if (dzRels.length > 0) {
+        html += '<div class="rel-sub-title">地支</div>';
+        for (const r of dzRels) html += relRowHtml(r, false, allRels.indexOf(r));
+      }
+      html += '</div>';
+    }
+  }
+
+  document.getElementById('relDisplay').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHECK DATE HANDLER
+// ═══════════════════════════════════════════════════════════
+
+function shiftCheckDate(delta) {
+  const [y, m, d] = getCheckDate();
+  if (!y) return;
+  const dt = new Date(y, m - 1, d + delta);
+  setCheckDate(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+  onCheckDateChange();
+}
+
+function setCheckToday() {
+  const t = new Date();
+  setCheckDate(t.getFullYear(), t.getMonth() + 1, t.getDate());
+  onCheckDateChange();
+}
+
+function onCheckDateChange() {
+  if (!STATE) return;
+  const [cy, cm, cd] = getCheckDate();
+  if (!cy || !cm || !cd) return;
+  const { pillars, dayGan, dayunList, birthYear } = STATE;
+
+  const age = cy - birthYear;
+
+  // Active dayun
+  let activeDayunIdx = -1;
+  dayunList.forEach((du, i) => {
+    if (age >= du.ageStart && age <= du.ageEnd) activeDayunIdx = i;
+  });
+  document.querySelectorAll('.dayun-item').forEach(el => el.classList.remove('active'));
+  if (activeDayunIdx >= 0) {
+    const el = document.querySelector(`.dayun-item[data-idx="${activeDayunIdx}"]`);
+    if (el) el.classList.add('active');
+  }
+
+  // Check info summary
+  const [ciLyG, ciLyZ] = getLiunianGanzhi(cy);
+  const [ciLdG, ciLdZ] = getLiuriGanzhi(cy, cm, cd);
+  let infoHtml = `<span class="check-info-item">${age >= 0 ? age + '岁' : ''}</span>`;
+  if (activeDayunIdx >= 0) {
+    const adu = dayunList[activeDayunIdx];
+    infoHtml += `<span class="check-info-item">大运 <span class="check-info-gz">${TG[adu.stem]}${DZ[adu.branch]}</span></span>`;
+  }
+  infoHtml += `<span class="check-info-item">流年 <span class="check-info-gz">${TG[ciLyG]}${DZ[ciLyZ]}</span></span>`;
+  infoHtml += `<span class="check-info-item">流日 <span class="check-info-gz">${TG[ciLdG]}${DZ[ciLdZ]}</span></span>`;
+  document.getElementById('checkInfo').innerHTML = infoHtml;
+
+  // Periods
+  renderPeriods(cy, cm, cd);
+
+  // Build positions for relationship analysis
+  const positions = [];
+  for (let i = 0; i < 4; i++) {
+    positions.push({ stem: pillars[i][0], branch: pillars[i][1], posIdx: i });
+  }
+
+  // Add dayun
+  if (activeDayunIdx >= 0) {
+    const du = dayunList[activeDayunIdx];
+    positions.push({ stem: du.stem, branch: du.branch, posIdx: 4 });
+  }
+
+  // Add liunian
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+  positions.push({ stem: lyG, branch: lyZ, posIdx: 5 });
+
+  // Add liuyue
+  const [lmG, lmZ] = getLiuyueGanzhi(cy, cm, cd);
+  positions.push({ stem: lmG, branch: lmZ, posIdx: 6 });
+
+  // Add liuri
+  const [ldG, ldZ] = getLiuriGanzhi(cy, cm, cd);
+  positions.push({ stem: ldG, branch: ldZ, posIdx: 7 });
+
+  STATE.currentPositions = positions;
+
+  // Find, score, and resolve interactions
+  let rels = findAllRelationships(positions);
+  rels = deduplicateRels(rels);
+  rels = scoreRelationships(rels);
+  rels = resolveInteractions(rels, positions);
+
+  renderWxPentagon();
+  renderRelationships(rels);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROMPT GENERATOR
+// ═══════════════════════════════════════════════════════════
+
+function getRelShishenText(r) {
+  if (!STATE) return '';
+  const dg = STATE.dayGan;
+  const toSS = s => s === dg ? '日主' : getShishen(dg, s);
+  let stems;
+  if (r.stems) {
+    stems = r.stems;
+  } else if (STATE.currentPositions) {
+    const lookup = {};
+    for (const p of STATE.currentPositions) lookup[p.posIdx] = p;
+    stems = r.positions.slice(0, 2).map(pi => {
+      const pos = lookup[pi];
+      if (!pos) return undefined;
+      return CANGGAN[pos.branch][0][0];
+    }).filter(s => s !== undefined);
+  }
+  if (!stems || stems.length < 2) return '';
+  const a = toSS(stems[0]), b = toSS(stems[1]);
+  if (r.type === 'he') return `${a}合${b}`;
+  if (r.type === 'ke') return `${a}克${b}`;
+  if (r.type === 'chong') return `${a}冲${b}`;
+  if (r.type === 'xing') return `${a}刑${b}`;
+  if (r.type === 'liuhe') return `${a}合${b}`;
+  if (r.type === 'hai') return `${a}害${b}`;
+  if (r.type === 'po') return `${a}破${b}`;
+  return `${a}·${b}`;
+}
+
+function generatePrompt() {
+  if (!STATE) return;
+  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
+  const shiIdx = parseInt(document.getElementById('birthHour').value);
+  const shiName = DZ[shiIdx] + '时';
+  const genderText = gender === 'male' ? '男命' : '女命';
+
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+
+  const pLabels = ['年', '月', '日', '时'];
+  const cangganStr = pillars.map(([, z], i) =>
+    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
+  ).join(' ');
+
+  const ssItems = [];
+  for (let i = 0; i < 4; i++) {
+    if (i === 2) continue;
+    ssItems.push(`${pLabels[i]}干${TG[pillars[i][0]]}=${getShishen(dayGan, pillars[i][0])}`);
+  }
+
+  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
+  wxPairs.sort((a, b) => b.amp - a.amp);
+  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+  const missing = wxPairs.filter(p => p.amp === 0).map(p => p.name);
+
+  const isYang = TG_YY[pillars[0][0]] === 1;
+  const forward = (isYang && gender === 'male') || (!isYang && gender === 'female');
+  const dayunStrs = dayunList.map(du =>
+    `${TG[du.stem]}${DZ[du.branch]}(${du.ageStart}-${du.ageEnd},${getShishen(dayGan, du.stem)})`
+  );
+
+  const [cy] = getCheckDate();
+  const age = cy - birthYear;
+  let curDayunGz = '', curDayunLabel = '';
+  for (const du of dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      curDayunGz = TG[du.stem] + DZ[du.branch];
+      curDayunLabel = `${curDayunGz}（${du.ageStart}-${du.ageEnd}岁）`;
+      break;
+    }
+  }
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+  const lyGz = TG[lyG] + DZ[lyZ];
+
+  const periodLines = [];
+  if (curDayunLabel) periodLines.push('当前大运：' + curDayunLabel);
+  periodLines.push(`当前流年：${lyGz}（${cy}）`);
+
+  const natalRels = lastRels.filter(r => r.source === '原局');
+  let relLines;
+  if (natalRels.length > 0) {
+    relLines = natalRels.map(r => {
+      let line = `- ${r.desc}（${r.posNames.join('·')}`;
+      const ssText = getRelShishenText(r);
+      if (ssText) line += `，${ssText}`;
+      line += '）';
+      if (r.interaction) line += `【${r.interaction}】`;
+      return line;
+    }).join('\n');
+  } else {
+    relLines = '- 原局无显著干支关系';
+  }
+
+  const monthBranch = DZ[pillars[1][1]];
+  const monthWx = WX[DZ_WX[pillars[1][1]]];
+
+  const dayBranch = pillars[2][1];
+  const dbCg = CANGGAN[dayBranch].map(([si]) => TG[si]);
+  const dbMainStem = CANGGAN[dayBranch][0][0];
+  const dbMainSS = getShishen(dayGan, dbMainStem);
+  const dbWxI = TG_WX[dbMainStem], dmWxI = TG_WX[dayGan];
+  const wxDiff = mod(dmWxI - dbWxI, 5);
+  const dbRelDesc = wxDiff === 0 ? '同气比助' :
+    wxDiff === 1 ? `${WX[dbWxI]}生${WX[dmWxI]}，生助日主` :
+    wxDiff === 4 ? `${WX[dmWxI]}生${WX[dbWxI]}，日主泄气` :
+    wxDiff === 2 ? `${WX[dbWxI]}克${WX[dmWxI]}，克制日主` :
+    `${WX[dmWxI]}克${WX[dbWxI]}，日主所克`;
+
+  const prompt = `请根据以下八字命盘进行分析。
+
+【命盘信息】
+出生：${birthYear}年${birthMonth}月${birthDay}日 ${shiName} ${genderText}
+四柱：${fourPillars}
+日主：${dmName}
+藏干：${cangganStr}
+十神：${ssItems.join(' ')}
+
+五行能量（高→低）：${wxStr}
+${missing.length > 0 ? '五行缺：' + missing.join('、') : '五行无缺'}
+${getAnchorContext() ? '\n【命主现状】\n' + getAnchorContext() + '\n' : ''}
+大运（${forward ? '顺排' : '逆排'}）：${dayunStrs.join(' → ')}
+${periodLines.join('\n')}
+
+原局关系：
+${relLines}
+
+日支（夫妻宫）：${DZ[dayBranch]}${WX[DZ_WX[dayBranch]]}，藏${dbCg.join('')}，本气${TG[dbMainStem]}（${dbMainSS}），${dbRelDesc}
+
+【十神功能光谱】
+十神是能量交互模式的光谱，每种都有适度/过载/不足三态。是否积极取决于：①系统是否需要该功能（用神=需激活，忌神=需节制）；②是否有制衡力量；③强度是否在甜区。
+正印：知识输入轴。适度=深度理解力、系统性学习；过载=分析瘫痪、"没学够不敢动手"；不足=无法消化复杂体系
+偏印：直觉认知轴。适度=跨域洞察、模式识别；过载=思维发散失焦、过度解读；不足=思维线性死板
+食神：稳定输出轴。适度=持续自然产出；过载=舒适区惰性、缺乏突破冲动；不足=表达受堵、产出断流
+伤官：颠覆输出轴。适度=建设性创新、重定义规则；过载=为反而反、无差别破坏；不足=不敢挑战、框架内躺平
+正财：持续经营轴。适度=耐心长线投入；过载=事必躬亲、无法放手委托；不足=虎头蛇尾、缺乏经营耐心
+偏财：机会杠杆轴。适度=识别非对称机会、平台思维；过载=投机散漫、追逐热点；不足=过度保守、错失机会
+正官：有序约束轴。适度=自律、结构化思维；过载=教条僵化、讨好权威；不足=缺乏纪律和承诺感
+七杀：极端压力轴。适度=压力激发潜能、"不变则亡"的行动力；过载=慢性焦虑、身心透支；不足=缺乏驱动力和紧迫感
+比肩：同行协作轴。适度=peer互助成长；过载=从众、丧失独立判断；不足=孤立、无法借力
+劫财：竞争驱动轴。适度=市场敏锐、迭代动力；过载=零和思维、资源焦虑；不足=竞争意识弱、被动退让
+
+【宫位参考】
+年柱=初始条件（家庭/时代/先天资源）  月柱=生态位（行业/圈子/竞争环境）
+日柱=核心自我与亲密关系  时柱=产出与遗产（作品/影响力/后续效应）
+
+【分析要求】
+请参考《滴天髓》《渊海子平》等经典的底层逻辑（五行生克的能量流动模型），从以下角度进行客观、全面的分析：
+0. 白话总述（必须放在回答最开头）：用一段完全不含命理术语的话（150-250字）概括这个人的性格底色、当前阶段的整体状态、最值得做的事和最需要防的事，让完全不懂命理的人直接读懂；之后再进入下列专业分析
+1. 日主${dmName}在原局中的状态：月令${monthBranch}为${monthWx}，日主是否得令、得地、透干、通根
+2. 五行能量分布：根据上方能量排序，说明强弱偏倚与缺失，以及由此带来的功能倾向${missing.length > 0 ? '（' + missing.join('') + '能量为零需特别关注）' : ''}
+3. 十神结构的光谱分析：每个十神都有适度/过载/不足三态（见上方光谱定义）。根据该命盘的五行能量分布，判断每个关键十神落在光谱的哪一端，并分析模块间的动态——如食神制杀（稳定输出消化压力）、枭神夺食（输入过载压制输出）、伤官佩印（知识支撑创新）、食伤生财（输出转化为回报）、官印相生（外部评价驱动学习）。关键：同一个十神在不同人生阶段可能在光谱上滑动（大运激活/压制）
+4. 原局干支关系的实际效应：合绊、冲动、刑害如何改变力量格局
+5. 格局倾向分析（正格/从格/特殊格局的可能性）
+6. 用神的功能解读：用神不是"什么五行对你好"，而是"认知-行为系统中哪个环节是瓶颈，打通它整个系统就能流转"。结合五行能量分布，指出哪些功能过载需要节制，哪些不足需要刻意激活，并给出具体可操作的建议
+7. ${curDayunGz ? '当前大运' + curDayunGz + '与' : ''}流年${lyGz}对原局的叠加影响
+8. 感情婚姻：以日支（夫妻宫）为核心框架。不要套用"男命财为妻、女命官为夫"的传统对应。重点关注：日支藏干的十神功能特质所反映的关系模式，日支与日主的生克关系所反映的互动动态，日支所受刑冲合害对关系稳定性的影响
+9. 事业方向与财运趋势的综合研判
+
+注意：
+- 不要使用简单的"身强身弱"二分法，描述五行能量的具体分布
+- 十神不要做一对一社会角色绑定（正财≠妻子，正官≠丈夫/上司，七杀≠小人），描述功能模式及其在现代生活中的多种映射
+- 感情分析避免"正财不透=妻缘薄""官星混杂=婚姻不稳"等机械推导
+- 用神建议应具体可操作，不要停留在"喜木火"的抽象层面
+- 分析应客观中立，吉凶并陈`;
+
+  document.getElementById('promptText').value = prompt;
+  document.getElementById('promptText').classList.add('visible');
+  document.getElementById('copyBtn').classList.add('visible');
+  document.getElementById('copyFeedback').style.display = 'none';
+}
+
+function copyPrompt() {
+  const text = document.getElementById('promptText').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '已复制 ✓';
+    btn.classList.add('copied');
+    document.getElementById('copyFeedback').style.display = 'inline';
+    setTimeout(() => {
+      btn.textContent = '复制提示词';
+      btn.classList.remove('copied');
+      document.getElementById('copyFeedback').style.display = 'none';
+    }, 2000);
+  });
+}
+
+// Birth date defaults are set in HTML value attributes
+
+// ═══════════════════════════════════════════════════════════
+// EVENT PREDICTION
+// ═══════════════════════════════════════════════════════════
+
+document.getElementById('eventType').addEventListener('change', function() {
+  document.getElementById('eventCustom').style.display = this.value === 'other' ? 'block' : 'none';
+});
+
+async function submitDailyCode() {
+  const input = document.getElementById('dailyCodeInput');
+  const code = input.value.trim();
+  if (!code) return;
+  const errEl = document.getElementById('dailyCodeError');
+  errEl.style.display = 'none';
+  const result = await validateCode(code);
+  if (result === true) {
+    localStorage.setItem('bazi_vip_code', code);
+    refreshHeaderCodeUI();
+    analyzeDailyFortune();
+  } else if (result === 'already_bound') {
+    errEl.textContent = '该激活码已绑定其他设备，请联系获取新码';
+    errEl.style.display = 'block';
+  } else {
+    errEl.textContent = '激活码无效或已过期';
+    errEl.style.display = 'block';
+  }
+}
+
+async function analyzeDailyFortune() {
+  if (!STATE) { alert('请先排盘'); return; }
+  if (!isActivated()) {
+    document.getElementById('dailyFortuneResult').innerHTML = `<div class="modal-section">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">AI 运势为付费功能，请输入激活码解锁</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="dailyCodeInput" placeholder="请输入激活码" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">
+        <button class="btn" onclick="submitDailyCode()">验证</button>
+      </div>
+      <div id="dailyCodeError" style="font-size:12px;color:var(--rel-chong);margin-top:6px;display:none"></div>
+      <div style="font-size:11px;color:var(--text2);margin-top:10px">获取激活码：添加微信 <strong>18512566097</strong></div>
+    </div>`;
+    return;
+  }
+  const [cy, cm, cd] = getCheckDate();
+  if (!cy || !cm || !cd) return;
+
+  const { dayGan } = STATE;
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+  const [lmG, lmZ] = getLiuyueGanzhi(cy, cm, cd);
+  const [ldG, ldZ] = getLiuriGanzhi(cy, cm, cd);
+
+  // 原局关系已包含在共享命盘上下文里，这里只列流运（大运/流年/流月/流日）激活的关系
+  const dayRels = lastRels.filter(r => r.source !== '原局' && r.score >= 20).slice(0, 12).map(r => {
+    const ss = getRelShishenTag(r).replace(/<[^>]+>/g, '');
+    return `- ${r.desc}（来源：${r.source}${ss ? '，' + ss : ''}）${r.interaction ? '【' + r.interaction + '】' : ''}`;
+  }).join('\n');
+
+  const ldStemSS = getShishen(dayGan, ldG);
+  const ldBranchSS = getShishen(dayGan, CANGGAN[ldZ][0][0]);
+
+  const prompt = `请为以下命主做选定日期的流日分析。
+
+${buildChartContext()}
+
+【选定日期】${cy}年${cm}月${cd}日
+流年：${TG[lyG]}${DZ[lyZ]}
+流月：${TG[lmG]}${DZ[lmZ]}
+流日：${TG[ldG]}${DZ[ldZ]}（流日干对日主为${ldStemSS}，流日支本气为${ldBranchSS}）
+
+【当日流运激活的干支关系（已计算，原局固有关系见上方命盘信息）】
+${dayRels || '- 无显著新增关系'}
+
+【分析要求】
+这是"单日"分析（400-600字）。按流日分析三步走：先用上方命盘信息判断原局核心结构（哪些功能模块过载、哪些不足、瓶颈在哪），再判断流日${TG[ldG]}${DZ[ldZ]}落进这个结构激活或压制了什么、是疏通瓶颈还是加码过载，最后落到今日排程和内在提醒。大运流年流月只做一句背景校准，流日是唯一主角。输出严格用"### 今日速览 / ### 今日排程 / ### 分析依据"三段结构。`;
+
+  const resultEl = document.getElementById('dailyFortuneResult');
+  resultEl.innerHTML = '<div class="rel-ai-loading">分析中...</div>';
+
+  try {
+    resultEl.innerHTML = '<div class="rel-ai-output streaming"></div>';
+    const outputEl = resultEl.querySelector('.rel-ai-output');
+    const fullText = await streamAI(SYSTEM_PROMPT_DAILY, prompt, outputEl);
+    outputEl.classList.remove('streaming');
+    saveAnalysis(`日运：${cy}-${cm}-${cd}`, fullText);
+  } catch(err) {
+    resultEl.innerHTML = `<div style="color:var(--rel-chong);font-size:13px">分析失败：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function predictEvent() {
+  if (!STATE) { alert('请先排盘'); return; }
+
+  if (!isActivated()) {
+    document.getElementById('eventResult').innerHTML = `<div style="color:var(--rel-chong);font-size:13px">需要激活码才能使用事件预测。添加微信 <strong>18512566097</strong> 获取。</div>`;
+    return;
+  }
+
+  const eventType = document.getElementById('eventType').value;
+  const eventCustom = document.getElementById('eventCustom').value.trim();
+  const eventDesc = eventType === 'other' ? eventCustom : eventType;
+  if (!eventDesc) { alert('请选择或填写想问的事'); return; }
+
+  const ys = document.getElementById('eventYearStart').value;
+  const ms = document.getElementById('eventMonthStart').value;
+  const ye = document.getElementById('eventYearEnd').value;
+  const me = document.getElementById('eventMonthEnd').value;
+  if (!ys) { alert('请填写起始年份'); return; }
+
+  const timeRange = ms ? `${ys}年${ms}月` : `${ys}年`;
+  const timeEnd = ye ? (me ? `${ye}年${me}月` : `${ye}年`) : '';
+  const timeStr = timeEnd ? `${timeRange} — ${timeEnd}` : `${timeRange}前后`;
+
+  const resultEl = document.getElementById('eventResult');
+  resultEl.innerHTML = '<div class="rel-ai-loading">正在分析...</div>';
+
+  const prompt = generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me);
+
+  try {
+    resultEl.innerHTML = '<div class="rel-ai-output streaming"></div>';
+    const outputEl = resultEl.querySelector('.rel-ai-output');
+    const fullText = await streamAI(SYSTEM_PROMPT_PREDICT, prompt, outputEl);
+    outputEl.classList.remove('streaming');
+    saveAnalysis(`事件预测：${eventDesc}（${timeStr}）`, fullText);
+  } catch(err) {
+    resultEl.innerHTML = `<div style="color:var(--rel-chong);font-size:13px">分析失败：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function generateEventPrompt(eventDesc, timeStr, ys, ms, ye, me) {
+  const { dayunList, birthYear } = STATE;
+
+  const startYear = parseInt(ys);
+  const endYear = ye ? parseInt(ye) : startYear;
+
+  let periodInfo = '';
+  for (let y = startYear; y <= endYear; y++) {
+    const age = y - birthYear;
+    let dayunGz = '';
+    for (const du of dayunList) {
+      if (age >= du.ageStart && age <= du.ageEnd) {
+        dayunGz = `${TG[du.stem]}${DZ[du.branch]}`;
+        break;
+      }
+    }
+    const [lyG, lyZ] = getLiunianGanzhi(y);
+    periodInfo += `${y}年（${age}岁）：大运${dayunGz}，流年${TG[lyG]}${DZ[lyZ]}\n`;
+  }
+
+  if (ms) {
+    const startM = parseInt(ms);
+    const endM = me ? parseInt(me) : startM;
+    const y = startYear;
+    periodInfo += '\n涉及流月：\n';
+    for (let m = startM; m <= (ye && parseInt(ye) > startYear ? 12 : endM); m++) {
+      const [lmG, lmZ] = getLiuyueGanzhi(y, m, 15);
+      periodInfo += `  ${y}年${m}月：${TG[lmG]}${DZ[lmZ]}\n`;
+    }
+  }
+
+  return `请根据以下八字命盘，对命主提出的具体事件进行时机预测分析。
+
+${buildChartContext()}
+
+【预测时段的运势环境】
+${periodInfo}
+【命主的问题】
+事件：${eventDesc}
+时间范围：${timeStr}
+核心问题：这段时间做这件事顺利吗？有什么需要注意的？
+
+【分析框架】
+
+0. 结论摘要（必须放在回答最开头）
+   - 用白话直接回答：这段时间做这件事顺不顺、最好的时间窗在何时、最大的风险是什么、现在该做什么
+   - 3-6 句，禁止任何命理术语；给出明确程度判断（顺/中性/需谨慎/不宜）
+   - 下面第 1-5 部分是这个结论的推导依据
+
+请从以下层面展开推断：
+
+1. 事件涉及哪些功能模块
+   - 该事件主要调动哪些十神模块（如考试=印星+食伤，求财=食伤生财链+偏财，婚恋=日支互动+财官，诉讼=官杀+比劫）
+   - 画出原局五行流通路径：能量从哪里进、经过哪些模块、在哪里输出
+
+2. 原局模块诊断
+   - 事件相关模块在原局中是适度、过载还是不足
+   - 五行流通的淤积点（能量堆积流不动）和枯竭点（供血不足）在哪
+   - 瓶颈在哪条通路上——这决定了做这件事的结构性难点
+
+3. 大运对流通格局的改写
+   - 当前大运的干支落在原局的哪个模块上
+   - 它是在疏通瓶颈（补给枯竭处/打通断流通道），还是给已过载的模块继续加码
+   - 大运与原局有无合冲刑害改变了结构
+
+4. 流年流月的逐段落点分析
+   - 逐一看预测时段内各流年流月的干支注入了原局哪个位置
+   - 哪些月份的注入疏通了瓶颈或补给了枯竭处（行动窗口）
+   - 哪些月份的注入加码了过载模块或冲动了关键通道（需谨慎的时段）
+   - 给出最佳行动窗口和应避开的时段
+
+5. 综合判断与建议
+   - 整体顺逆程度（顺/中性/需谨慎/不宜）
+   - 结构性有利因素和不利因素各是什么
+   - 行动窗口内该主动做什么，紧张时段该如何防范
+   - 有没有可以人为疏通瓶颈的策略（合作方向、准备方式、节奏调整）
+
+【注意】
+- 结论摘要必须完全用日常语言，命理术语只允许出现在第 1-5 部分
+- 预测不是宿命论，是概率倾向+时机把握
+- 不要只说"吉"或"凶"，要说清楚具体表现形式
+- 流月级别的分析要具体到月份，不要笼统带过
+- 如果事件跨度长，区分不同阶段的流通状态变化
+- 坦诚不确定性：如果信息不足以判断，明确说明
+- 严禁使用身强/身弱、旺衰扶抑、得令失令、从格化气等强弱二分框架`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RELATIONSHIP DETAIL MODAL (PRO - with AI Analysis)
+// ═══════════════════════════════════════════════════════════
+
+const BAZI_CHAT_ENDPOINT = (typeof location !== 'undefined' && location.protocol.startsWith('http'))
+  ? `${location.origin}/api/bazi-chat`
+  : '/api/bazi-chat';
+
+// 共享命盘上下文：给所有 AI 路径提供与"复制提示词"同等深度的原局画像
+function buildChartContext() {
+  const { pillars, dayGan, energy, dayunList, birthYear, birthMonth, birthDay, gender } = STATE;
+  const pLabels = ['年', '月', '日', '时'];
+  const fourPillars = pillars.map(([g, z]) => TG[g] + DZ[z]).join(' ');
+  const dmName = TG[dayGan] + WX[TG_WX[dayGan]];
+
+  const cangganStr = pillars.map(([, z], i) =>
+    `${pLabels[i]}[${CANGGAN[z].map(([si]) => TG[si]).join('')}]`
+  ).join(' ');
+
+  const ssItems = [];
+  for (let i = 0; i < 4; i++) {
+    if (i === 2) continue;
+    ssItems.push(`${pLabels[i]}干${TG[pillars[i][0]]}=${getShishen(dayGan, pillars[i][0])}`);
+  }
+
+  const wxPairs = WX.map((name, i) => ({ name, amp: energy[i] }));
+  wxPairs.sort((a, b) => b.amp - a.amp);
+  const wxStr = wxPairs.map(p => `${p.name}${p.amp.toFixed(1)}`).join(' > ');
+  const missing = wxPairs.filter(p => p.amp === 0).map(p => p.name);
+
+  const monthBranch = DZ[pillars[1][1]];
+  const monthWx = WX[DZ_WX[pillars[1][1]]];
+
+  const [cy] = getCheckDate();
+  const age = cy - birthYear;
+  let curDayunLabel = '';
+  for (const du of dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      curDayunLabel = `${TG[du.stem]}${DZ[du.branch]}（${du.ageStart}-${du.ageEnd}岁，干${getShishen(dayGan, du.stem)}）`;
+      break;
+    }
+  }
+  const [lyG, lyZ] = getLiunianGanzhi(cy);
+
+  const dayunStrs = dayunList.map(du =>
+    `${TG[du.stem]}${DZ[du.branch]}(${du.ageStart}-${du.ageEnd},${getShishen(dayGan, du.stem)})`
+  );
+
+  const natalRels = lastRels.filter(r => r.source === '原局');
+  const relLines = natalRels.length > 0
+    ? natalRels.map(r => {
+        let line = `- ${r.desc}（${r.posNames.join('·')}`;
+        const ssText = getRelShishenText(r);
+        if (ssText) line += `，${ssText}`;
+        line += '）';
+        if (r.interaction) line += `【${r.interaction}】`;
+        return line;
+      }).join('\n')
+    : '- 原局无显著干支关系';
+
+  const dayBranch = pillars[2][1];
+  const dbCg = CANGGAN[dayBranch].map(([si]) => TG[si]);
+  const dbMainStem = CANGGAN[dayBranch][0][0];
+  const dbMainSS = getShishen(dayGan, dbMainStem);
+  const dbWxI = TG_WX[dbMainStem], dmWxI = TG_WX[dayGan];
+  const wxDiff = mod(dmWxI - dbWxI, 5);
+  const dbRelDesc = wxDiff === 0 ? '同气比助' :
+    wxDiff === 1 ? `${WX[dbWxI]}生${WX[dmWxI]}，生助日主` :
+    wxDiff === 4 ? `${WX[dmWxI]}生${WX[dbWxI]}，日主泄气` :
+    wxDiff === 2 ? `${WX[dbWxI]}克${WX[dmWxI]}，克制日主` :
+    `${WX[dmWxI]}克${WX[dbWxI]}，日主所克`;
+
+  const anchorCtx = getAnchorContext();
+
+  return `【命盘信息】
+出生：${birthYear}年${birthMonth}月${birthDay}日 ${gender === 'male' ? '男' : '女'}，${age}岁
+四柱：${fourPillars}
+日主：${dmName}，月令${monthBranch}（${monthWx}）
+藏干：${cangganStr}
+透干十神：${ssItems.join(' ')}
+五行能量（高→低）：${wxStr}${missing.length > 0 ? '，缺' + missing.join('、') : ''}
+大运：${dayunStrs.join(' → ')}
+当前大运：${curDayunLabel || '未知'}
+当前流年：${TG[lyG]}${DZ[lyZ]}（${cy}）
+
+原局干支关系：
+${relLines}
+
+日支（夫妻宫）：${DZ[dayBranch]}${WX[DZ_WX[dayBranch]]}，藏${dbCg.join('')}，本气${TG[dbMainStem]}（${dbMainSS}），${dbRelDesc}${anchorCtx ? '\n\n【命主现状】\n' + anchorCtx : ''}`;
+}
+
+// 共享分析框架底座：所有 AI 路径的系统提示词都建立在这之上
+const PROMPT_CORE = `你是一位精通八字命理的分析师。你做的是基于命盘结构的心理动力学分析与决策支持，不是吉凶宣判。你的输出应该像一位深刻理解命主结构、说话具体的朋友，而不是黄历。遵循以下框架。
+
+【十神功能光谱】十神是能量交互模式，不是社会角色（正官≠公务员，正财≠妻子，七杀≠小人）。每种十神都有适度/过载/不足三态，没有绝对吉凶，只有相对于系统需求的平衡与失衡：
+- 正印=知识输入轴：适度=深度理解、系统性学习；过载=分析瘫痪、"没学够不敢动手"、过度依赖权威；不足=学习碎片化、缺乏理论支撑
+- 偏印=直觉认知轴：适度=跨域洞察、模式识别、顿悟式理解；过载=发散失焦、过度解读；不足=思维线性死板、创意枯竭
+- 食神=稳定输出轴：适度=持续自然产出、表达流畅；过载=舒适区惰性、做很多但不深入；不足=表达受堵、想法多落地少
+- 伤官=颠覆输出轴：适度=建设性创新、重定义规则；过载=为反而反、与一切权威为敌；不足=不敢挑战、只做安全的事
+- 正财=持续经营轴：适度=耐心长线投入、日拱一卒；过载=事必躬亲、无法委托；不足=虎头蛇尾、不维护已有成果
+- 偏财=机会杠杆轴：适度=识别非对称机会、平台思维；过载=投机散漫、追逐热点；不足=过度保守、不敢下注
+- 正官=有序约束轴：适度=自律、结构化、对规范敏感；过载=教条僵化、讨好权威；不足=缺乏纪律与承诺感
+- 七杀=极端压力轴：适度=压力激发潜能、危机行动力；过载=慢性焦虑、身心透支；不足=缺乏驱动、温水煮蛙
+- 比肩=同行协作轴：适度=同侪互助、良性竞争；过载=从众、丧失独立判断；不足=孤立、无法借力
+- 劫财=竞争驱动轴：适度=市场敏锐、迭代动力；过载=零和思维、资源焦虑；不足=被动退让、不争取
+
+【十神组合动态】分析模块间交互，不贴吉凶标签：食神制杀=有节奏的持续输出本身是高压下的心理稳定器；枭神夺食=输入过载压制输出（无限学习永不动手，"我还没准备好"）；伤官佩印=颠覆有知识深度支撑，成为有理论基础的创新；官印相生=外部评价驱动学习的正反馈（隐患：脱离评价体系后失去自驱）；杀印相生=高压被转化为认知升级（前提是印够强、消化跟得上）；食伤生财=输出接入回报系统（有输出没回报时，问题常在管道对接不在能力）；比劫夺财=同质竞争稀释回报（解法是差异化定位，不是加倍投入）。
+
+【"生"的双面性】产物呈现子的质感，生者体验的是消耗。泄=被动无意识的流失（精力弥散到琐事、内耗、为人操心）；发=主动有方向的表达。同一个食伤旺，可以是泄也可以是发；从泄转发需要一个有明确回报的接收系统（财星/目标）。食神旺≠外在高产。
+
+【用神=系统瓶颈】不是"对我好的五行"。诊断路径：画五行流通图→找淤积点（能量堆积流不动）和枯竭点（严重供血不足）→瓶颈=淤积到枯竭之间的通道。用神建议必须落地为具体行为（输出不足→定期发表、允许不完美地产出；约束不足→外部期限、进入有评价体系的环境；输入不足→安排纯学习时间、找导师），不停留在"喜木火"。忌神=已过载的功能模块，继续强化等于加剧失衡。
+
+【调候与取用路由】先看月令定季节：冬生（亥子丑月）局寒需火暖，夏生（巳午未月）局燥需水润——季节极端时调候优先于能量强弱判断。取用依次检查：格局可定则护格为先；寒燥失衡则调候优先；干支有显著冲合做功结构则从做功切入；都不明确再看能量分布找瓶颈。不要机械套用身强身弱二分法。
+
+【宫位现代映射】年柱=初始条件（家庭/时代/先天资源）；月柱=生态位（行业/圈子/竞争格局），月令决定核心能量应季还是反季；日柱=核心自我与亲密关系；时柱=产出与遗产（作品/影响力/想去的方向）。
+
+【感情以日支为核心】不套用"男命财为妻、女命官为夫"。看三层：日支藏干的十神功能→关系里的互动模式；日支与日主的生克方向→谁付出、谁滋养、谁控制；日支受刑冲合害→稳定性与外部干扰来源。
+
+【决策咨询原则】
+- 借强补弱是顺命：改造方案必须架在命主配置强的模块上；让官杀弱的人靠自律、让食伤弱的人靠表达欲，注定失败
+- 无制之神需要外置调节器：过载模块没有内在停机条件，靠意志力对抗等于让它自己审自己；解法一律外置——事先写死的清单、有资格的签发人、固定节奏的交付容器、带后果的期限
+- 内部感受不是校准信号：印重者的"不足感"、杀旺者的"紧迫感"、劫旺者的"资源焦虑"是各自配置的常驻运行状态，永远给出同一个答案，不反映外部实际；判断要用外部可核查的标准
+- 核心矛盾会换装重现：原局关键结构（合绊、克制、缺失）会在作品打磨、社交联系、目标宣告、自我评价等处以变体反复出现；帮命主认出这个系列，比解决单个事件更有价值
+- 警惕忌神收编：命主的过载模块会把建议本身消化成新的过载素材（"适度打磨"变成新的完美主义课题）；给建议时预判它会被如何收编，提前点破变形的样子
+- 给内心声音做十神归属：把冲动、自我否定、焦虑、犹豫归到具体十神（"那个说不够好的声音是印在说话""这股突然想干的劲是食伤被激活"）；内部状态外部化之后，命主才能与它拉开距离
+- 冲=激活与重组，看战场宫位：冲不必然凶，对能量淤积的盘适度的冲是治疗；冲日支=自我与亲密关系领域震荡，冲时支=产出与事业领域震荡
+- 合=能量绑定，不必然吉：合而不化是牵绊不是助力；多个同类天干争合一字=注意力多线程振荡，解法是拆分分工，不是选边
+
+【表达伦理】判断用"倾向""可能""有迹象"，不用"一定""注定""必然"。不预测生死，不预测重大疾病时点，不渲染恐慌；提示凶象必须同时给出具体应对路径。命理提供结构诊断和时机参考，不提供"能不能成"的预言，决策权在命主。
+
+【关键要求】严格使用prompt中提供的命盘数据（四柱、藏干、五行能量、大运、流年、流月、流日干支、已计算的干支关系），不要自行推算或编造干支信息。`;
+
+const SYSTEM_PROMPT_DETAIL = PROMPT_CORE + `
+
+【本次任务】深度解读命盘中的一条特定干支关系。先把这条关系放回原局结构中（它连接哪些宫位、涉及哪些十神功能、改变了哪条能量通路），再分析它被大运流年激活或松绑的条件，最后落到对现实生活的具体影响。记住核心矛盾会换装重现：这条关系很可能是命主某个反复出现的生活主题的结构根源，把这个系列点出来。
+
+【输出结构】（严格遵守，顺序不可颠倒）
+第一层：开头用"### 结论"标题，2-5 句白话直接回答这条关系对生活意味着什么。这一段禁止出现任何命理术语（干支名、十神名、五行、大运流年流月流日、用神忌神、刑冲合害、生克、月令、藏干等一律不可出现）。像对完全不懂命理的朋友说话：直接给程度判断、说清实际影响、该做什么、该防什么。
+第二层：用"### 分析依据"标题，之后才允许使用命理术语展开推理。
+读者只看第一层就能行动；第二层是给想深究的人看的。
+
+【分析风格】结构清晰，用现代语言解释传统概念，不回避不确定性，给出具体可操作的建议。回答用中文。`;
+
+const SYSTEM_PROMPT_PREDICT = PROMPT_CORE + `
+
+【本次任务】对命主询问的具体事件做时机分析。分析方法是功能模块诊断+五行流通+流运激活，不是身强身弱扶抑论。
+
+【事件-模块映射】每类事件对应一组十神功能模块：考试升学=印星（输入消化）+食伤（输出表达）；求财创业=食伤生财链+偏财（机会识别）；婚恋=日支互动模式+财官的合化关系；求职=官杀（外部评价系统）+食伤（展示能力）；诉讼=官杀（制度力量）+比劫（博弈能力）；健康=五行受克方位+流运激活条件。先画出原局五行流通图，定位这些模块在原局中是适度、过载还是不足，找到淤积点（能量堆积流不动）和枯竭点（严重供血不足），瓶颈就在淤积到枯竭之间的断流处。
+
+【时机判断原则】流运的本质是外部能量注入原局结构——关键不是"加强了谁"，而是"注入的能量落在了哪个模块上"：落在淤积模块=加码过载（紧、堵、失控风险）；落在枯竭模块=补给断流处（通、活、行动窗口）；落在瓶颈通道=有可能打通流通（机会窗口，但需要主动配合）。节气切换是状态突变点：新月干支激活不同的模块，冲动的出现/消失可追溯到此。低不可逆性的决定不需要高自信：有止损和回滚机制的事，按期望值决策即可。
+
+【层级纪律】回答什么时段的问题，就聚焦什么时段。分析某几个月就以流月为主角，大运流年只作背景权重。不要把长周期层面的主题当成短周期会发生的事。
+
+【输出结构】（严格遵守，顺序不可颠倒）
+第一层：开头先用白话直接回答对方问的事，3-6 句。禁止任何命理术语。直接给程度判断（顺/一般/偏紧/需谨慎）、最佳时间窗、最大风险、现在该做什么。
+第二层：之后才允许用命理术语展开（事件涉及哪些模块→原局中这些模块的三态诊断与流通瓶颈→大运对流通格局的改写→逐月流运落点分析→综合判断→具体建议）。
+读者只看第一层就能行动；第二层是给想深究的人看的。
+
+【分析风格】逐月具体，给出行动窗口和避开时段。预测不是宿命论，是概率倾向+时机把握。回答用中文。严禁使用身强/身弱、旺衰扶抑、得令失令、从格化气、扶抑用神等传统强弱二分框架。`;
+
+const SYSTEM_PROMPT_DAILY = PROMPT_CORE + `
+
+【本次任务】做单日流日分析。这是最考验深度的任务：必须先吃透原局结构（哪些模块过载、哪些不足、瓶颈在哪），再判断今天的流日干支落进这个结构里会发生什么。同一个流日对不同的盘意义完全不同——流日透印，对印重的盘是"审查模块又被加码"，对印弱的盘是"难得的消化吸收窗口"。禁止脱离原局谈流日。
+
+【流日分析三步】
+1. 定位：流日干支激活/压制了原局的哪个功能模块？与日主及原局关键结构（合绊、冲、通根）发生什么互动？
+2. 定性：这股能量在这个盘里是顺着瓶颈疏通（用神方向被点亮），还是往已过载的模块加码（忌神被喂食）？倾向表现为"泄"还是"发"？
+3. 排程：据此，今天适合安排哪类动作（输出交付/学习吸收/联络发出/规则宣告/收尾整理/休整），应该推迟哪类动作。
+
+【去认同化】点出今天可能冒出来的内在体验，并做十神归属："今天那股想反复检查的劲是印被流日点亮""突然想找人聊的冲动是食伤被激活"。让读者明白：冲动是结构给的，有窗口期，会关闭——值得跟的乘着做，不值得跟的知道它从哪来就不必当真。
+
+【层级纪律】流日是唯一主角。大运流年流月只做一句背景校准，不展开；不要把年运、月运层面的主题写成今天会发生的事；结论里不许出现对全年或当月的判断。
+
+【输出结构】（严格遵守，顺序不可颠倒）
+### 今日速览
+3-5 句白话，零命理术语：今天整体状态（顺/平/紧）、今天内心可能出现什么情绪或冲动、它值不值得跟、最该做的一件事。像一个懂命理又懂你的朋友早上发来的消息，不是黄历。
+### 今日排程
+- 优先做：（动作类型+为什么今天做顺，白话）
+- 推迟做：（动作类型+为什么今天做费劲，白话）
+- 内在提醒：（今天可能冒出的声音/冲动，一句话点破，白话）
+### 分析依据
+此处才可用术语：流日干支与日主及原局的生克合冲、被激活的十神落在这个盘光谱的哪一端、是疏通瓶颈还是加码过载。大运流年流月各最多一句。
+
+【分析风格】具体、贴身、可执行。判断用"倾向""可能"，凶象必须带应对。回答用中文。`;
+
+let currentRelPrompt = '';
+let currentRelIdx = -1;
+let aiAbortController = null;
+
+function openRelDetail(idx) {
+  const r = lastRels[idx];
+  if (!r || !STATE) return;
+  currentRelIdx = idx;
+
+  const modal = document.getElementById('relModal');
+  const title = document.getElementById('relModalTitle');
+  const body = document.getElementById('relModalBody');
+
+  const ssTag = getRelShishenTag(r).replace(/<[^>]+>/g, '');
+  title.textContent = r.desc + (ssTag ? ' · ' + ssTag : '');
+
+  const meaning = getRelMeaning(r);
+  const prompt = generateRelDetailPrompt(r);
+  currentRelPrompt = prompt;
+
+  let html = '';
+  if (meaning) {
+    html += `<div class="modal-section"><div class="modal-section-title">传统象意</div><div>${meaning}</div></div>`;
+  }
+  html += `<div id="relAiSection"></div>`;
+
+  body.innerHTML = html;
+  document.getElementById('relModalAnalyzeBtn').disabled = false;
+  document.getElementById('relModalAnalyzeBtn').textContent = 'AI 深度分析';
+  modal.classList.add('visible');
+}
+
+function closeRelModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('relModal').classList.remove('visible');
+  if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
+}
+
+function copyRelPrompt() {
+  if (!currentRelPrompt) return;
+  navigator.clipboard.writeText(currentRelPrompt).then(() => {
+    const fb = document.getElementById('relModalFeedback');
+    fb.style.display = 'inline';
+    setTimeout(() => fb.style.display = 'none', 2000);
+  });
+}
+
+async function streamAI(systemPrompt, userPrompt, outputEl, signal) {
+  const code = localStorage.getItem('bazi_vip_code');
+  if (!code) throw new Error('请先输入激活码');
+
+  if (typeof location !== 'undefined' && location.protocol === 'file:') {
+    throw new Error('请在线上打开（matchstick-ai.xyz），本地文件无法调用 AI 接口');
+  }
+
+  let fullText = '';
+  let response;
+  try {
+    response = await fetch(BAZI_CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        deviceId: getDeviceId(),
+        systemPrompt,
+        userPrompt
+      }),
+      signal
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    throw new Error(`网络请求失败（${err?.message || 'Failed to fetch'}）。请确认在 https://matchstick-ai.xyz/bazi/pixel.html 打开，并检查网络/广告拦截插件`);
+  }
+  if (!response.ok) {
+    let message = `请求失败 ${response.status}`;
+    try {
+      const err = await response.json();
+      if (err?.error) message = err.error;
+    } catch (e) {
+      try {
+        const t = await response.text();
+        if (t) message = t.slice(0, 200);
+      } catch (_) {}
+    }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+          if (delta) { fullText += delta; outputEl.innerHTML = renderMarkdown(fullText); outputEl.scrollTop = outputEl.scrollHeight; }
+        } catch(e) {}
+      }
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    if (fullText) return fullText; // partial success
+    throw new Error(`流式输出中断（${err?.message || 'network'}）。可重试一次`);
+  }
+  return fullText;
+}
+
+async function analyzeRel() {
+  if (!currentRelPrompt || currentRelIdx < 0) return;
+
+  if (!isActivated()) {
+    showCodePrompt();
+    return;
+  }
+
+  const btn = document.getElementById('relModalAnalyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '分析中...';
+
+  const section = document.getElementById('relAiSection');
+  section.innerHTML = '<div class="rel-ai-loading">正在调用 AI 进行深度分析...</div>';
+
+  if (aiAbortController) aiAbortController.abort();
+  aiAbortController = new AbortController();
+
+  try {
+    section.innerHTML = '<div class="rel-ai-output streaming"></div>';
+    const outputEl = section.querySelector('.rel-ai-output');
+    const fullText = await streamAI(SYSTEM_PROMPT_DETAIL, currentRelPrompt, outputEl, aiAbortController.signal);
+    outputEl.classList.remove('streaming');
+    btn.textContent = '重新分析';
+    btn.disabled = false;
+    saveAnalysis(lastRels[currentRelIdx]?.desc || '', fullText);
+  } catch(err) {
+    if (err.name === 'AbortError') return;
+    section.innerHTML = `<div class="modal-section" style="color:var(--rel-chong)">分析失败：${escapeHtml(err.message)}</div>`;
+    btn.textContent = '重试';
+    btn.disabled = false;
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^---$/gm, '<hr>');
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/\n/g, '<br>');
+  html = html.replace(/<br>(<h[34]>)/g, '$1');
+  html = html.replace(/(<\/h[34]>)<br>/g, '$1');
+  html = html.replace(/<br>(<hr>)<br>/g, '$1');
+  html = html.replace(/<br>(<ul>)/g, '$1');
+  html = html.replace(/(<\/ul>)<br>/g, '$1');
+  return html;
+}
+
+function generateRelDetailPrompt(r) {
+  const { dayunList, birthYear } = STATE;
+
+  const ssTag = getRelShishenTag(r).replace(/<[^>]+>/g, '');
+  const meaning = getRelMeaning(r);
+
+  const posDetail = r.posNames.join('·');
+  const sourceLabel = r.source;
+  const intLabel = r.interaction ? `互动裁决：${r.interaction}` : '';
+
+  const [cy] = getCheckDate();
+  const age = cy - birthYear;
+  let curDayunLabel = '';
+  for (const du of dayunList) {
+    if (age >= du.ageStart && age <= du.ageEnd) {
+      curDayunLabel = `${TG[du.stem]}${DZ[du.branch]}（${du.ageStart}-${du.ageEnd}岁）`;
+      break;
+    }
+  }
+
+  let relContext = `关系类型：${r.subtype}\n描述：${r.desc}\n十神关系：${ssTag || '无'}\n位置：${posDetail}（来源：${sourceLabel}）`;
+  if (intLabel) relContext += `\n${intLabel}`;
+  if (meaning) relContext += `\n传统象意：${meaning}`;
+
+  return `请针对以下八字命盘中的【一条特定干支关系】进行深度解读。
+
+${buildChartContext()}
+
+【待分析的关系】
+${relContext}
+
+【分析要求】
+
+第一层"### 结论"（必须放在回答最开头）：2-4 句白话说清这条关系对这个人的实际生活意味着什么、是助力还是消耗、程度如何、最该注意什么。禁止任何命理术语，让完全不懂命理的人一读就懂。
+
+第二层"### 分析依据"：围绕这一条关系，从以下维度展开深度分析：
+
+1. 这条关系的本质含义
+   - ${r.type === 'he' || r.type === 'liuhe' ? '合的条件是否成立？是真合、假合还是合而不化？合化后对原局力量格局的改变' : r.type === 'chong' ? '冲的力度如何？是动冲（引发实际变动）还是克冲（纯消耗）？谁冲谁——谁是主动方谁是被动方' : r.type === 'xing' ? '刑的成立条件和力度。刑的实质是什么——是惩罚、折磨还是激发？对命主的实际影响路径' : r.type === 'hai' ? '害的暗伤机制——通过什么路径产生暗中损耗？表面看不出来但实际在消耗什么' : r.type === 'ke' ? '克的力度判断（有情/无情、得令/失令）。克的实际后果——被克方是否有根可承受？是制约还是摧毁' : '这个关系对原局整体格局的结构性影响'}
+
+2. 在这个人命盘中的具体表现
+   - 结合十神含义：${ssTag || '此关系涉及的十神功能'}在此人生活中映射为什么
+   - 结合宫位：${posDetail}宫位代表的人生领域
+   - 这条关系在现实中会体现为什么样的模式、事件类型或心理状态
+
+3. 动态影响
+   - 这条关系在不同大运流年会如何被激活或压制
+   - 当前运势下（${curDayunLabel || '当前阶段'}）这条关系的活跃程度
+   - 什么条件下这条关系会从潜伏变为显性爆发
+
+4. 应对建议
+   - 这条关系如果是正面的，如何最大化利用
+   - 如果是负面的，具体可操作的化解或适应策略
+   - 在决策中需要注意什么
+
+【注意】
+- 分析应完全基于这个人的命盘结构，不要泛泛而谈
+- 用具体的十神功能模式解释，不要停留在"吉/凶"判断
+- 宫位解读用现代生活域映射（年=原生家庭/起点，月=事业生态/圈子，日=自我与亲密关系，时=产出与未来）
+- 如果涉及合化，必须判断合化是否成立（月令是否支持、有无克神破坏）`;
+}
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// 今日小帖士：数组第一条为当期，其余进往期。新内容往最前面加。
+// ═══════════════════════════════════════════════════════════
+const TIPS = [
+  {
+    date: '2026-07-26',
+    tag: '健康',
+    title: '喝咖啡胸闷怎么办',
+    summary: '咖啡因引起胸闷有三条通路——心血管加压、胃酸反流、过度换气。最快的缓解办法是做几分钟高强度运动，其次是控制呼吸节奏，同时吃点东西垫胃。绝大多数情况下十几分钟就能过去，但持续超过 20 分钟不缓解或心跳明显异常时应就医。',
+    body: `
+<div class="tips-abstract"><strong>摘要</strong>咖啡因引起胸闷有三条通路——心血管加压、胃酸反流、过度换气。最快的缓解办法是做几分钟高强度运动，其次是控制呼吸节奏，同时吃点东西垫胃。绝大多数情况下十几分钟就能过去，但持续超过 20 分钟不缓解或心跳明显异常时应就医。</div>
+<p>一杯美式大约含 150 mg 咖啡因，摄入后 15–45 分钟到达血药峰值。咖啡因让静息心率上升 5–15 次/分钟，同时收缩外周血管，血压升高约 5–10 mmHg。空腹、缺觉、或者已经是第二杯的时候，身体对这个剂量的耐受会明显下降——心脏在更高阻力下加速泵血，胸腔就紧起来了。</p>
+<p>第二条路是胃。咖啡因让胃酸分泌量增加约 30%，如果发生胃食管反流，灼热感会从胃往胸骨后面走，跟心血管那边的压迫感混在一起。空腹的时候这条路更容易被激活。</p>
+<p>第三条路是呼吸。交感神经兴奋之后，呼吸不自觉地变浅变快，每次吸入的气量下降，二氧化碳排出过多，血液 pH 偏碱。手指发麻、胸口发闷，看着像心脏问题，其实是过度换气。</p>
+<h4>闷了之后怎么办？三步走</h4>
+<p><strong>先动起来。</strong>高抬腿、深蹲跳、开合跳，做 3–5 分钟就行。运动迫使你大口呼吸，过度换气的问题当场解决；大肌群收缩把血液从胸腔重新分配到四肢，闷的感觉会很快减轻；停下来之后副交感神经接管，心率反而会降到比运动前更低的状态。整个过程十分钟内就能走完。</p>
+<p><strong>不方便动的话，控制呼吸。</strong>吸气 4 秒，屏息 4 秒，呼气 6 秒——呼气比吸气长是关键，这个节奏能激活迷走神经。做 5–6 轮大概 90 秒，心率通常能降 10–20 次/分钟。</p>
+<p><strong>然后吃点东西，喝温水。</strong>哪怕就一片面包，胃里有东西就能中和多余的胃酸，把第二条通路关掉。水能加速咖啡因从肾脏排出。咖啡因的半衰期大约 5 小时，多喝水虽然不能让它立刻消失，但能缩短体内高浓度维持的时间。</p>
+<h4>什么情况下该去医院</h4>
+<p>四条红线：闷了超过 20 分钟休息后没有缓解；能感觉到心跳"漏拍"或者节奏乱了；疼痛往左胳膊、下巴或后背串；出冷汗、快要晕过去。任何一条出现，不要扛。</p>
+<h4>怎么少闷几次</h4>
+<p>说起来没什么玄机：别空腹喝，睡不好的日子少喝一半，喝的时候留意心跳——感觉开始加速了就放下杯子。每个人的耐受量每天都不一样，昨天灌两杯没事，不代表今天也扛得住。</p>`
+  },
+];
+
+function renderTips() {
+  const latest = TIPS[0];
+  if (!latest) { document.getElementById('tipsCard').style.display = 'none'; return; }
+  document.getElementById('tipsToday').innerHTML = `
+    <div class="tips-today" onclick="openTip(0)">
+      <div class="tips-meta"><span class="tips-tag">${latest.tag}</span><span>${latest.date}</span></div>
+      <div class="tips-title">${latest.title}</div>
+      <div class="tips-summary">${latest.summary}</div>
+      <span class="tips-read">阅读全文 →</span>
+    </div>`;
+  const rest = TIPS.slice(1);
+  document.getElementById('tipsArchive').innerHTML = rest.length
+    ? rest.map((t, i) => `
+      <div class="tips-item" onclick="openTip(${i + 1})">
+        <span class="tips-item-date">${t.date}</span>
+        <span class="tips-item-title">${t.title}</span>
+      </div>`).join('')
+    : '<div class="tips-empty">往期内容会在这里陆续出现</div>';
+}
+
+function openTip(idx) {
+  const tip = TIPS[idx];
+  if (!tip) return;
+  document.getElementById('tipsModalTitle').textContent = tip.title;
+  document.getElementById('tipsModalBody').innerHTML = tip.body;
+  document.getElementById('tipsModalBody').scrollTop = 0;
+  document.getElementById('tipsModal').classList.add('visible');
+}
+
+function closeTipsModal(e) {
+  if (e && e.target !== document.getElementById('tipsModal')) return;
+  document.getElementById('tipsModal').classList.remove('visible');
+}
+
+renderTips();
+</script>
+<script>
+/* 卡片滚动显现：给长页面翻页感。放在墨流脚本之前，互不牵连。 */
+(function revealer() {
+  const els = document.querySelectorAll('.card, .check-card');
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    els.forEach(el => el.classList.add('in'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    }
+  }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
+  els.forEach(el => io.observe(el));
+})();
+</script>
+<script>
+/* 像素场：网格 + 双涡旋流场。粒子带短尾，指针轻搅。不拦交互。 */
+(function pixelField() {
+  const canvas = document.getElementById('pixelField');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COLORS = ['#5aaa50', '#ff6b2f', '#c8a040', '#d6ceb4', '#4a88c8'];
+  let w = 0, h = 0, dots = [], dust = [], raf = 0, last = 0;
+  let mx = -9999, my = -9999;
+
+  function makeDot() {
+    const trail = [];
+    return {
+      x: Math.random() * w,
+      y: Math.random() * h,
+      s: Math.random() < 0.55 ? 2 : 1,
+      c: COLORS[(Math.random() * COLORS.length) | 0],
+      spd: 22 + Math.random() * 28,
+      a: 0.38 + Math.random() * 0.45,
+      trail
+    };
+  }
+
+  function seed() {
+    const n = Math.max(90, Math.min(220, Math.floor((w * h) / 4200)));
+    dots = Array.from({ length: n }, makeDot);
+    dust = Array.from({ length: Math.floor(n * 0.35) }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      s: 1,
+      c: COLORS[(Math.random() * COLORS.length) | 0],
+      a: 0.12 + Math.random() * 0.2,
+      p: Math.random() * Math.PI * 2
+    }));
+  }
+
+  function flow(x, y, t) {
+    const nx = x / w;
+    const ny = y / h;
+    const a = t * 0.00018;
+    const c1x = 0.32 + 0.16 * Math.sin(a);
+    const c1y = 0.40 + 0.12 * Math.cos(a * 0.85);
+    const c2x = 0.70 + 0.14 * Math.cos(a * 0.72);
+    const c2y = 0.58 + 0.15 * Math.sin(a * 1.05);
+
+    function vortex(cx, cy, sign) {
+      const dx = nx - cx;
+      const dy = ny - cy;
+      const r2 = dx * dx + dy * dy + 0.018;
+      const s = sign * 0.42 / r2;
+      return [-dy * s, dx * s];
+    }
+    const v1 = vortex(c1x, c1y, 1);
+    const v2 = vortex(c2x, c2y, -1);
+    let vx = v1[0] + v2[0] + 0.10 * Math.sin(ny * 5.5 + t * 0.00045);
+    let vy = v1[1] + v2[1] + 0.06 * Math.cos(nx * 4.8 + t * 0.00032);
+
+    const pdx = nx - mx / w;
+    const pdy = ny - my / h;
+    const pr2 = pdx * pdx + pdy * pdy + 0.01;
+    if (pr2 < 0.08) {
+      const ps = 0.22 / pr2;
+      vx += -pdy * ps;
+      vy += pdx * ps;
+    }
+    return [vx, vy];
+  }
+
+  function wrap(p) {
+    let jumped = false;
+    if (p.x < -4) { p.x = w + 2; jumped = true; }
+    else if (p.x > w + 4) { p.x = -2; jumped = true; }
+    if (p.y < -4) { p.y = h + 2; jumped = true; }
+    else if (p.y > h + 4) { p.y = -2; jumped = true; }
+    if (jumped) p.trail.length = 0;
+  }
+
+  function drawGrid() {
+    ctx.fillStyle = '#050508';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    for (let x = 0; x < w; x += 16) ctx.fillRect(x, 0, 1, h);
+    for (let y = 0; y < h; y += 16) ctx.fillRect(0, y, w, 1);
+  }
+
+  function draw(t) {
+    drawGrid();
+    for (const d of dust) {
+      ctx.globalAlpha = REDUCED ? d.a : d.a * (0.55 + 0.45 * Math.abs(Math.sin(t / 480 + d.p)));
+      ctx.fillStyle = d.c;
+      ctx.fillRect(d.x | 0, d.y | 0, 1, 1);
+    }
+    for (const p of dots) {
+      const tr = p.trail;
+      for (let i = 0; i < tr.length; i++) {
+        ctx.globalAlpha = p.a * ((i + 1) / (tr.length + 1)) * 0.55;
+        ctx.fillStyle = p.c;
+        ctx.fillRect(tr[i][0], tr[i][1], p.s, p.s);
+      }
+      ctx.globalAlpha = p.a;
+      ctx.fillStyle = p.c;
+      ctx.fillRect(p.x | 0, p.y | 0, p.s, p.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function step(dt, t) {
+    for (const p of dots) {
+      const [fx, fy] = flow(p.x, p.y, t);
+      p.trail.push([p.x | 0, p.y | 0]);
+      if (p.trail.length > 8) p.trail.shift();
+      p.x += fx * p.spd * dt;
+      p.y += fy * p.spd * dt;
+      wrap(p);
+    }
+  }
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = canvas.clientWidth;
+    h = canvas.clientHeight;
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    seed();
+    draw(0);
+  }
+
+  function frame(t) {
+    const dt = Math.min(0.05, ((t - last) / 1000) || 0.016);
+    last = t;
+    step(dt, t);
+    draw(t);
+    raf = requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; }, { passive: true });
+  window.addEventListener('pointerleave', () => { mx = -9999; my = -9999; });
+  resize();
+  if (!REDUCED) {
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>
