@@ -1,4 +1,8 @@
 {
+  "routes": [
+    { "src": "^/$", "has": [{ "type": "host", "value": "hunt.matchstick-ai.xyz" }], "dest": "/hunt/index.html" },
+    { "src": "^/(?!hunt/|api/)(.+)$", "has": [{ "type": "host", "value": "hunt.matchstick-ai.xyz" }], "dest": "/hunt/$1" }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
