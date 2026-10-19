@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>收容所后台 · 赏金猎人</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", sans-serif; background: #140a20; color: #f6e8c8; max-width: 640px; margin: 0 auto; padding: 16px 14px 40px; }
+  h1 { font-size: 20px; color: #e8c77a; text-align: center; margin: 6px 0 14px; letter-spacing: .2em; }
+  input, button { font: inherit; }
+  .login { display: flex; gap: 8px; margin-top: 30px; }
+  .login input { flex: 1; padding: 12px; border-radius: 6px; border: 1px solid #6b5a7d; background: #1f1230; color: #f6e8c8; font-size: 16px; }
+  .login button, .bar button { padding: 0 18px; border-radius: 6px; border: 0; background: #b3261e; color: #fff; font-size: 16px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; color: #b9a7c9; }
+  .bar button { padding: 6px 14px; font-size: 14px; background: #3a2550; }
+  .tip { font-size: 13px; color: #b9a7c9; margin-bottom: 12px; line-height: 1.7; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .m { position: relative; border: 2px solid #3a2550; border-radius: 6px; overflow: hidden; background: #1f1230; text-align: center; }
+  .m img { width: 100%; aspect-ratio: 240 / 339; object-fit: cover; }
+  .m p { font-size: 12.5px; padding: 4px 2px 6px; line-height: 1.4; }
+  .m b { color: #e8c77a; }
+  .m.got { border-color: #d8282d; }
+  .m.got img { filter: grayscale(1) brightness(.45); }
+  .m.got::after { content: "已归案"; position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) rotate(-12deg);
+    border: 3px solid #d8282d; color: #d8282d; background: rgba(246, 232, 200, .9); font-weight: 900; font-size: 18px; padding: 0 8px; white-space: nowrap; }
+  .err { color: #ff6b6b; text-align: center; margin-top: 10px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>收容所后台</h1>
+
+  <div id="login-box">
+    <div class="login">
+      <input id="pwd" type="password" placeholder="店员密码">
+      <button id="login">进入</button>
+    </div>
+    <p class="err" id="err"></p>
+  </div>
+
+  <div id="panel" hidden>
+    <div class="bar"><span id="stat"></span><button id="reload">刷新</button></div>
+    <p class="tip">核对顺序：猎人出示的通缉令（纸质或电子）是哪只怪物 → 这里确认它还没归案 → 看过带 #奇奇妙妙屋赏金猎人 的帖子 → 按令上赏金付现金 → 点一下这只怪物标记归案。点错了再点一次可以撤回。</p>
+    <div class="grid" id="grid"></div>
+  </div>
+
+<script src="/hunt/monsters.js"></script>
+<script>
+(function () {
+  var M = window.MONSTERS, $ = function (id) { return document.getElementById(id); };
+  var pwd = sessionStorage.getItem('hunt_pwd') || '', captured = [];
+
+  function api(body) {
+    return fetch('/api/hunt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { if (r.status === 403) throw new Error('pwd'); if (!r.ok) throw new Error('net'); return r.json(); });
+  }
+  function capture(monster, undo) {
+    return api({ action: 'capture', pwd: pwd, monster: monster, undo: !!undo }).then(function (r) { captured = r.captured || []; render(); });
+  }
+  function hunters() {
+    return api({ action: 'state', id: '' }).then(function (s) { $('stat').dataset.h = s.hunters || 0; render(); }).catch(function () {});
+  }
+
+  function render() {
+    $('stat').textContent = '已归案 ' + captured.length + ' / 42　·　已登记猎人 ' + ($('stat').dataset.h || '-');
+    var g = $('grid'); g.innerHTML = '';
+    M.forEach(function (m) {
+      var got = captured.indexOf(m.id) >= 0, d = document.createElement('div');
+      d.className = 'm' + (got ? ' got' : '');
+      d.innerHTML = '<img src="/hunt/t/' + m.f + '.jpg" alt=""><p>' + m.id + '. ' + m.name + '<br><b>¥' + m.bounty + '</b></p>';
+      d.onclick = function () {
+        var msg = got ? ('撤回「' + m.name + '」的归案记录？') : ('确认「' + m.name + '」归案？赏金 ¥' + m.bounty);
+        if (confirm(msg)) capture(m.id, got).catch(function (e) { alert(e.message === 'pwd' ? '密码失效，请重新进入' : '网络出错，再点一次'); });
+      };
+      g.appendChild(d);
+    });
+  }
+
+  function enter() {
+    capture(null).then(function () {
+      sessionStorage.setItem('hunt_pwd', pwd);
+      $('login-box').hidden = true; $('panel').hidden = false; hunters();
+    }).catch(function (e) {
+      $('err').textContent = e.message === 'pwd' ? '密码不对' : '连接不上，稍后再试';
+      sessionStorage.removeItem('hunt_pwd');
+    });
+  }
+
+  $('login').onclick = function () { pwd = $('pwd').value.trim(); if (pwd) enter(); };
+  $('pwd').onkeydown = function (e) { if (e.key === 'Enter') $('login').click(); };
+  $('reload').onclick = function () { capture(null); hunters(); };
+  if (pwd) enter();
+})();
+</script>
+</body>
+</html>
