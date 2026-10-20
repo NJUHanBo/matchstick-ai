@@ -125,15 +125,9 @@
         <p class="t">奇妙收容所 · 猎人证</p>
         <p class="no glow" id="b-no"></p>
         <p class="cn">代号　<span id="b-cn"></span></p>
-        <p class="sub" id="b-sub">10 月 27 日零点开放　凭此证领取通缉令</p>
+        <p class="sub">10.27 — 11.01　凭此证领取通缉令</p>
       </div>
       <p class="note">截图保存你的猎人证</p>
-
-      <div class="card helper2" style="margin-top:16px;text-align:center">
-        <p id="h2-text" style="font-size:15px">10 月 27 日零点开放。<br>加奇奇妙妙屋小助手微信，开放当晚第一时间通知你，<br>还会拉你进猎人群。</p>
-        <img src="/hunt/assets/helper-qr.jpg" alt="奇奇妙妙屋小助手" style="width:170px;margin:10px auto 0;border-radius:6px" onerror="this.closest('.helper2').hidden = true">
-        <p class="note">长按识别，或保存图片后在微信里扫一扫</p>
-      </div>
 
       <div class="invite card" style="margin-top:16px">
         <p>邀请一位朋友登记，你就能多领一张通缉令。　<span class="pill" id="inv-pill"></span></p>
@@ -335,10 +329,6 @@
     if (me) {
       $('b-no').textContent = 'No. ' + String(me.no).padStart(4, '0');
       $('b-cn').textContent = me.codename;
-      if (isOpen()) {
-        $('b-sub').textContent = '10.27 — 11.01　凭此证领取通缉令';
-        $('h2-text').innerHTML = '加奇奇妙妙屋小助手微信，<br>进猎人群，归案动态和领赏消息都在群里。';
-      }
       var link = location.origin + '/hunt/?from=' + myId;
       $('inv-link').value = link;
       $('inv-pill').textContent = '已邀请 ' + Math.min(state.invites || 0, 1) + ' / 1';
