@@ -347,7 +347,18 @@
       }
     }
     $('wanted-sec').hidden = !(me && isOpen());
-    if (me && isOpen()) renderPosters();
+    if (me && isOpen()) { renderPosters(); report(); }
+  }
+
+  // 把这台手机上的令报给后台记账；没报成功的下次打开再报
+  function report() {
+    var done = load('hunt_reported', []);
+    load('hunt_posters', []).forEach(function (id) {
+      if (done.indexOf(id) >= 0) return;
+      api({ action: 'claim', id: myId, monster: id }).then(function () {
+        var d = load('hunt_reported', []); if (d.indexOf(id) < 0) { d.push(id); save('hunt_reported', d); }
+      }).catch(function () {});
+    });
   }
 
   function refresh() {

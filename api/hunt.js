@@ -47,6 +47,18 @@ export default async function handler(req) {
     return r.ok ? json(200, r.body) : json(502, { error: 'db' });
   }
 
+  if (p.action === 'claim') {
+    if (id.length < 8 || !Number.isInteger(p.monster)) return json(400, { error: 'input' });
+    const r = await rpc('hunt_claim', { p_id: id, p_monster: p.monster });
+    return r.ok ? json(200, { ok: true }) : json(502, { error: 'db' });
+  }
+
+  if (p.action === 'claims') {
+    const r = await rpc('hunt_claims_list', { p_pwd: str(p.pwd, 64) });
+    if (r.ok) return json(200, { claims: r.body });
+    return json(String(r.body?.message).includes('bad_password') ? 403 : 502, { error: 'claims' });
+  }
+
   if (p.action === 'capture') {
     const monster = Number.isInteger(p.monster) ? p.monster : null;
     const r = await rpc('hunt_capture', { p_pwd: str(p.pwd, 64), p_monster: monster, p_undo: !!p.undo });

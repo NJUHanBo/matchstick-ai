@@ -25,6 +25,11 @@
   .m.got img { filter: grayscale(1) brightness(.45); }
   .m.got::after { content: "已归案"; position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) rotate(-12deg);
     border: 3px solid #d8282d; color: #d8282d; background: rgba(246, 232, 200, .9); font-weight: 900; font-size: 18px; padding: 0 8px; white-space: nowrap; }
+  .m .hold { color: #b9a7c9; font-size: 11.5px; }
+  .claims { margin-top: 22px; font-size: 14px; line-height: 1.8; }
+  .claims summary { color: #e8c77a; font-size: 16px; margin-bottom: 8px; }
+  .claims .row { border-bottom: 1px solid #2a1a3c; padding: 4px 0; }
+  .claims .row b { color: #e8c77a; font-weight: 600; }
   .err { color: #ff6b6b; text-align: center; margin-top: 10px; font-size: 14px; }
 </style>
 </head>
@@ -43,13 +48,18 @@
     <div class="bar"><span id="stat"></span><button id="reload">刷新</button></div>
     <p class="tip">核对顺序：猎人出示的通缉令（纸质或电子）是哪只怪物 → 这里确认它还没归案 → 看过带 #奇奇妙妙屋赏金猎人 的帖子 → 按令上赏金付现金 → 点一下这只怪物标记归案。点错了再点一次可以撤回。</p>
     <div class="grid" id="grid"></div>
+    <details class="claims" open>
+      <summary>领令明细（按猎人）<span id="claims-n"></span></summary>
+      <div id="claims"></div>
+    </details>
   </div>
 
 <script src="/hunt/monsters.js"></script>
 <script>
 (function () {
   var M = window.MONSTERS, $ = function (id) { return document.getElementById(id); };
-  var pwd = sessionStorage.getItem('hunt_pwd') || '', captured = [];
+  var pwd = sessionStorage.getItem('hunt_pwd') || '', captured = [], claims = [];
+  var byId = {}; M.forEach(function (m) { byId[m.id] = m; });
 
   function api(body) {
     return fetch('/api/hunt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -62,25 +72,46 @@
     return api({ action: 'state', id: '' }).then(function (s) { $('stat').dataset.h = s.hunters || 0; render(); }).catch(function () {});
   }
 
+  function loadClaims() {
+    return api({ action: 'claims', pwd: pwd }).then(function (r) { claims = r.claims || []; render(); }).catch(function () {});
+  }
+  function pad4(n) { return 'No.' + String(n).padStart(4, '0'); }
+
   function render() {
     $('stat').textContent = '已归案 ' + captured.length + ' / 42　·　已登记猎人 ' + ($('stat').dataset.h || '-');
+    var hold = {}; claims.forEach(function (c) { hold[c.m] = (hold[c.m] || 0) + 1; });
     var g = $('grid'); g.innerHTML = '';
     M.forEach(function (m) {
       var got = captured.indexOf(m.id) >= 0, d = document.createElement('div');
       d.className = 'm' + (got ? ' got' : '');
-      d.innerHTML = '<img src="/hunt/t/' + m.f + '.jpg" alt=""><p>' + m.id + '. ' + m.name + '<br><b>¥' + m.bounty + '</b></p>';
+      d.innerHTML = '<img src="/hunt/t/' + m.f + '.jpg" alt=""><p>' + m.id + '. ' + m.name + '<br><b>¥' + m.bounty + '</b>' +
+        '<br><span class="hold">' + (hold[m.id] || 0) + ' 人持令</span></p>';
       d.onclick = function () {
         var msg = got ? ('撤回「' + m.name + '」的归案记录？') : ('确认「' + m.name + '」归案？赏金 ¥' + m.bounty);
         if (confirm(msg)) capture(m.id, got).catch(function (e) { alert(e.message === 'pwd' ? '密码失效，请重新进入' : '网络出错，再点一次'); });
       };
       g.appendChild(d);
     });
+
+    var people = {}, order = [];
+    claims.forEach(function (c) {
+      if (!people[c.no]) { people[c.no] = { cn: c.cn, ms: [] }; order.push(c.no); }
+      people[c.no].ms.push(c.m);
+    });
+    order.sort(function (a, b) { return a - b; });
+    $('claims-n').textContent = '　' + order.length + ' 人领了 ' + claims.length + ' 张';
+    var esc = function (s) { var e = document.createElement('i'); e.textContent = s; return e.innerHTML; };
+    $('claims').innerHTML = order.map(function (no) {
+      var p = people[no];
+      return '<div class="row"><b>' + pad4(no) + '</b>　' + esc(p.cn) + '：' +
+        p.ms.map(function (id) { return id + '. ' + byId[id].name + (captured.indexOf(id) >= 0 ? '（已归案）' : ''); }).join('、') + '</div>';
+    }).join('') || '<div class="row">还没有人领令</div>';
   }
 
   function enter() {
     capture(null).then(function () {
       sessionStorage.setItem('hunt_pwd', pwd);
-      $('login-box').hidden = true; $('panel').hidden = false; hunters();
+      $('login-box').hidden = true; $('panel').hidden = false; hunters(); loadClaims();
     }).catch(function (e) {
       $('err').textContent = e.message === 'pwd' ? '密码不对' : '连接不上，稍后再试';
       sessionStorage.removeItem('hunt_pwd');
@@ -89,7 +120,7 @@
 
   $('login').onclick = function () { pwd = $('pwd').value.trim(); if (pwd) enter(); };
   $('pwd').onkeydown = function (e) { if (e.key === 'Enter') $('login').click(); };
-  $('reload').onclick = function () { capture(null); hunters(); };
+  $('reload').onclick = function () { capture(null); hunters(); loadClaims(); };
   if (pwd) enter();
 })();
 </script>
