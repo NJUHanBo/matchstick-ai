@@ -118,6 +118,7 @@
       <input id="codename" class="field" maxlength="12" placeholder="你的猎人代号">
       <button id="reg-btn" class="btn">登记</button>
       <p class="note" id="hunters-note"></p>
+      <p class="note"><a href="#" class="rec-open" style="color:var(--gold)">登记过了？换了手机或浏览器，点这里找回</a></p>
     </div>
 
     <div id="badge-wrap" hidden>
@@ -127,7 +128,7 @@
         <p class="cn">代号　<span id="b-cn"></span></p>
         <p class="sub">10.27 — 11.01　凭此证领取通缉令</p>
       </div>
-      <p class="note">截图保存你的猎人证</p>
+      <p class="note">截图保存你的猎人证　·　<a href="#" class="rec-open" style="color:var(--gold)">不是原来的编号？找回</a></p>
 
       <div class="invite card" style="margin-top:16px">
         <p>邀请一位朋友登记，你就能多领一张通缉令。　<span class="pill" id="inv-pill"></span></p>
@@ -137,6 +138,14 @@
           <button id="inv-copy" class="btn ghost">复制</button>
         </div>
       </div>
+    </div>
+
+    <div id="rec" class="card" hidden style="margin-top:16px">
+      <h2>找回猎人证</h2>
+      <input id="rec-no" class="field" inputmode="numeric" placeholder="猎人编号（猎人证上的数字）">
+      <input id="rec-cn" class="field" maxlength="12" placeholder="当时登记的代号" style="margin-top:8px">
+      <button id="rec-btn" class="btn">找回</button>
+      <p class="note">找回后，原来的编号、邀请和已领的通缉令都会回来。</p>
     </div>
   </section>
 
@@ -242,7 +251,8 @@
       : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
     save('hunt_id', myId);
   }
-  var from = qs.get('from');
+  // 微信转发会在链接后自动加 from=singlemessage / timeline 等，只认猎人编号那种长串
+  var from = qs.getAll('from').filter(function (v) { return /^[0-9a-z]{16,40}$/.test(v); })[0];
   if (from && from !== myId && !load('hunt_from', null)) save('hunt_from', from);
 
   var state = null;                                // 服务器状态：captured / hunters / me / invites
@@ -362,9 +372,35 @@
   }
 
   function refresh() {
-    return api({ action: 'state', id: myId }).then(function (s) { state = s; render(); })
+    return api({ action: 'state', id: myId }).then(function (s) { state = s; restore(); render(); })
       .catch(function () { render(); });
   }
+
+  // 新浏览器里一张令都没有时，用服务器记着的令恢复（只取未归案的，不超过可领张数）
+  function restore() {
+    if (!state.me || !state.mine || load('hunt_posters', []).length) return;
+    var cap = captured(), back = state.mine.filter(function (id) { return cap.indexOf(id) < 0; }).slice(0, allowed());
+    if (!back.length) return;
+    save('hunt_posters', back); save('hunt_reported', state.mine.slice());
+  }
+
+  [].forEach.call(document.querySelectorAll('.rec-open'), function (a) {
+    a.onclick = function (e) { e.preventDefault(); $('rec').hidden = false; $('rec').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  });
+  $('rec-btn').onclick = function () {
+    var no = parseInt($('rec-no').value.replace(/\D/g, ''), 10), cn = $('rec-cn').value.trim();
+    if (!no || !cn) { toast('编号和代号都要填'); return; }
+    var self = this; self.disabled = true;
+    fetch('/api/hunt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recover', no: no, codename: cn }) })
+      .then(function (r) { if (r.status === 404) throw new Error('nf'); if (!r.ok) throw new Error('net'); return r.json(); })
+      .then(function (r) {
+        myId = r.id; save('hunt_id', myId); save('hunt_posters', []); save('hunt_reported', []);
+        return refresh();
+      })
+      .then(function () { $('rec').hidden = true; toast('找回来了'); $('badge-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' }); })
+      .catch(function (e) { toast(e.message === 'nf' ? '没找到，检查一下编号和代号' : '登记处暂时联系不上，稍后再试'); })
+      .then(function () { self.disabled = false; });
+  };
 
   $('reg-btn').onclick = function () {
     var cn = $('codename').value.trim();
