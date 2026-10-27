@@ -70,7 +70,13 @@
   .badge .cn { font-size: 20px; }
   .badge .sub { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
 
-  .invite { margin-top: 16px; font-size: 15px; }
+  .invite { font-size: 15px; }
+  .reg-row { display: flex; gap: 8px; }
+  .reg-row .field { flex: 1; min-width: 0; font-size: 16px; letter-spacing: .05em; }
+  .reg-row .btn { flex: none; width: 88px; margin: 0; letter-spacing: .1em; }
+  #title-sec { padding-bottom: 4px; }
+  #me-sec { padding-top: 8px; padding-bottom: 8px; }
+  #reg { padding: 18px 16px 14px; }
   .invite .row { display: flex; gap: 8px; margin-top: 10px; }
   .invite .row input { flex: 1; font-size: 12.5px; letter-spacing: 0; text-align: left; padding: 10px; }
   .invite .row button { flex: none; width: 76px; margin: 0; padding: 0; font-size: 14px; letter-spacing: .1em; }
@@ -132,7 +138,7 @@
 
   <div class="hero"><img src="/hunt/assets/poster.jpg" alt="奇奇妙妙屋 · 万圣节赏金猎人"></div>
 
-  <section>
+  <section id="title-sec">
     <p class="kicker">奇妙收容所 · 紧急告示</p>
     <h1 class="neon">赏金猎人</h1>
   </section>
@@ -140,10 +146,11 @@
   <!-- 我的猎人证 / 登记 -->
   <section id="me-sec" hidden>
     <div id="reg" class="card" hidden>
-      <h2>猎人登记处</h2>
-      <p style="text-align:center;font-size:15px;margin-bottom:14px">留下一个代号，领取你的猎人编号。</p>
-      <input id="codename" class="field" maxlength="12" placeholder="你的猎人代号">
-      <button id="reg-btn" class="btn">登记</button>
+      <h2 style="margin-bottom:10px">猎人登记处</h2>
+      <div class="reg-row">
+        <input id="codename" class="field" maxlength="12" placeholder="留下你的猎人代号">
+        <button id="reg-btn" class="btn">登记</button>
+      </div>
       <p class="note" id="hunters-note"></p>
       <p class="note"><a href="#" class="rec-open" style="color:var(--gold)">登记过了？到下面的「猎人名册」里找到你自己</a></p>
     </div>
@@ -156,15 +163,19 @@
         <p class="sub">10.27 — 11.01　凭此证领取通缉令</p>
       </div>
       <p class="note">截图保存你的猎人证　·　<a href="#" class="rec-open" style="color:var(--gold)">不是原来的编号？去名册里找回</a></p>
+    </div>
+  </section>
 
-      <div class="invite card" style="margin-top:16px">
-        <p>邀请一位朋友登记，你就能多领一张通缉令。　<span class="pill" id="inv-pill"></span></p>
-        <p class="note" style="text-align:left">点右上角「···」发送给朋友，链接里已经带上你的猎人编号；也可以复制下面的链接。</p>
-        <div class="row">
-          <input id="inv-link" class="field" readonly>
-          <button id="inv-copy" class="btn ghost">复制</button>
-        </div>
-      </div>
+  <!-- 猎人名册：紧跟在登记框 / 猎人证下面 -->
+  <section id="roster-sec" hidden>
+    <div class="scroll">
+      <div class="seal">收容所<br>验讫</div>
+      <p class="r-kicker">奇 妙 收 容 所</p>
+      <h2 class="r-title">猎人名册</h2>
+      <p class="r-sub" id="r-sub"></p>
+      <input id="r-find" class="r-find" placeholder="输入编号或代号，找到你的名字">
+      <div class="r-list" id="r-list"></div>
+      <p class="r-foot">找到你的名字，按下「是我」，取回你的猎人证和通缉令。</p>
     </div>
   </section>
 
@@ -178,16 +189,15 @@
     </div>
   </section>
 
-  <!-- 猎人名册 -->
-  <section id="roster-sec" hidden>
-    <div class="scroll">
-      <div class="seal">收容所<br>验讫</div>
-      <p class="r-kicker">奇 妙 收 容 所</p>
-      <h2 class="r-title">猎人名册</h2>
-      <p class="r-sub" id="r-sub"></p>
-      <input id="r-find" class="r-find" placeholder="输入编号或代号，找到你的名字">
-      <div class="r-list" id="r-list"></div>
-      <p class="r-foot">找到你的名字，按下「是我」，取回你的猎人证和通缉令。</p>
+  <!-- 邀请 -->
+  <section id="invite-sec" hidden>
+    <div class="invite card">
+      <p>邀请一位朋友登记，你就能多领一张通缉令。　<span class="pill" id="inv-pill"></span></p>
+      <p class="note" style="text-align:left">点右上角「···」发送给朋友，链接里已经带上你的猎人编号；也可以复制下面的链接。</p>
+      <div class="row">
+        <input id="inv-link" class="field" readonly>
+        <button id="inv-copy" class="btn ghost">复制</button>
+      </div>
     </div>
   </section>
 
@@ -376,6 +386,7 @@
     var me = state.me;
     $('reg').hidden = !!me;
     $('badge-wrap').hidden = !me;
+    $('invite-sec').hidden = !me;
     $('hunters-note').textContent = state.hunters ? ('已有 ' + state.hunters + ' 名猎人登记') : '';
     if (me) {
       $('b-no').textContent = 'No. ' + String(me.no).padStart(4, '0');
