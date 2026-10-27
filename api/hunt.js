@@ -47,6 +47,11 @@ export default async function handler(req) {
     return r.ok ? json(200, r.body) : json(502, { error: 'db' });
   }
 
+  if (p.action === 'roster') {
+    const r = await rpc('hunt_roster', {});
+    return r.ok ? json(200, { roster: r.body || [] }) : json(502, { error: 'db' });
+  }
+
   if (p.action === 'recover') {
     const no = Number(p.no), codename = str(p.codename, 12);
     if (!Number.isInteger(no) || no < 1 || !codename) return json(400, { error: 'input' });

@@ -90,6 +90,33 @@
   .board .stamp { font-size: 11px; border-width: 2px; padding: 0 3px; letter-spacing: 0; }
   .board figure.boss { outline: 1px solid rgba(255, 59, 59, .6); }
 
+  .scroll { position: relative; padding: 30px 18px 22px; border-radius: 3px; color: #3b2412;
+    background:
+      radial-gradient(ellipse at 25% 15%, rgba(255, 250, 230, .45), transparent 55%),
+      radial-gradient(ellipse at 85% 85%, rgba(120, 70, 20, .28), transparent 50%),
+      radial-gradient(ellipse at 10% 90%, rgba(120, 70, 20, .2), transparent 45%),
+      linear-gradient(170deg, #efdcaf, #dcbd80 70%, #cfa964);
+    box-shadow: inset 0 0 46px rgba(90, 50, 10, .55), 0 0 26px rgba(0, 0, 0, .55); }
+  .scroll::before { content: ""; position: absolute; inset: 8px; border: 1px solid rgba(90, 50, 10, .35); pointer-events: none; }
+  .seal { position: absolute; right: 16px; top: 16px; width: 58px; height: 58px; border: 3px solid rgba(163, 25, 27, .75); border-radius: 50%;
+    color: rgba(163, 25, 27, .8); font-size: 12px; font-weight: 900; line-height: 1.3; display: flex; align-items: center; justify-content: center;
+    text-align: center; transform: rotate(-16deg); }
+  .r-kicker { text-align: center; font-size: 12px; letter-spacing: .3em; color: #6b4524; }
+  .r-title { text-align: center; color: #8a1616; font-size: 28px; font-weight: 900; letter-spacing: .4em; margin: 2px 0 4px; }
+  .r-sub { text-align: center; font-size: 13.5px; color: #5a3a1c; margin-bottom: 12px; }
+  .r-find { width: 100%; padding: 9px 12px; border: 1px solid rgba(90, 50, 10, .45); border-radius: 3px; background: rgba(255, 248, 225, .55);
+    color: #3b2412; font: inherit; font-size: 15px; }
+  .r-find::placeholder { color: #8c6a45; }
+  .r-list { margin-top: 10px; max-height: 440px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-top: 2px solid rgba(90, 50, 10, .5); }
+  .r-row { display: flex; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px dashed rgba(90, 50, 10, .35); font-size: 15px; }
+  .r-row .n { flex: none; width: 74px; font-weight: 700; color: #6b1d12; font-variant-numeric: tabular-nums; }
+  .r-row .c { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .r-row .t { flex: none; font-size: 12px; color: #7a5a38; }
+  .r-row button { flex: none; padding: 2px 10px; border: 1.5px solid #8a1616; border-radius: 3px; background: transparent; color: #8a1616;
+    font: inherit; font-size: 13.5px; font-weight: 700; }
+  .r-row.me { background: rgba(163, 25, 27, .12); }
+  .r-row .me-tag { flex: none; padding: 2px 10px; color: #fff3d0; background: #8a1616; border-radius: 3px; font-size: 13.5px; font-weight: 700; }
+  .r-foot { text-align: center; font-size: 13px; color: #5a3a1c; margin-top: 12px; }
   .coord { text-align: center; font-size: 15.5px; }
   .coord .date { font-size: 26px; font-weight: 900; letter-spacing: .06em; margin-bottom: 8px; }
   .reveal { margin-top: 12px; font-size: 15px; color: #fff3d0; }
@@ -118,7 +145,7 @@
       <input id="codename" class="field" maxlength="12" placeholder="你的猎人代号">
       <button id="reg-btn" class="btn">登记</button>
       <p class="note" id="hunters-note"></p>
-      <p class="note"><a href="#" class="rec-open" style="color:var(--gold)">登记过了？换了手机或浏览器，点这里找回</a></p>
+      <p class="note"><a href="#" class="rec-open" style="color:var(--gold)">登记过了？到下面的「猎人名册」里找到你自己</a></p>
     </div>
 
     <div id="badge-wrap" hidden>
@@ -128,7 +155,7 @@
         <p class="cn">代号　<span id="b-cn"></span></p>
         <p class="sub">10.27 — 11.01　凭此证领取通缉令</p>
       </div>
-      <p class="note">截图保存你的猎人证　·　<a href="#" class="rec-open" style="color:var(--gold)">不是原来的编号？找回</a></p>
+      <p class="note">截图保存你的猎人证　·　<a href="#" class="rec-open" style="color:var(--gold)">不是原来的编号？去名册里找回</a></p>
 
       <div class="invite card" style="margin-top:16px">
         <p>邀请一位朋友登记，你就能多领一张通缉令。　<span class="pill" id="inv-pill"></span></p>
@@ -139,14 +166,6 @@
         </div>
       </div>
     </div>
-
-    <div id="rec" class="card" hidden style="margin-top:16px">
-      <h2>找回猎人证</h2>
-      <input id="rec-no" class="field" inputmode="numeric" placeholder="猎人编号（猎人证上的数字）">
-      <input id="rec-cn" class="field" maxlength="12" placeholder="当时登记的代号" style="margin-top:8px">
-      <button id="rec-btn" class="btn">找回</button>
-      <p class="note">找回后，原来的编号、邀请和已领的通缉令都会回来。</p>
-    </div>
   </section>
 
   <!-- 我的通缉令（开放后） -->
@@ -156,6 +175,19 @@
       <div id="my-posters"></div>
       <button id="claim-btn" class="btn" hidden></button>
       <p class="note" id="claim-note"></p>
+    </div>
+  </section>
+
+  <!-- 猎人名册 -->
+  <section id="roster-sec" hidden>
+    <div class="scroll">
+      <div class="seal">收容所<br>验讫</div>
+      <p class="r-kicker">奇 妙 收 容 所</p>
+      <h2 class="r-title">猎人名册</h2>
+      <p class="r-sub" id="r-sub"></p>
+      <input id="r-find" class="r-find" placeholder="输入编号或代号，找到你的名字">
+      <div class="r-list" id="r-list"></div>
+      <p class="r-foot">找到你的名字，按下「是我」，取回你的猎人证和通缉令。</p>
     </div>
   </section>
 
@@ -358,6 +390,7 @@
     }
     $('wanted-sec').hidden = !(me && isOpen());
     if (me && isOpen()) { renderPosters(); report(); }
+    renderRoster();
   }
 
   // 把这台手机上的令报给后台记账；没报成功的下次打开再报
@@ -384,23 +417,46 @@
     save('hunt_posters', back); save('hunt_reported', state.mine.slice());
   }
 
-  [].forEach.call(document.querySelectorAll('.rec-open'), function (a) {
-    a.onclick = function (e) { e.preventDefault(); $('rec').hidden = false; $('rec').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-  });
-  $('rec-btn').onclick = function () {
-    var no = parseInt($('rec-no').value.replace(/\D/g, ''), 10), cn = $('rec-cn').value.trim();
-    if (!no || !cn) { toast('编号和代号都要填'); return; }
-    var self = this; self.disabled = true;
-    fetch('/api/hunt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recover', no: no, codename: cn }) })
-      .then(function (r) { if (r.status === 404) throw new Error('nf'); if (!r.ok) throw new Error('net'); return r.json(); })
+  // ---------- 猎人名册：在名册里认出自己，取回猎人证和令 ----------
+  var roster = [];
+  function pad4(n) { return 'No.' + String(n).padStart(4, '0'); }
+  function esc(s) { var e = document.createElement('i'); e.textContent = s; return e.innerHTML; }
+
+  function loadRoster() {
+    return api({ action: 'roster' }).then(function (r) { roster = r.roster || []; renderRoster(); }).catch(function () {});
+  }
+  function renderRoster() {
+    if (!roster.length) return;
+    $('roster-sec').hidden = false;
+    $('r-sub').textContent = '已登记 ' + roster.length + ' 名猎人　·　抓捕之夜 10.29 — 10.31';
+    var me = state && state.me ? state.me.no : null, q = $('r-find').value.trim().replace(/^no\.?\s*/i, '');
+    var qn = /^\d+$/.test(q) ? parseInt(q, 10) : null;
+    $('r-list').innerHTML = roster.filter(function (h) {
+      return !q || (qn !== null && h.no === qn) || h.cn.indexOf(q) >= 0;
+    }).map(function (h) {
+      return '<div class="r-row' + (h.no === me ? ' me' : '') + '"><span class="n">' + pad4(h.no) + '</span><span class="c">' + esc(h.cn) +
+        '</span><span class="t">' + h.t + '</span>' +
+        (h.no === me ? '<span class="me-tag">本人</span>' : '<button data-no="' + h.no + '">是我</button>') + '</div>';
+    }).join('') || '<div class="r-row"><span class="c">名册里没有这个名字</span></div>';
+  }
+  $('r-find').oninput = renderRoster;
+  $('r-list').onclick = function (e) {
+    var b = e.target.closest('button[data-no]'); if (!b) return;
+    var no = +b.dataset.no, h = roster.filter(function (x) { return x.no === no; })[0];
+    if (!h || !confirm('确认你就是 ' + pad4(no) + '「' + h.cn + '」吗？')) return;
+    b.disabled = true;
+    fetch('/api/hunt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recover', no: no, codename: h.cn }) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (r) {
         myId = r.id; save('hunt_id', myId); save('hunt_posters', []); save('hunt_reported', []);
         return refresh();
       })
-      .then(function () { $('rec').hidden = true; toast('找回来了'); $('badge-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' }); })
-      .catch(function (e) { toast(e.message === 'nf' ? '没找到，检查一下编号和代号' : '登记处暂时联系不上，稍后再试'); })
-      .then(function () { self.disabled = false; });
+      .then(function () { renderRoster(); toast('欢迎回来，' + h.cn); $('badge-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' }); })
+      .catch(function () { b.disabled = false; toast('登记处暂时联系不上，稍后再试'); });
   };
+  [].forEach.call(document.querySelectorAll('.rec-open'), function (a) {
+    a.onclick = function (e) { e.preventDefault(); $('roster-sec').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  });
 
   $('reg-btn').onclick = function () {
     var cn = $('codename').value.trim();
@@ -408,7 +464,7 @@
     this.disabled = true;
     var self = this;
     api({ action: 'register', id: myId, codename: cn, from: load('hunt_from', null) })
-      .then(refresh).then(function () { toast('登记成功'); })
+      .then(refresh).then(loadRoster).then(function () { toast('登记成功'); })
       .catch(function () { toast('登记处暂时联系不上，稍后再试'); })
       .then(function () { self.disabled = false; });
   };
@@ -424,7 +480,7 @@
   $('reveal-btn').onclick = function () { this.hidden = true; $('reveal').hidden = false; };
 
   document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
-  render(); tick(); refresh();
+  render(); tick(); refresh(); loadRoster();
 })();
 </script>
 </body>

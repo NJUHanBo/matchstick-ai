@@ -21,5 +21,15 @@ returns json language sql stable security definer set search_path = public as $$
   );
 $$;
 
+-- 猎人名册：页面上公开列出编号、代号、登记日期（不含内部 id），点「是我」再走 hunt_recover
+create or replace function hunt_roster()
+returns json language sql stable security definer set search_path = public as $$
+  select coalesce(json_agg(json_build_object(
+           'no', no, 'cn', codename, 't', to_char(created_at at time zone 'Asia/Shanghai', 'MM.DD'))
+         order by no), '[]'::json)
+  from hunt_hunters;
+$$;
+
 grant execute on function hunt_recover(bigint, text) to anon;
+grant execute on function hunt_roster() to anon;
 grant execute on function hunt_state(text) to anon;
