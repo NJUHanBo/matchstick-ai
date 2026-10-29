@@ -241,9 +241,9 @@
       <h2>猎人须知</h2>
       <ul class="rules">
         <li>一、通缉令散落在校园各处，10 月 27 日起也可以在这里领取。每人先领一张，邀请一位朋友登记，再多一张。</li>
-        <li>二、抓捕之夜：10 月 29 日至 31 日，每晚 18:00—21:00。在店里找到令上的那只怪物，连同通缉令一起带到吧台，纸质令、电子令都算。其余时间到店不能领赏。</li>
+        <li>二、抓捕之夜：10 月 29 日至 31 日，每晚 19:00—21:00。在店里找到令上的那只怪物，连同通缉令一起带到吧台，纸质令、电子令都算。其余时间到店不能领赏。</li>
         <li>三、在小红书、抖音或大众点评发一张照片：你手拿通缉令，身边是归案的怪物，带上话题 #奇奇妙妙屋赏金猎人。</li>
-        <li>四、店员看过帖子，按令上的赏金当场付现金，再给你和归案的怪物拍一张拍立得合照带走。每只怪物只能归案一次，先到先得。</li>
+        <li>四、店员看过帖子，按令上的赏金当场付现金，再给你和归案的怪物拍一张拍立得合照带走。欢迎变装或 cosplay 来，更出片哦。每只怪物只能归案一次，先到先得。</li>
         <li>五、你的怪物要是被别人抢先抓走了，这里会告诉你，可以换一张。</li>
       </ul>
     </div>
@@ -257,7 +257,7 @@
 
   <section class="coord">
     <p class="date glow" style="margin-bottom:0">10.29 — 10.31</p>
-    <p style="color:var(--gold);margin-bottom:8px">抓捕之夜　每晚 18:00 — 21:00</p>
+    <p style="color:var(--gold);margin-bottom:8px">抓捕之夜　每晚 19:00 — 21:00</p>
     <p>坐标：南大以东最大的商场，<br>背后小巷，二楼拐角。<br>红色天桥，紫藤栏杆。</p>
     <button id="reveal-btn" class="btn ghost" style="width:auto;display:inline-block;padding:6px 18px;margin-top:14px">实在找不到</button>
     <p class="reveal" id="reveal" hidden>南京仙林万达茂 · 国际街 2F　奇奇妙妙屋<br>
@@ -363,7 +363,7 @@
       mine.push(n); save('hunt_posters', mine); render();
       setTimeout(function () { box.lastChild && box.lastChild.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
     };
-    if (mine.length) note.textContent = '长按图片保存到相册。抓捕之夜（10.29—10.31，每晚 18:00—21:00）到店出示即可。';
+    if (mine.length) note.textContent = '长按图片保存到相册。抓捕之夜（10.29—10.31，每晚 19:00—21:00）到店出示即可。';
     else note.textContent = '';
     if (mine.length === 1 && allowed() === 1) note.textContent += '邀请一位朋友登记，可以再领一张。';
   }
