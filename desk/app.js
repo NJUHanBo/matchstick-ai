@@ -22,6 +22,7 @@ let chatMessages = [];
 let latestSources = [];
 let quickBusy = false;
 let cloudReady = true;
+let authRequired = false;
 
 function getToken() {
   return (localStorage.getItem(TOKEN_KEY) || '').trim();
@@ -137,7 +138,7 @@ async function verifyToken(token, silent = false) {
   try {
     const res = await fetch(API_ENDPOINT, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-desk-token': token },
+      headers: { 'content-type': 'application/json', 'x-desk-token': token || '' },
       body: JSON.stringify({ action: 'verify' }),
     });
     const data = await res.json().catch(() => ({}));
@@ -145,7 +146,9 @@ async function verifyToken(token, silent = false) {
       if (!silent) $('lockErr').textContent = data.error || `验证失败 (${res.status})`;
       return false;
     }
-    setToken(token);
+    authRequired = Boolean(data.auth_required);
+    $('logoutBtn').classList.toggle('hidden', !authRequired);
+    if (token) setToken(token);
     cloudReady = Boolean(data.supabase_ready);
     hideLock();
     await loadNotes($('noteSearch').value);
@@ -333,7 +336,7 @@ function attachAnswerActions(ui, rawText) {
 async function sendQuickChat(overrideModel = null, overrideEffort = null) {
   if (quickBusy) return;
   const token = getToken();
-  if (!token) {
+  if (authRequired && !token) {
     showLock();
     return;
   }
@@ -544,7 +547,7 @@ async function saveNote(mode) {
     return;
   }
   const token = getToken();
-  if (!token) { showLock(); return; }
+  if (authRequired && !token) { showLock(); return; }
 
   $('saveDistillBtn').disabled = true;
   $('saveRawBtn').disabled = true;
@@ -602,7 +605,7 @@ async function deleteNote(id) {
   if (!confirm('确认删除这条留底笔记吗？')) return;
   const kept = loadLocalNotes().filter((n) => n.id !== id);
   localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(kept));
-  if (token && cloudReady) {
+  if (cloudReady) {
     await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-desk-token': token },
@@ -618,7 +621,7 @@ async function loadNotes(query = '') {
   const box = $('notesList');
   let notes = [];
 
-  if (token) {
+  if (!authRequired || token) {
     try {
       const res = await fetch(API_ENDPOINT, {
         method: 'POST',
@@ -701,11 +704,6 @@ if ('serviceWorker' in navigator) {
 }
 
 loadPrefs();
-const savedToken = getToken();
-if (!savedToken) {
-  showLock();
-} else {
-  verifyToken(savedToken, true).then((ok) => {
-    if (!ok) showLock('访问口令已变更，请重新输入');
-  });
-}
+verifyToken(getToken(), true).then((ok) => {
+  if (!ok) showLock('请输入访问口令');
+});

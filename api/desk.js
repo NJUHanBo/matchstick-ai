@@ -287,9 +287,6 @@ export default async function handler(req) {
   }
 
   const expectedPwd = (process.env.DESK_PASSWORD || '').trim();
-  if (!expectedPwd) {
-    return jsonResp(500, { error: '服务端尚未配置 DESK_PASSWORD 环境变量' });
-  }
 
   let payload;
   try {
@@ -299,7 +296,7 @@ export default async function handler(req) {
   }
 
   const token = (req.headers.get('x-desk-token') || payload.token || '').trim();
-  if (!token || token !== expectedPwd) {
+  if (expectedPwd && token !== expectedPwd) {
     return jsonResp(401, { error: '访问口令不正确' });
   }
 
@@ -309,6 +306,7 @@ export default async function handler(req) {
     const sb = await supabaseRpc('desk_list_clippings', { p_pwd: token, p_query: '', p_limit: 1 });
     return jsonResp(200, {
       ok: true,
+      auth_required: Boolean(expectedPwd),
       supabase_ready: sb.ok,
       keys_count: getKeyPool().length,
     });

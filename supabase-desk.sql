@@ -27,8 +27,8 @@ alter table desk_config enable row level security;
 
 create or replace function desk_check_pwd(p_pwd text)
 returns boolean language sql stable security definer set search_path = public as $$
-  select p_pwd is not null
-     and p_pwd = (select value from desk_config where key = 'access_password');
+  select coalesce((select value from desk_config where key = 'access_password'), '') = ''
+      or coalesce(p_pwd, '') = (select value from desk_config where key = 'access_password');
 $$;
 
 create or replace function desk_list_clippings(p_pwd text, p_query text default '', p_limit int default 80)
@@ -120,6 +120,6 @@ grant execute on function desk_list_clippings(text, text, int) to anon;
 grant execute on function desk_upsert_clipping(text, jsonb) to anon;
 grant execute on function desk_delete_clipping(text, text) to anon;
 
--- 个人访问口令（必须与 Vercel 环境变量 DESK_PASSWORD 一致）
-insert into desk_config (key, value) values ('access_password', '改成你的口令')
+-- 个人访问口令：默认留空表示免密直进；以后想加锁时改成与 Vercel DESK_PASSWORD 相同的字符串即可
+insert into desk_config (key, value) values ('access_password', '')
 on conflict (key) do update set value = excluded.value;
