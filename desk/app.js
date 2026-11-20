@@ -697,8 +697,7 @@ $('noteSearch').addEventListener('input', () => {
    五、启动初始化 & 注册 Service Worker
    ========================================================================= */
 if ('serviceWorker' in navigator) {
-  const swPath = location.hostname === 'desk.matchstick-ai.xyz' ? '/sw.js' : '/desk/sw.js';
-  navigator.serviceWorker.register(swPath).catch(() => {});
+  navigator.serviceWorker.register('/desk/sw.js', { scope: '/desk/' }).catch(() => {});
 }
 
 loadPrefs();
