@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>书案速查</title>
+  <meta name="description" content="随身多模型速查与留底本">
+  <meta name="theme-color" content="#f4efe6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="书案">
+  <link rel="manifest" href="/desk/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/desk/icon-180.png">
+  <link rel="icon" type="image/png" href="/desk/icon-192.png">
+  <link rel="stylesheet" href="/desk/style.css">
+</head>
+<body>
+  <!-- 口令锁屏层（首次输入后记住在本机浏览器） -->
+  <div id="lockScreen" class="lock-screen hidden" aria-modal="true" role="dialog">
+    <form id="lockForm" class="lock-card">
+      <div class="lock-seal">案</div>
+      <h2>书案速查</h2>
+      <p class="lock-sub">输入个人访问口令，本机验证一次后自动记住。</p>
+      <input id="lockPwd" type="password" autocomplete="current-password" placeholder="输入访问口令" required>
+      <button type="submit" id="lockSubmit" class="primary full">解锁进入</button>
+      <p id="lockErr" class="lock-err"></p>
+    </form>
+  </div>
+
+  <!-- 移动端抽屉遮罩 -->
+  <div id="drawerBackdrop" class="backdrop hidden"></div>
+
+  <div class="app-shell">
+    <!-- 顶部栏 -->
+    <header class="topbar">
+      <div class="top-left">
+        <button type="button" id="mobileNotesBtn" class="icon-btn mobile-only" title="打开模型与留底本">
+          <span>留底</span>
+          <span class="badge" id="mobileNotesBadge">0</span>
+        </button>
+        <div class="brand">
+          <h1>书案速查</h1>
+          <span class="status-dot" id="status">待命</span>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <button type="button" id="mobileModelPill" class="model-pill mobile-only" title="切换模型与联网">
+          <span id="mobileModelLabel">GLM-5.3-FlashX</span>
+          <span class="pill-net" id="mobileNetTag">联网</span>
+        </button>
+        <button type="button" id="openNoteBoxBtn" class="accent-outline">记笔记</button>
+        <button type="button" id="clearChatBtn" class="ghost-btn">新题</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <!-- 左侧栏（桌面常驻 / 手机抽屉） -->
+      <aside id="sideDrawer" class="sidebar">
+        <div class="drawer-head mobile-only">
+          <span>模型与留底本</span>
+          <button type="button" id="closeDrawerBtn" class="ghost-btn">完成</button>
+        </div>
+
+        <section class="side-block">
+          <div class="section-head">
+            <span>模型与检索</span>
+            <button type="button" id="logoutBtn" class="tiny-link">换口令</button>
+          </div>
+
+          <label>速查模型
+            <select id="qModel">
+              <optgroup label="极速轻量（2–3秒出字）">
+                <option value="GLM-5.3-FlashX" selected>GLM-5.3-FlashX（极速首选）</option>
+                <option value="GLM-5.3">GLM-5.3（智谱主力）</option>
+                <option value="GLM-5.3-Flash">GLM-5.3-Flash</option>
+                <option value="GLM-4.5-AirX">GLM-4.5-AirX</option>
+              </optgroup>
+              <optgroup label="多厂牌切换">
+                <option value="Qwen3.8-Max">Qwen3.8-Max</option>
+                <option value="Qwen3.8-Flash">Qwen3.8-Flash</option>
+                <option value="MiniMax-M3">MiniMax-M3</option>
+                <option value="DeepSeek-V4.1-Flash">DeepSeek-V4.1-Flash</option>
+                <option value="DeepSeek-V4-Pro-0813">DeepSeek-V4-Pro-0813</option>
+                <option value="Kimi-K3">Kimi-K3</option>
+              </optgroup>
+              <optgroup label="重型旗舰（深挖细想）">
+                <option value="Claude-Fable-5.1">Claude-Fable-5.1</option>
+                <option value="GPT-6-Astra">GPT-6-Astra</option>
+                <option value="Claude-Opus-4.6">Claude-Opus-4.6</option>
+              </optgroup>
+            </select>
+          </label>
+
+          <div class="row-2">
+            <label>思考档位
+              <select id="qEffort">
+                <option value="low" selected>low（快答）</option>
+                <option value="off">off（关闭）</option>
+                <option value="high">high（细想）</option>
+                <option value="max">max（深推）</option>
+              </select>
+            </label>
+            <label class="toggle-wrap">实时联网
+              <span class="check-box">
+                <input id="qSearch" type="checkbox" checked>
+                <span>抓最新资讯</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section class="side-block notes-block">
+          <div class="section-head">
+            <span>随手留底本</span>
+            <span class="muted" id="notesCount">0 条</span>
+          </div>
+          <input id="noteSearch" type="search" placeholder="搜关键词或 #标签…">
+          <div id="syncHint" class="sync-hint hidden"></div>
+          <div id="notesList" class="notes-list"></div>
+        </section>
+      </aside>
+
+      <!-- 主对话区 -->
+      <main class="main-pane">
+        <!-- 一键角度条（手机横向滑动） -->
+        <div class="preset-bar">
+          <div class="preset-chips" id="presetChips">
+            <button type="button" class="chip active" data-preset="default">平实速查</button>
+            <button type="button" class="chip" data-preset="brief">三分钟摸底</button>
+            <button type="button" class="chip" data-preset="substance">剥套话看实质</button>
+            <button type="button" class="chip" data-preset="concept">讲清概念来路</button>
+            <button type="button" class="chip" data-preset="research">连到我的研究</button>
+          </div>
+          <button type="button" id="deepFollowBtn" class="deep-btn" title="带着当前事实切到 Claude-Fable-5.1 深剖一层">换 Fable 深想</button>
+        </div>
+
+        <!-- 记笔记抽屉 -->
+        <div id="noteDrawer" class="note-drawer hidden">
+          <div class="note-drawer-row">
+            <input id="userNoteInput" type="text" placeholder="顺手补半句批注（可留空）">
+            <div class="note-drawer-btns">
+              <button type="button" id="saveDistillBtn" class="primary">提炼留底</button>
+              <button type="button" id="saveRawBtn">原样存</button>
+              <button type="button" id="closeNoteBoxBtn" class="ghost-btn">收起</button>
+            </div>
+          </div>
+          <div class="note-sub">云端留底，自动同步回 Mac 的 <code>memory/clippings.md</code></div>
+        </div>
+
+        <!-- 对话流 -->
+        <div id="chatStream" class="chat-stream">
+          <div class="empty-guide" id="emptyGuide">
+            <div class="guide-seal">案</div>
+            <p class="guide-title">随手问一句，看完即走；有用的点「记笔记」留底。</p>
+            <div class="guide-examples">
+              <button type="button" class="example-btn" data-q="最近国内外有什么值得留意的科技、政策或经济新闻？挑两三件用大白话讲清。">最近有什么值得留意的科技与政策动向？</button>
+              <button type="button" class="example-btn" data-q="十五五规划里关于耕地保护、高标准农田和自然资源资产有什么新提法？">十五五里耕地与自然资源资产有什么新提法？</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部输入区 -->
+        <div class="composer">
+          <div class="composer-box">
+            <textarea id="qInput" rows="1" placeholder="问新闻、人物、政策或概念…"></textarea>
+            <button type="button" id="qSendBtn" class="primary send-btn">发送</button>
+          </div>
+          <div class="composer-foot desktop-only">
+            <span id="qMeta" class="q-meta">GLM-5.3-FlashX · effort=low · 实时联网开启</span>
+            <span class="q-meta">⌘+Enter 发送 · Enter 换行</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/desk/app.js"></script>
+</body>
+</html>

@@ -1,7 +1,9 @@
 {
   "routes": [
     { "src": "^/$", "has": [{ "type": "host", "value": "hunt.matchstick-ai.xyz" }], "dest": "/hunt/index.html" },
-    { "src": "^/(?!hunt/|api/)(.+)$", "has": [{ "type": "host", "value": "hunt.matchstick-ai.xyz" }], "dest": "/hunt/$1" }
+    { "src": "^/(?!hunt/|api/)(.+)$", "has": [{ "type": "host", "value": "hunt.matchstick-ai.xyz" }], "dest": "/hunt/$1" },
+    { "src": "^/$", "has": [{ "type": "host", "value": "desk.matchstick-ai.xyz" }], "dest": "/desk/index.html" },
+    { "src": "^/(?!desk/|api/)(.+)$", "has": [{ "type": "host", "value": "desk.matchstick-ai.xyz" }], "dest": "/desk/$1" }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
