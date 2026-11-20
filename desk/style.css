@@ -567,10 +567,12 @@ button.tiny-link {
   .desktop-only { display: none !important; }
 
   .topbar {
-    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+    gap: 6px;
   }
-  .brand h1 { font-size: 16px; }
-  .status-dot { display: none; }
+  .brand { display: none; }
+  .top-left, .top-right { gap: 6px; }
+  .topbar button { padding: 5px 9px; font-size: 12.5px; }
 
   .icon-btn {
     align-items: center;
