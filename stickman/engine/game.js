@@ -84,6 +84,9 @@
       fighters: [],
       bananaPeels: [],
       energyOrbs: [],
+      afterimages: [],
+      groundVines: [],
+      domainOverlay: null,
       particles: [],
       callouts: [],
       story: {
@@ -121,19 +124,43 @@
       flying: false,
       state: 'idle',
       stateTimer: 0,
+      slashAnimDur: 0.28,
       slashHitDone: false,
+      pendingBackstab: false,
+      lastBackstabGlow: 0,
       shieldTime: 0,
       invuln: 0,
-      cooldowns: { slash: 0, banana: 0, orb: 0, ult: 0 },
+      cooldowns: { slash: 0, banana: 0, orb: 0, ult: 0, ult2: 0 },
+      // 无敌剑状态
       shrinkTimer: 0,
       bodyScale: 1.0,
       speedBoostTimer: 0,
       swordScale: 1.0,
       frozenTimer: 0,
+      // 影子状态
+      stealthTimer: 0,
+      stealthEnterFlash: 0,
+      blinkCharges: 0,
+      blinkWindowTimer: 0,
+      blinkStep: 0,
+      blinkHitDone: false,
+      scarfGrabHit: false,
+      // 藤蔓状态
+      vineChannelTimer: 0,
+      vineBindTargetId: null,
+      vineDrainAccum: 0,
+      vineBoundTimer: 0,
+      cocoonTimer: 0,
+      cocoonPactTimer: 0,
+      giantTimer: 0,
+      giantBonusHp: 0,
+      // 通用动作与 AI
       walkPhase: 0,
       slipRot: 0,
       aiTimer: 0.35,
-      aiIntent: 'approach'
+      aiIntent: 'approach',
+      aiLastKnownX: W - startX,
+      aiWanderDir: 1
     };
   }
 
@@ -308,6 +335,137 @@
           osc.connect(gain).connect(ac.destination);
           osc.start(now + idx * 0.04); osc.stop(now + idx * 0.04 + 0.30);
         });
+      },
+      shadowHide() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator(), gain = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(360, now);
+        osc.frequency.exponentialRampToValueAtTime(95, now + 0.22);
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.connect(gain).connect(ac.destination);
+        osc.start(now); osc.stop(now + 0.25);
+      },
+      shadowBlink() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator(), gain = ac.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(860, now);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 0.11);
+        gain.gain.setValueAtTime(0.10, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+        osc.connect(gain).connect(ac.destination);
+        osc.start(now); osc.stop(now + 0.14);
+      },
+      shadowBackstab() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [720, 1080].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + idx * 0.03);
+          osc.frequency.exponentialRampToValueAtTime(160, now + idx * 0.03 + 0.16);
+          gain.gain.setValueAtTime(0.13, now + idx * 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.18);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.03); osc.stop(now + idx * 0.03 + 0.19);
+        });
+      },
+      shadowDomainGrab() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [220, 165, 110].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.05);
+          osc.frequency.exponentialRampToValueAtTime(f * 0.65, now + idx * 0.05 + 0.25);
+          gain.gain.setValueAtTime(0.14, now + idx * 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.28);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.05); osc.stop(now + idx * 0.05 + 0.30);
+        });
+      },
+      shadowDomainHit() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator(), gain = ac.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(920, now);
+        osc.frequency.exponentialRampToValueAtTime(190, now + 0.10);
+        gain.gain.setValueAtTime(0.13, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain).connect(ac.destination);
+        osc.start(now); osc.stop(now + 0.13);
+      },
+      vineBind() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [240, 320, 420].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.04);
+          osc.frequency.exponentialRampToValueAtTime(f * 1.15, now + idx * 0.04 + 0.12);
+          gain.gain.setValueAtTime(0.09, now + idx * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.14);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.04); osc.stop(now + idx * 0.04 + 0.15);
+        });
+      },
+      vineDrain() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator(), gain = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(410, now);
+        osc.frequency.exponentialRampToValueAtTime(620, now + 0.14);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.connect(gain).connect(ac.destination);
+        osc.start(now); osc.stop(now + 0.17);
+      },
+      vinePierce() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [150, 540, 880].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = idx === 0 ? 'triangle' : 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + idx * 0.02);
+          osc.frequency.exponentialRampToValueAtTime(f * 0.45, now + idx * 0.02 + 0.18);
+          gain.gain.setValueAtTime(0.14, now + idx * 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.02 + 0.20);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.02); osc.stop(now + idx * 0.02 + 0.21);
+        });
+      },
+      vineHeal() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [523, 659, 784].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + idx * 0.035);
+          gain.gain.setValueAtTime(0.08, now + idx * 0.035);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.035 + 0.18);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.035); osc.stop(now + idx * 0.035 + 0.19);
+        });
+      },
+      vineGiant() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [140, 105, 82].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + idx * 0.06);
+          osc.frequency.exponentialRampToValueAtTime(f * 0.72, now + idx * 0.06 + 0.24);
+          gain.gain.setValueAtTime(0.13, now + idx * 0.06);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.26);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.06); osc.stop(now + idx * 0.06 + 0.28);
+        });
       }
     };
 
@@ -324,6 +482,21 @@
     bus.on('combat:speedBoost', play.speedBoost);
     bus.on('combat:freezeLight', play.freezeLight);
     bus.on('combat:frozen', play.frozen);
+    bus.on('combat:shadowHide', play.shadowHide);
+    bus.on('combat:shadowBlink', play.shadowBlink);
+    bus.on('combat:shadowBackstab', play.shadowBackstab);
+    bus.on('combat:shadowDomainGrab', play.shadowDomainGrab);
+    bus.on('combat:shadowDomainHit', play.shadowDomainHit);
+    bus.on('combat:vineBind', play.vineBind);
+    bus.on('combat:vineDrainTick', play.vineDrain);
+    bus.on('combat:vinePierceShield', play.vinePierce);
+    bus.on('combat:vinePierceMiss', play.banana);
+    bus.on('combat:vineCocoonStart', play.vineBind);
+    bus.on('combat:vineCocoonHeal', play.vineHeal);
+    bus.on('combat:vinePactStart', play.speedBoost);
+    bus.on('combat:vinePactHit', play.vinePierce);
+    bus.on('combat:vineDrainDeath', play.shadowDomainGrab);
+    bus.on('combat:vineGiantStart', play.vineGiant);
     bus.on('match:ko', play.ko);
 
     return { ensure };
@@ -337,13 +510,13 @@
     const justPressed = new Set();
     const touchState = {
       left: false, right: false, up: false, down: false,
-      sword: false, banana: false, orb: false, ult: false
+      sword: false, banana: false, orb: false, ult: false, ult2: false
     };
     const touchJustPressed = new Set();
 
     const gpPrev = [
-      { up: false, sword: false, banana: false, orb: false, ult: false, start: false },
-      { up: false, sword: false, banana: false, orb: false, ult: false, start: false }
+      { up: false, sword: false, banana: false, orb: false, ult: false, ult2: false, start: false },
+      { up: false, sword: false, banana: false, orb: false, ult: false, ult2: false, start: false }
     ];
     const activeGamepads = [null, null];
 
@@ -391,10 +564,10 @@
       const gp = activeGamepads[slotIdx];
       const prev = gpPrev[slotIdx];
       if (!gp) {
-        prev.up = prev.sword = prev.banana = prev.orb = prev.ult = prev.start = false;
+        prev.up = prev.sword = prev.banana = prev.orb = prev.ult = prev.ult2 = prev.start = false;
         return {
           left: false, right: false, up: false, upPressed: false,
-          down: false, sword: false, banana: false, orb: false, ult: false, startPressed: false
+          down: false, sword: false, banana: false, orb: false, ult: false, ult2: false, startPressed: false
         };
       }
 
@@ -408,7 +581,8 @@
       const swordNow = btnPressed(gp, 2) || btnPressed(gp, 5);
       const bananaNow = btnPressed(gp, 1);
       const orbNow = btnPressed(gp, 3) || btnPressed(gp, 7);
-      const ultNow = btnPressed(gp, 8) || btnPressed(gp, 10) || btnPressed(gp, 11);
+      const ultNow = btnPressed(gp, 8) || btnPressed(gp, 10);
+      const ult2Now = btnPressed(gp, 11);
       const startNow = btnPressed(gp, 9);
 
       const res = {
@@ -419,6 +593,7 @@
         banana: bananaNow && !prev.banana,
         orb: orbNow && !prev.orb,
         ult: ultNow && !prev.ult,
+        ult2: ult2Now && !prev.ult2,
         startPressed: startNow && !prev.start
       };
       prev.up = up;
@@ -426,9 +601,10 @@
       prev.banana = bananaNow;
       prev.orb = orbNow;
       prev.ult = ultNow;
+      prev.ult2 = ult2Now;
       prev.start = startNow;
 
-      if (res.upPressed || res.sword || res.banana || res.orb || res.ult || res.startPressed) {
+      if (res.upPressed || res.sword || res.banana || res.orb || res.ult || res.ult2 || res.startPressed) {
         AudioSystem.ensure();
       }
       return res;
@@ -451,7 +627,8 @@
           sword: justPressed.has('KeyJ') || touchJustPressed.has('sword') || gp.sword,
           banana: justPressed.has('KeyK') || touchJustPressed.has('banana') || gp.banana,
           orb: justPressed.has('KeyL') || touchJustPressed.has('orb') || gp.orb,
-          ult: justPressed.has('Semicolon') || touchJustPressed.has('ult') || gp.ult
+          ult: justPressed.has('Semicolon') || touchJustPressed.has('ult') || gp.ult,
+          ult2: justPressed.has('Quote') || touchJustPressed.has('ult2') || gp.ult2
         };
       }
       return {
@@ -463,7 +640,8 @@
         sword: justPressed.has('Digit1') || justPressed.has('Numpad1') || justPressed.has('KeyN') || gp.sword,
         banana: justPressed.has('Digit2') || justPressed.has('Numpad2') || justPressed.has('KeyM') || gp.banana,
         orb: justPressed.has('Digit3') || justPressed.has('Numpad3') || justPressed.has('Comma') || gp.orb,
-        ult: justPressed.has('Digit4') || justPressed.has('Numpad4') || justPressed.has('Slash') || gp.ult
+        ult: justPressed.has('Digit4') || justPressed.has('Numpad4') || justPressed.has('Slash') || gp.ult,
+        ult2: justPressed.has('Digit5') || justPressed.has('Numpad5') || justPressed.has('Period') || gp.ult2
       };
     }
 
@@ -525,6 +703,11 @@
     bus.on('combat:shrink', ({ fighter }) => rumble(fighter.id, 80, 0.2, 0.3));
     bus.on('combat:speedBoost', ({ fighter }) => rumble(fighter.id, 140, 0.5, 0.4));
     bus.on('combat:frozen', ({ victim }) => rumble(victim.id, 150, 0.3, 0.55));
+    bus.on('combat:shadowBackstab', ({ defender }) => rumble(defender.id, 160, 0.7, 0.4));
+    bus.on('combat:shadowDomainHit', ({ victim }) => rumble(victim.id, 90, 0.6, 0.5));
+    bus.on('combat:vinePierceShield', ({ defender }) => rumble(defender.id, 170, 0.7, 0.45));
+    bus.on('combat:vineGiantStart', ({ fighter }) => rumble(fighter.id, 200, 0.65, 0.4));
+    bus.on('combat:vineDrainDeath', ({ fighter }) => rumble(fighter.id, 300, 0.85, 0.6));
     bus.on('match:ko', ({ winner, loser }) => {
       if (loser) rumble(loser.id, 280, 0.8, 0.6);
       if (winner) rumble(winner.id, 160, 0.35, 0.35);
@@ -537,7 +720,7 @@
   // 4. VfxSystem（订阅广播，管理粒子 / 气泡 / 震屏 / 顿帧）
   // =========================================================
   const VfxSystem = (() => {
-    function spawnSparkles(x, y, count = 8, style = 'diamond') {
+    function spawnSparkles(x, y, count = 8, style = 'diamond', color = '#1e1c1a') {
       for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = 70 + Math.random() * 190;
@@ -549,6 +732,7 @@
           maxLife: 0.53,
           size: 4 + Math.random() * 6,
           style,
+          color,
           rot: Math.random() * Math.PI
         });
       }
@@ -609,6 +793,82 @@
       arenaState.hitstop = Math.max(arenaState.hitstop, 0.045);
       shake(4, 0.12);
     });
+    // 影子广播特效
+    bus.on('combat:shadowHide', ({ fighter }) => {
+      spawnSparkles(fighter.x, GROUND_Y - 12, 10, 'dot', '#6f3fa6');
+      if (systemState.gameMode === '1p' && fighter.id === 0) {
+        spawnCallout('藏进阴影!', fighter.x, GROUND_Y - 105, fighter.x, GROUND_Y - 22, 0.75);
+      }
+    });
+    bus.on('combat:shadowBackstab', ({ defender, mult }) => {
+      spawnSparkles(defender.x, defender.y - defender.height * 0.55, 16, 'diamond', '#7b4ca8');
+      spawnCallout(`背刺 ×${mult}!`, defender.x, defender.y - defender.metrics.calloutOffsetY - 18, defender.x, defender.y - defender.height * 0.75, 0.95);
+      arenaState.hitstop = Math.max(arenaState.hitstop, 0.08);
+      shake(8.5, 0.20);
+    });
+    bus.on('combat:shadowBlink', ({ fighter, step, dmgHit }) => {
+      spawnSparkles(fighter.x, fighter.y - 46, 9, 'diamond', '#7b4ca8');
+      const label = dmgHit ? `瞬身${step}/3 · ${dmgHit}!` : `瞬身 ${step}/3`;
+      spawnCallout(label, fighter.x - fighter.facing * 20, fighter.y - 124, fighter.x, fighter.y - 76, 0.65);
+    });
+    bus.on('combat:shadowDomainGrab', ({ attacker, victim }) => {
+      spawnSparkles(victim.x, victim.y - 50, 18, 'diamond', '#9c6ed4');
+      shake(7, 0.22);
+    });
+    bus.on('combat:shadowDomainHit', ({ victim }) => {
+      spawnSparkles(W * 0.5, GROUND_Y - 120, 12, 'diamond', '#b48ce6');
+      shake(6, 0.12);
+    });
+    // 藤蔓广播特效
+    bus.on('combat:vineBind', ({ attacker, victim }) => {
+      spawnSparkles(victim.x, GROUND_Y - 20, 12, 'dot', '#3c8c30');
+      spawnCallout('地底缠绕!', victim.x, victim.y - victim.metrics.calloutOffsetY, victim.x, victim.y - 50, 0.85);
+      shake(4, 0.12);
+    });
+    bus.on('combat:vineDrainTick', ({ attacker, victim, amount }) => {
+      spawnSparkles(victim.x, victim.y - 52, 6, 'dot', '#7db838');
+      spawnSparkles(attacker.x, attacker.y - 52, 6, 'diamond', '#52a33a');
+      spawnCallout(`吸血 +${amount}`, attacker.x, attacker.y - 122, attacker.x, attacker.y - 78, 0.65);
+    });
+    bus.on('combat:vinePierceShield', ({ defender }) => {
+      spawnSparkles(defender.x, defender.y - defender.height * 0.55, 16, 'diamond', '#52a33a');
+      spawnCallout('破盾!!', defender.x, defender.y - defender.metrics.calloutOffsetY - 12, defender.x, defender.y - defender.height * 0.7, 0.95);
+      arenaState.hitstop = Math.max(arenaState.hitstop, 0.085);
+      shake(9, 0.22);
+    });
+    bus.on('combat:vinePierceMiss', ({ x }) => {
+      spawnSparkles(x, GROUND_Y - 26, 7, 'dot', '#52a33a');
+      spawnCallout('仅破盾!', x, GROUND_Y - 126, x, GROUND_Y - 56, 0.72);
+    });
+    bus.on('combat:vineCocoonStart', ({ fighter }) => {
+      spawnSparkles(fighter.x, fighter.y - 50, 12, 'dot', '#52a33a');
+      spawnCallout('藤蔓茧!', fighter.x, fighter.y - 126, fighter.x, fighter.y - 72, 0.8);
+    });
+    bus.on('combat:vineCocoonHeal', ({ fighter, heal }) => {
+      spawnSparkles(fighter.x, fighter.y - 52, 10, 'diamond', '#7db838');
+      spawnCallout(`茧愈 +${heal}`, fighter.x, fighter.y - 130, fighter.x, fighter.y - 76, 0.75);
+    });
+    bus.on('combat:vinePactStart', ({ fighter }) => {
+      spawnSparkles(fighter.x, fighter.y - 52, 14, 'diamond', '#b83c2c');
+      spawnCallout('赌命反噬!', fighter.x, fighter.y - 130, fighter.x, fighter.y - 80, 0.9);
+      shake(5, 0.14);
+    });
+    bus.on('combat:vinePactHit', ({ attacker, defender }) => {
+      spawnSparkles(defender.x, defender.y - 54, 18, 'diamond', '#52a33a');
+      spawnCallout('反噬命中!!', defender.x, defender.y - defender.metrics.calloutOffsetY - 16, defender.x, defender.y - 68, 1.0);
+      arenaState.hitstop = Math.max(arenaState.hitstop, 0.09);
+      shake(9.5, 0.22);
+    });
+    bus.on('combat:vineDrainDeath', ({ fighter }) => {
+      spawnSparkles(fighter.x, fighter.y - 50, 20, 'dot', '#2f7d32');
+      spawnCallout('被藤蔓吸干!', fighter.x, fighter.y - 136, fighter.x, fighter.y - 70, 1.4);
+      shake(10, 0.28);
+    });
+    bus.on('combat:vineGiantStart', ({ fighter }) => {
+      spawnSparkles(fighter.x, fighter.y - 70, 20, 'diamond', '#3c8c30');
+      spawnCallout('巨藤狂化!', fighter.x, fighter.y - 220, fighter.x, fighter.y - 120, 1.0);
+      shake(8.5, 0.24);
+    });
     bus.on('match:ko', ({ winner }) => {
       if (winner) {
         spawnCallout('走了', winner.x - winner.facing * 32, winner.y - (winner.metrics.calloutOffsetY + 24), winner.x, winner.y - winner.height * 0.92, 5.0);
@@ -632,6 +892,11 @@
         c.y -= 10 * dt;
         if (c.life <= 0) arenaState.callouts.splice(i, 1);
       }
+      for (let i = arenaState.afterimages.length - 1; i >= 0; i--) {
+        const a = arenaState.afterimages[i];
+        a.life -= dt;
+        if (a.life <= 0) arenaState.afterimages.splice(i, 1);
+      }
     }
 
     return { spawnSparkles, spawnCallout, update };
@@ -641,16 +906,62 @@
   // 5. CombatSystem（战斗实体与投射物逻辑，只发广播）
   // =========================================================
   const CombatSystem = (() => {
-    function startSlash(f) {
+    let groundVineSeq = 1;
+
+    function releaseVineBind(caster) {
+      if (caster.vineBindTargetId !== null) {
+        const t = arenaState.fighters[caster.vineBindTargetId];
+        if (t) t.vineBoundTimer = 0;
+        caster.vineBindTargetId = null;
+      }
+      caster.vineChannelTimer = 0;
+      caster.vineDrainAccum = 0;
+      for (let i = arenaState.groundVines.length - 1; i >= 0; i--) {
+        const gv = arenaState.groundVines[i];
+        if (gv.kind === 'bind' && gv.owner === caster.id) arenaState.groundVines.splice(i, 1);
+      }
+    }
+
+    function resolveVinePactBonus(attacker, defender) {
+      if (!attacker || attacker.cocoonPactTimer <= 0) return;
+      attacker.cocoonPactTimer = 0;
+      const bonusDmg = attacker.stats.pactBonusDamage || 26;
+      const heal = attacker.stats.pactHeal || 20;
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+      bus.emit('combat:vinePactHit', { attacker, defender, bonusDmg, heal });
+      damageFighter(attacker, defender, bonusDmg, attacker.facing * 290, -230, { ignoreShield: true, fromPact: true });
+    }
+
+    function startSlash(f, enemy) {
       if (f.cooldowns.slash > 0) return;
-      if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
+      if (f.cocoonTimer > 0 || f.vineChannelTimer > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff', 'blinkDash', 'scarfGrab', 'vineChannel', 'vineStomp'].includes(f.state)) return;
+
+      // 影子：若处于藏进阴影状态，发动攻击立刻显形并判定是否背刺
+      f.pendingBackstab = false;
+      if (f.stealthTimer > 0) {
+        f.stealthTimer = 0;
+        f.stealthEnterFlash = 0;
+        if (enemy) {
+          const isBehindEnemy = (f.x - enemy.x) * enemy.facing < 0;
+          f.facing = enemy.x >= f.x ? 1 : -1;
+          if (isBehindEnemy) {
+            f.pendingBackstab = true;
+            f.lastBackstabGlow = 0.34;
+          }
+        }
+      }
+
+      const isGiant = f.giantTimer > 0;
       const atkMult = f.speedBoostTimer > 0 ? (f.stats.ultAtkSpeedMult || 1.65) : 1.0;
+      const giantCdMult = isGiant ? (f.stats.giantAtkCdMult || 3.0) : 1.0;
       const baseCd = f.stats.slashCooldown || 0.38;
       f.state = 'slash';
-      f.stateTimer = Math.max(0.18, Math.min(0.32, 0.28 / Math.sqrt(atkMult)));
+      f.slashAnimDur = isGiant ? 0.46 : Math.max(0.18, Math.min(0.32, 0.28 / Math.sqrt(atkMult)));
+      f.stateTimer = f.slashAnimDur;
       f.slashHitDone = false;
-      f.cooldowns.slash = baseCd / atkMult;
-      f.vx += f.facing * (f.speedBoostTimer > 0 ? 135 : 95);
+      f.cooldowns.slash = (baseCd * giantCdMult) / atkMult;
+      f.vx += f.facing * (isGiant ? 65 : (f.speedBoostTimer > 0 ? 135 : 95));
       bus.emit('combat:slash', { fighter: f });
     }
 
@@ -746,15 +1057,220 @@
       bus.emit('combat:speedBoost', { fighter: f });
     }
 
-    function useSkillK(f) {
+    // 影子 K 技能：藏进阴影（5 秒隐身、AI 失锁、背后现身双倍背刺）
+    function startShadowHide(f) {
+      if (f.cooldowns.banana > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff', 'blinkDash', 'scarfGrab'].includes(f.state)) return;
+      f.stealthTimer = f.stats.stealthDuration || 5.0;
+      f.stealthEnterFlash = 0.28;
+      f.cooldowns.banana = f.stats.kCooldown || 7.5;
+      bus.emit('combat:shadowHide', { fighter: f });
+    }
+
+    // 影子 L 技能：三段无敌瞬身（×3 别人打不死，每次伤害按上一次递增）
+    function startShadowBlink(f) {
+      if (['slip', 'hurt', 'ko', 'walkoff', 'scarfGrab'].includes(f.state)) return;
+      if (f.state === 'blinkDash') return;
+
+      if (f.blinkCharges <= 0) {
+        if (f.cooldowns.orb > 0) return;
+        f.blinkCharges = 3;
+        f.blinkStep = 0;
+      }
+
+      // 显形并消耗 1 段瞬身
+      f.stealthTimer = 0;
+      f.stealthEnterFlash = 0;
+      f.blinkCharges -= 1;
+      f.blinkStep += 1;
+      f.blinkWindowTimer = f.blinkCharges > 0 ? (f.stats.blinkWindow || 2.6) : 0;
+      if (f.blinkCharges === 0) {
+        f.cooldowns.orb = f.stats.lCooldown || 6.5;
+      }
+
+      // 生成横向灰紫涂抹残影轨迹（还原草图 2 格左图）
+      for (let i = 0; i < 4; i++) {
+        arenaState.afterimages.push({
+          x: f.x + f.facing * (i * 22),
+          y: f.y,
+          facing: f.facing,
+          life: 0.24 + i * 0.04,
+          maxLife: 0.36
+        });
+      }
+
+      f.state = 'blinkDash';
+      f.stateTimer = 0.23;
+      f.invuln = 0.30; // 全程无敌（别人打不死！）
+      f.blinkHitDone = false;
+      f.vx = f.facing * 640;
+      f.vy = Math.min(f.vy, 0);
+      bus.emit('combat:shadowBlink', { fighter: f, step: f.blinkStep, dmgHit: 0 });
+    }
+
+    // 影子大招（; 键）：围巾暗影空间（前方 4 身位紫围巾抓取，拉入暗影空间万影穿刺）
+    function startShadowDomain(f) {
+      if (f.cooldowns.ult > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff', 'blinkDash', 'scarfGrab'].includes(f.state)) return;
+      f.stealthTimer = 0;
+      f.stealthEnterFlash = 0;
+      f.state = 'scarfGrab';
+      f.stateTimer = 0.34;
+      f.scarfGrabHit = false;
+      f.vx = 0;
+      f.cooldowns.ult = f.stats.ultCooldown || 10.5;
+      bus.emit('combat:slash', { fighter: f });
+    }
+
+    // 藤蔓 K 技能：地底缠绕吸血（手插地面，4身位内抓捕控制4秒、每秒吸血且自身不可攻击）
+    function startVineBind(f, enemy) {
+      if (f.cooldowns.banana > 0) return;
+      if (f.cocoonTimer > 0 || f.giantTimer > 0 || f.vineChannelTimer > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff', 'vineChannel', 'vineStomp'].includes(f.state)) return;
+
+      f.cooldowns.banana = f.stats.kCooldown || 6.5;
+      f.vx = 0;
+      const range = f.stats.bindRange || 205;
+      const dx = enemy ? (enemy.x - f.x) * f.facing : -1;
+      const nearGround = enemy ? (GROUND_Y - enemy.y) < 72 : false;
+      const validTarget = enemy && enemy.state !== 'ko' && enemy.invuln <= 0 && enemy.stealthTimer <= 0 && dx >= -16 && dx <= range + enemy.halfW && nearGround;
+
+      if (validTarget) {
+        const dur = f.stats.bindDuration || 4.0;
+        f.state = 'vineChannel';
+        f.vineChannelTimer = dur;
+        f.vineBindTargetId = enemy.id;
+        f.vineDrainAccum = 0;
+        enemy.vineBoundTimer = dur;
+        enemy.vx = 0;
+        enemy.vy = 0;
+        enemy.flying = false;
+        enemy.state = 'idle';
+        arenaState.groundVines.push({
+          id: groundVineSeq++,
+          kind: 'bind',
+          owner: f.id,
+          targetId: enemy.id,
+          startX: f.x,
+          currentX: enemy.x,
+          elapsed: 0,
+          life: dur
+        });
+        bus.emit('combat:vineBind', { attacker: f, victim: enemy });
+        if (f.cocoonPactTimer > 0) resolveVinePactBonus(f, enemy);
+      } else {
+        // 抓空：地底藤蔓向前探出后缩回
+        f.state = 'vineChannel';
+        f.vineChannelTimer = 0.36;
+        f.vineBindTargetId = null;
+        const probeX = Math.max(STAGE_LEFT + 12, Math.min(STAGE_RIGHT - 12, f.x + f.facing * range));
+        arenaState.groundVines.push({
+          id: groundVineSeq++,
+          kind: 'bind',
+          owner: f.id,
+          targetId: null,
+          startX: f.x,
+          currentX: probeX,
+          elapsed: 0,
+          life: 0.36
+        });
+        bus.emit('combat:vineBind', { attacker: f, victim: { x: probeX, y: GROUND_Y, metrics: { calloutOffsetY: 110 } } });
+      }
+    }
+
+    // 藤蔓 L 技能：跺脚破盾地刺（3身位内仅对举盾敌人有效并直接破盾，对未举盾完全无效）
+    function startVinePierce(f, enemy) {
+      if (f.cooldowns.orb > 0) return;
+      if (f.cocoonTimer > 0 || f.vineChannelTimer > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff', 'vineChannel', 'vineStomp'].includes(f.state)) return;
+
+      f.state = 'vineStomp';
+      f.stateTimer = 0.34;
+      f.vx = 0;
+      f.cooldowns.orb = f.stats.lCooldown || 3.0;
+
+      const range = f.stats.pierceRange || 155;
+      const dx = enemy ? (enemy.x - f.x) * f.facing : -1;
+      const inRange = enemy && enemy.state !== 'ko' && enemy.invuln <= 0 && dx >= -12 && dx <= range + enemy.halfW && (GROUND_Y - enemy.y) < 95;
+      const tipX = inRange
+        ? enemy.x
+        : Math.max(STAGE_LEFT + 16, Math.min(STAGE_RIGHT - 16, f.x + f.facing * range));
+
+      const brokeShield = !!(inRange && enemy.state === 'shield');
+      arenaState.groundVines.push({
+        id: groundVineSeq++,
+        kind: 'pierce',
+        owner: f.id,
+        dir: f.facing,
+        startX: f.x,
+        tipX,
+        brokeShield,
+        elapsed: 0,
+        life: 0.55
+      });
+
+      if (brokeShield) {
+        enemy.shieldTime = 0;
+        enemy.state = 'hurt';
+        enemy.stateTimer = 0.55;
+        const dmg = f.stats.pierceDamage || 22;
+        bus.emit('combat:vinePierceShield', { attacker: f, defender: enemy, dmg });
+        damageFighter(f, enemy, dmg, f.facing * 260, -240, { ignoreShield: true });
+      } else {
+        // 对未举盾敌人完全无效（严格遵守设定！）
+        bus.emit('combat:vinePierceMiss', { fighter: f, x: tipX });
+      }
+    }
+
+    // 藤蔓大招一（; 键）：藤蔓茧 · 赌命反噬
+    function startVineCocoon(f) {
+      if (['ko', 'walkoff'].includes(f.state)) return;
+      // 若已在 3 秒裹茧中再次按 ; -> 解除茧，触发赌命反噬窗口！
+      if (f.cocoonTimer > 0) {
+        f.cocoonTimer = 0;
+        f.cocoonPactTimer = f.stats.pactDuration || 3.5;
+        f.cooldowns.ult = f.stats.ultCooldown || 10.0;
+        bus.emit('combat:vinePactStart', { fighter: f });
+        return;
+      }
+      if (f.cooldowns.ult > 0 || f.giantTimer > 0 || f.vineChannelTimer > 0) return;
+      if (['slip', 'hurt', 'vineChannel', 'vineStomp'].includes(f.state)) return;
+
+      f.cocoonTimer = f.stats.cocoonDuration || 3.0;
+      f.vx = 0;
+      f.flying = false;
+      f.state = 'idle';
+      bus.emit('combat:vineCocoonStart', { fighter: f });
+    }
+
+    // 藤蔓大招二（' 键）：巨藤狂化（10秒变大、血极厚、攻极高、移速与攻速极慢）
+    function startVineGiant(f) {
+      if (f.cooldowns.ult2 > 0) return;
+      if (f.cocoonTimer > 0 || f.giantTimer > 0 || f.vineChannelTimer > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff', 'vineChannel', 'vineStomp'].includes(f.state)) return;
+
+      const bonus = f.stats.giantBonusHp || 100;
+      f.giantTimer = f.stats.giantDuration || 10.0;
+      f.giantBonusHp = bonus;
+      f.maxHp += bonus;
+      f.hp += bonus;
+      f.cooldowns.ult2 = f.stats.ult2Cooldown || 15.0;
+      bus.emit('combat:vineGiantStart', { fighter: f, bonus });
+    }
+
+    function useSkillK(f, enemy) {
       const skillId = f.asset.skills && f.asset.skills.k ? f.asset.skills.k.id : 'banana';
       if (skillId === 'shrink') startShrink(f);
+      else if (skillId === 'shadowHide') startShadowHide(f);
+      else if (skillId === 'vineBind') startVineBind(f, enemy);
       else startBanana(f);
     }
 
-    function useSkillL(f) {
+    function useSkillL(f, enemy) {
       const skillId = f.asset.skills && f.asset.skills.l ? f.asset.skills.l.id : 'orb';
       if (skillId === 'freezeLight') startFreezeLight(f);
+      else if (skillId === 'shadowBlink') startShadowBlink(f);
+      else if (skillId === 'vinePierce') startVinePierce(f, enemy);
       else startOrb(f);
     }
 
@@ -762,14 +1278,32 @@
       const ult = f.asset.skills && f.asset.skills.ult;
       if (!ult) return;
       if (ult.id === 'speedBoost') startSpeedBoost(f);
+      else if (ult.id === 'shadowDomain') startShadowDomain(f);
+      else if (ult.id === 'vineCocoon') startVineCocoon(f);
+    }
+
+    function useSkillUlt2(f) {
+      const ult2 = f.asset.skills && f.asset.skills.ult2;
+      if (!ult2) return;
+      if (ult2.id === 'vineGiant') startVineGiant(f);
     }
 
     function triggerKO(winner, loser) {
       arenaState.matchState = 'ko';
       arenaState.winnerId = winner ? winner.id : null;
       arenaState.koTimer = 0;
+      arenaState.domainOverlay = null;
       loser.state = 'ko';
       loser.hp = 0;
+      loser.stealthTimer = 0;
+      loser.cocoonTimer = 0;
+      loser.cocoonPactTimer = 0;
+      loser.vineBoundTimer = 0;
+      releaseVineBind(loser);
+      if (winner) {
+        releaseVineBind(winner);
+        winner.vineBoundTimer = 0;
+      }
       loser.vx = (loser.x >= (winner ? winner.x : W * 0.5) ? 1 : -1) * 260;
       loser.vy = -220;
       loser.onGround = false;
@@ -783,15 +1317,28 @@
       bus.emit('match:ko', { winner, loser });
     }
 
-    function damageFighter(attacker, defender, amount, knockX, knockY) {
+    function damageFighter(attacker, defender, amount, knockX, knockY, opts = {}) {
       if (defender.state === 'ko' || arenaState.matchState === 'ko') return false;
+      if (defender.invuln > 0) return 'invuln';
 
-      if (defender.state === 'shield') {
+      // 藤蔓大招一：3 秒裹茧受击反而回血！
+      if (defender.cocoonTimer > 0) {
+        const heal = defender.stats.cocoonHeal || 8;
+        defender.hp = Math.min(defender.maxHp, defender.hp + heal);
+        bus.emit('combat:vineCocoonHeal', { fighter: defender, heal });
+        return 'cocoonHeal';
+      }
+
+      if (defender.state === 'shield' && !opts.ignoreShield) {
         const reduced = Math.max(1, Math.round(amount * 0.15));
         defender.hp = Math.max(1, defender.hp - reduced);
         defender.vx += Math.sign(knockX) * 110;
         bus.emit('combat:block', { attacker, defender });
         return 'blocked';
+      }
+
+      if (defender.vineChannelTimer > 0) {
+        releaseVineBind(defender);
       }
 
       defender.hp = Math.max(0, defender.hp - amount);
@@ -805,13 +1352,20 @@
         triggerKO(attacker, defender);
       } else {
         defender.state = 'hurt';
-        defender.stateTimer = 0.24;
+        defender.stateTimer = Math.max(defender.stateTimer, 0.24);
+      }
+
+      // 藤蔓大招一二段赌命契约：命中对手引爆反噬并回血！
+      if (attacker && attacker.cocoonPactTimer > 0 && !opts.fromPact && defender.state !== 'ko') {
+        resolveVinePactBonus(attacker, defender);
       }
       return 'hit';
     }
 
     function triggerSlip(victim, peel) {
       if (victim.state === 'ko' || arenaState.matchState === 'ko') return;
+      if (victim.invuln > 0 || victim.cocoonTimer > 0 || victim.stealthTimer > 0) return;
+      if (victim.vineChannelTimer > 0) releaseVineBind(victim);
       victim.state = 'slip';
       victim.stateTimer = peel.slipDuration || 0.85;
       victim.slipRot = 0;
@@ -825,10 +1379,18 @@
 
     function triggerFrozen(attacker, victim, duration = 1.5, dmg = 6) {
       if (victim.state === 'ko' || arenaState.matchState === 'ko') return false;
+      if (victim.invuln > 0) return 'invuln';
+      if (victim.cocoonTimer > 0) {
+        const heal = victim.stats.cocoonHeal || 8;
+        victim.hp = Math.min(victim.maxHp, victim.hp + heal);
+        bus.emit('combat:vineCocoonHeal', { fighter: victim, heal });
+        return 'cocoonHeal';
+      }
       if (victim.state === 'shield') {
         bus.emit('combat:block', { attacker, defender: victim });
         return 'blocked';
       }
+      if (victim.vineChannelTimer > 0) releaseVineBind(victim);
       victim.hp = Math.max(1, victim.hp - dmg);
       victim.frozenTimer = duration;
       victim.vx = 0;
@@ -838,27 +1400,137 @@
       return 'frozen';
     }
 
+    function updateDomainOverlay(dt) {
+      const dom = arenaState.domainOverlay;
+      if (!dom || !dom.active) return false;
+      dom.elapsed += dt;
+      const attacker = arenaState.fighters[dom.attackerId];
+      const victim = arenaState.fighters[dom.victimId];
+
+      // 4 次万影穿刺伤害结算跳点
+      const tickTimes = [0.34, 0.62, 0.88, 1.14];
+      while (dom.ticksDone < tickTimes.length && dom.elapsed >= tickTimes[dom.ticksDone]) {
+        dom.ticksDone += 1;
+        const perTick = Math.round(dom.totalDamage / tickTimes.length);
+        if (victim) {
+          victim.hp = Math.max(dom.ticksDone === tickTimes.length ? 0 : 1, victim.hp - perTick);
+        }
+        bus.emit('combat:shadowDomainHit', { attacker, victim, tick: dom.ticksDone });
+      }
+
+      if (dom.elapsed >= dom.duration) {
+        arenaState.domainOverlay = null;
+        if (victim) {
+          if (victim.hp <= 0) {
+            triggerKO(attacker, victim);
+          } else {
+            victim.state = 'hurt';
+            victim.stateTimer = 0.42;
+            victim.vx = (attacker ? attacker.facing : 1) * 280;
+            victim.vy = -210;
+            victim.onGround = false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function updateGroundVines(dt) {
+      for (let i = arenaState.groundVines.length - 1; i >= 0; i--) {
+        const gv = arenaState.groundVines[i];
+        gv.elapsed += dt;
+        gv.life -= dt;
+        if (gv.kind === 'bind' && gv.targetId !== null) {
+          const caster = arenaState.fighters[gv.owner];
+          const target = arenaState.fighters[gv.targetId];
+          if (caster) gv.startX = caster.x;
+          if (target) gv.currentX = target.x;
+        }
+        if (gv.life <= 0) arenaState.groundVines.splice(i, 1);
+      }
+    }
+
     function updateFighter(f, enemy, inp, dt) {
       f.cooldowns.slash = Math.max(0, f.cooldowns.slash - dt);
       f.cooldowns.banana = Math.max(0, f.cooldowns.banana - dt);
       f.cooldowns.orb = Math.max(0, f.cooldowns.orb - dt);
       f.cooldowns.ult = Math.max(0, f.cooldowns.ult - dt);
+      f.cooldowns.ult2 = Math.max(0, f.cooldowns.ult2 - dt);
       f.invuln = Math.max(0, f.invuln - dt);
+      if (f.lastBackstabGlow > 0) f.lastBackstabGlow = Math.max(0, f.lastBackstabGlow - dt);
 
-      // 身体变小（K）与加速大招（;）计时及实时体积更新
+      // 影子：隐身与三段瞬身连段窗口计时
+      if (f.stealthTimer > 0) f.stealthTimer = Math.max(0, f.stealthTimer - dt);
+      if (f.stealthEnterFlash > 0) f.stealthEnterFlash = Math.max(0, f.stealthEnterFlash - dt);
+      if (f.blinkWindowTimer > 0) {
+        f.blinkWindowTimer = Math.max(0, f.blinkWindowTimer - dt);
+        if (f.blinkWindowTimer === 0 && f.blinkCharges > 0) {
+          f.blinkCharges = 0;
+          f.blinkStep = 0;
+          f.cooldowns.orb = f.stats.lCooldown || 6.5;
+        }
+      }
+
+      // 藤蔓：大招二「巨藤狂化」计时与厚血恢复
+      if (f.giantTimer > 0) {
+        f.giantTimer = Math.max(0, f.giantTimer - dt);
+        if (f.giantTimer === 0) {
+          f.maxHp = Math.max(1, f.maxHp - f.giantBonusHp);
+          f.hp = Math.min(f.hp, f.maxHp);
+          f.giantBonusHp = 0;
+          bus.emit('combat:vineGiantEnd', { fighter: f });
+        }
+      }
+
+      // 藤蔓：大招一二段「赌命反噬」倒计时（超时未命中 -> 被藤蔓吸干致死！）
+      if (f.cocoonPactTimer > 0) {
+        f.cocoonPactTimer = Math.max(0, f.cocoonPactTimer - dt);
+        if (f.cocoonPactTimer === 0 && f.state !== 'ko' && arenaState.matchState === 'fighting') {
+          bus.emit('combat:vineDrainDeath', { fighter: f });
+          triggerKO(enemy, f);
+          return;
+        }
+      }
+
+      // 身体变小（无敌剑 K）、巨藤狂化（藤蔓 '）与加速大招计时及实时体积更新
       if (f.shrinkTimer > 0) f.shrinkTimer = Math.max(0, f.shrinkTimer - dt);
       if (f.speedBoostTimer > 0) f.speedBoostTimer = Math.max(0, f.speedBoostTimer - dt);
 
-      const targetBodyScale = f.shrinkTimer > 0 ? (f.stats.shrinkScale || 0.48) : 1.0;
-      f.bodyScale += (targetBodyScale - f.bodyScale) * Math.min(1, dt * 11);
+      const targetBodyScale = f.shrinkTimer > 0
+        ? (f.stats.shrinkScale || 0.48)
+        : f.giantTimer > 0
+          ? (f.stats.giantScale || 2.25)
+          : 1.0;
+      f.bodyScale += (targetBodyScale - f.bodyScale) * Math.min(1, dt * 10);
       f.height = f.metrics.height * f.bodyScale;
       f.halfW = f.metrics.halfW * f.bodyScale;
 
-      // 被定身光击中：原地完全静止
+      // 被定身光击中 或 被藤蔓地底缠绕捆住：原地静止
       if (f.frozenTimer > 0) {
         f.frozenTimer = Math.max(0, f.frozenTimer - dt);
         f.vx = 0;
         f.vy = 0;
+        return;
+      }
+      if (f.vineBoundTimer > 0) {
+        f.vineBoundTimer = Math.max(0, f.vineBoundTimer - dt);
+        f.vx = 0;
+        f.vy = 0;
+        f.y = Math.min(GROUND_Y, f.y + 420 * dt);
+        return;
+      }
+
+      // 藤蔓大招一：3 秒裹茧中（只接受再按 ; 触发二段赌命）
+      if (f.cocoonTimer > 0) {
+        f.cocoonTimer = Math.max(0, f.cocoonTimer - dt);
+        f.vx = 0;
+        if (inp.ult) {
+          startVineCocoon(f);
+          return;
+        }
+        if (f.cocoonTimer === 0) {
+          f.cooldowns.ult = f.stats.ultCooldown || 10.0;
+        }
         return;
       }
 
@@ -890,12 +1562,39 @@
         return;
       }
 
-      if (['slash', 'throw', 'orb', 'hurt', 'slip'].includes(f.state)) {
+      // 藤蔓一技能引导中：自身锁定不可攻击，每秒吸取敌人百分比血量
+      if (f.state === 'vineChannel') {
+        f.vineChannelTimer -= dt;
+        f.vx = 0;
+        if (f.vineBindTargetId !== null && enemy && enemy.id === f.vineBindTargetId) {
+          f.facing = enemy.x >= f.x ? 1 : -1;
+          f.vineDrainAccum += dt;
+          if (f.vineDrainAccum >= 1.0) {
+            f.vineDrainAccum -= 1.0;
+            const pct = (f.stats.drainPctPerSec || 3) / 100;
+            const drain = Math.max(1, Math.round(enemy.maxHp * pct));
+            enemy.hp = Math.max(0, enemy.hp - drain);
+            f.hp = Math.min(f.maxHp, f.hp + drain);
+            bus.emit('combat:vineDrainTick', { attacker: f, victim: enemy, amount: drain });
+            if (enemy.hp <= 0) {
+              triggerKO(f, enemy);
+              return;
+            }
+          }
+        }
+        if (f.vineChannelTimer <= 0) {
+          releaseVineBind(f);
+          f.state = f.onGround ? 'idle' : 'jump';
+        }
+        return;
+      }
+
+      if (['slash', 'throw', 'orb', 'hurt', 'slip', 'blinkDash', 'scarfGrab', 'vineStomp'].includes(f.state)) {
         f.stateTimer -= dt;
         if (f.state === 'slip') {
           f.slipRot += dt * 11 * (f.vx >= 0 ? 1 : -1);
         }
-        if (f.state === 'slash' && !f.slashHitDone && f.stateTimer < 0.21 && f.stateTimer > 0.06) {
+        if (f.state === 'slash' && !f.slashHitDone && f.stateTimer < f.slashAnimDur * 0.76 && f.stateTimer > 0.05) {
           const reachX = f.x + f.facing * (f.metrics.slashReach * f.bodyScale);
           const hitW = f.metrics.slashRangeX * f.bodyScale + enemy.halfW * 0.6;
           const slashBottom = f.y + 8;
@@ -903,28 +1602,81 @@
           const overlapY = enemy.y >= slashTop && (enemy.y - enemy.height) <= slashBottom;
           if (Math.abs(enemy.x - reachX) < hitW && overlapY) {
             f.slashHitDone = true;
-            const dmg = f.stats.slashDamage || 14;
-            damageFighter(f, enemy, dmg, f.facing * 240, -175);
+            let dmg = f.giantTimer > 0 ? (f.stats.giantSlashDamage || 34) : (f.stats.slashDamage || 14);
+            if (f.pendingBackstab) {
+              const mult = f.stats.backstabMult || 2.0;
+              dmg = Math.round(dmg * mult);
+              f.pendingBackstab = false;
+              bus.emit('combat:shadowBackstab', { attacker: f, defender: enemy, mult });
+            }
+            const kx = f.facing * (f.giantTimer > 0 ? 330 : 240);
+            const ky = f.giantTimer > 0 ? -240 : -175;
+            damageFighter(f, enemy, dmg, kx, ky);
           }
         }
+        // 影子二技能：三段瞬身冲刺命中判定（每段伤害按上一次递增！）
+        if (f.state === 'blinkDash' && !f.blinkHitDone) {
+          const overlapX = Math.abs(enemy.x - f.x) < (f.halfW + enemy.halfW + 34);
+          const overlapY = enemy.y >= f.y - f.height - 12 && (enemy.y - enemy.height) <= f.y + 12;
+          if (overlapX && overlapY && enemy.state !== 'ko') {
+            f.blinkHitDone = true;
+            const base = f.stats.blinkBaseDamage || 6;
+            const mult = f.stats.blinkScaleMult || 2.0;
+            const dmg = Math.round(base * Math.pow(mult, Math.max(0, f.blinkStep - 1)));
+            const res = damageFighter(f, enemy, dmg, f.facing * 200, -145);
+            if (res === 'hit') {
+              bus.emit('combat:shadowBlink', { fighter: f, step: f.blinkStep, dmgHit: dmg });
+            }
+          }
+        }
+        // 影子大招：围巾弹射 4 身位抓取判定
+        if (f.state === 'scarfGrab' && !f.scarfGrabHit && f.stateTimer < 0.28 && f.stateTimer > 0.08) {
+          const range = f.stats.domainRange || 205;
+          const dx = (enemy.x - f.x) * f.facing;
+          const overlapY = enemy.y >= f.y - f.height - 20 && (enemy.y - enemy.height) <= f.y + 14;
+          if (dx >= -10 && dx <= range + enemy.halfW && overlapY && enemy.invuln <= 0 && enemy.state !== 'ko') {
+            f.scarfGrabHit = true;
+            if (enemy.vineChannelTimer > 0) releaseVineBind(enemy);
+            enemy.cocoonTimer = 0;
+            arenaState.domainOverlay = {
+              active: true,
+              attackerId: f.id,
+              victimId: enemy.id,
+              elapsed: 0,
+              duration: 1.45,
+              targetX: W * 0.5,
+              targetY: GROUND_Y - 120,
+              ticksDone: 0,
+              totalDamage: f.stats.domainDamage || 36
+            };
+            bus.emit('combat:shadowDomainGrab', { attacker: f, victim: enemy });
+            f.state = 'idle';
+            f.stateTimer = 0;
+            return;
+          }
+        }
+
         if (f.stateTimer <= 0) {
           f.state = f.onGround ? 'idle' : 'jump';
           f.slipRot = 0;
+          f.pendingBackstab = false;
         }
       }
 
-      const locked = ['slash', 'throw', 'orb', 'hurt', 'slip'].includes(f.state);
+      const locked = ['slash', 'throw', 'orb', 'hurt', 'slip', 'blinkDash', 'scarfGrab', 'vineStomp'].includes(f.state);
       if (!locked) {
         if (inp.ult) {
           useSkillUlt(f);
+        } else if (inp.ult2) {
+          useSkillUlt2(f);
         }
         if (inp.sword) {
-          startSlash(f);
+          startSlash(f, enemy);
         } else if (inp.banana) {
-          useSkillK(f);
+          useSkillK(f, enemy);
         } else if (inp.orb) {
-          useSkillL(f);
-        } else if (inp.down) {
+          useSkillL(f, enemy);
+        } else if (inp.down && f.stealthTimer <= 0) {
           f.state = 'shield';
           f.shieldTime += dt;
           f.vx *= Math.pow(0.01, dt);
@@ -934,7 +1686,9 @@
           const baseSpd = f.stats.moveSpeed || 255;
           const boostMult = f.speedBoostTimer > 0 ? (f.stats.ultSpeedMult || 2.15) : 1.0;
           const shrinkAgility = f.shrinkTimer > 0 ? 1.18 : 1.0;
-          const moveSpeed = baseSpd * boostMult * shrinkAgility * (f.flying ? 1.08 : 1.0);
+          const giantSlow = f.giantTimer > 0 ? (f.stats.giantSpeedMult || 0.45) : 1.0;
+          const stealthBonus = f.stealthTimer > 0 ? 1.12 : 1.0;
+          const moveSpeed = baseSpd * boostMult * shrinkAgility * giantSlow * stealthBonus * (f.flying ? 1.08 : 1.0);
           let moveDir = 0;
           if (inp.left) moveDir -= 1;
           if (inp.right) moveDir += 1;
@@ -943,7 +1697,7 @@
             f.vx = moveDir * moveSpeed;
             if (f.onGround) {
               f.state = 'run';
-              f.walkPhase += dt * (12 * boostMult);
+              f.walkPhase += dt * (12 * boostMult * giantSlow);
             }
           } else {
             f.vx *= Math.pow(0.001, dt);
@@ -952,11 +1706,11 @@
           }
 
           if (inp.upPressed && f.onGround) {
-            f.vy = -510;
+            f.vy = f.giantTimer > 0 ? -420 : -510;
             f.onGround = false;
             f.state = 'jump';
             bus.emit('combat:jump', { fighter: f });
-          } else if (inp.up && !f.onGround && f.flyEnergy > 2) {
+          } else if (inp.up && !f.onGround && f.flyEnergy > 2 && f.stealthTimer <= 0) {
             if (!f.flying && f.vy > -120) {
               f.flying = true;
               bus.emit('combat:fly', { fighter: f, word: Math.random() < 0.5 ? '飞' : '飘' });
@@ -977,7 +1731,7 @@
 
       const grav = f.flying ? 120 : 1280;
       f.vy += grav * dt;
-      if (locked) f.vx *= Math.pow(0.25, dt);
+      if (locked && f.state !== 'blinkDash') f.vx *= Math.pow(0.25, dt);
 
       f.x += f.vx * dt;
       f.y += f.vy * dt;
@@ -1026,7 +1780,7 @@
         }
         if (b.armDelay <= 0 && arenaState.matchState === 'fighting') {
           const target = arenaState.fighters[1 - b.owner];
-          if (target && target.state !== 'slip' && target.state !== 'ko') {
+          if (target && target.state !== 'slip' && target.state !== 'ko' && target.invuln <= 0 && target.stealthTimer <= 0) {
             if (Math.abs(target.x - b.x) < Math.max(28, target.halfW * 0.72) && Math.abs(target.y - b.y) < 28) {
               triggerSlip(target, b);
               peels.splice(i, 1);
@@ -1054,6 +1808,7 @@
             maxLife: 0.22,
             size: Math.random() < 0.45 ? 5 : 2.2,
             style: Math.random() < 0.45 ? 'diamond' : 'dot',
+            color: '#1e1c1a',
             rot: 0
           });
         }
@@ -1081,7 +1836,7 @@
         const attacker = arenaState.fighters[o.owner];
         const hitHalfX = target ? Math.max(30, target.halfW * 0.88) : 30;
         const inBodyY = target && o.y >= target.y - target.height - 6 && o.y <= target.y + 6;
-        if (target && Math.abs(target.x - o.x) < hitHalfX && inBodyY) {
+        if (target && target.invuln <= 0 && target.stealthTimer <= 0 && Math.abs(target.x - o.x) < hitHalfX && inBodyY) {
           if (target.state === 'shield' && target.shieldTime < 0.24) {
             o.owner = target.id;
             o.vx = -o.vx * 1.15;
@@ -1102,6 +1857,8 @@
       if (arenaState.matchState !== 'fighting' || arenaState.fighters.length < 2) return;
       const f0 = arenaState.fighters[0];
       const f1 = arenaState.fighters[1];
+      // 影子隐身或三段瞬身时允许穿身绕背！
+      if (f0.stealthTimer > 0 || f1.stealthTimer > 0 || f0.state === 'blinkDash' || f1.state === 'blinkDash') return;
       const minSep = Math.max(34, (f0.halfW + f1.halfW) * 0.72);
       const dx = f1.x - f0.x;
       const overlapY = f0.y >= f1.y - f1.height && f1.y >= f0.y - f0.height;
@@ -1113,24 +1870,107 @@
       }
     }
 
-    return { startSlash, startBanana, startOrb, triggerSlip, updateFighter, updateProjectiles, separateFighters };
+    return {
+      startSlash, startBanana, startOrb, triggerSlip,
+      updateDomainOverlay, updateGroundVines, updateFighter, updateProjectiles, separateFighters
+    };
   })();
 
   // =========================================================
-  // 6. AISystem（自适应角色体积与攻击距离）
+  // 6. AISystem（自适应角色体积、隐身失锁与新角色招式策略）
   // =========================================================
   const AISystem = (() => {
     function compute(f, enemy, dt) {
-      const inp = { left: false, right: false, up: false, upPressed: false, down: false, sword: false, banana: false, orb: false, ult: false };
+      const inp = { left: false, right: false, up: false, upPressed: false, down: false, sword: false, banana: false, orb: false, ult: false, ult2: false };
       if (arenaState.matchState !== 'fighting') return inp;
 
+      // 对手藏进阴影：人机彻底失去实时坐标追踪，只能按最后已知位置试探/戒备！
+      if (enemy.stealthTimer > 0) {
+        f.aiTimer -= dt;
+        if (f.aiTimer <= 0) {
+          f.aiTimer = 0.45 + Math.random() * 0.35;
+          const r = Math.random();
+          if (r < 0.35) f.aiIntent = 'search_wander';
+          else if (r < 0.65) f.aiIntent = 'shield';
+          else f.aiIntent = 'probe_swing';
+          f.aiWanderDir = Math.random() < 0.5 ? -1 : 1;
+        }
+        if (f.aiIntent === 'shield') {
+          inp.down = true;
+        } else if (f.aiIntent === 'search_wander') {
+          const toLast = f.aiLastKnownX - f.x;
+          const dir = Math.abs(toLast) > 45 ? Math.sign(toLast) : f.aiWanderDir;
+          if (dir < 0) inp.left = true; else inp.right = true;
+        } else if (f.aiIntent === 'probe_swing') {
+          if (Math.random() < 0.08) inp.sword = true;
+        }
+        return inp;
+      }
+
+      f.aiLastKnownX = enemy.x;
       const dx = enemy.x - f.x;
       const dist = Math.abs(dx);
       const dir = dx >= 0 ? 1 : -1;
       const meleeDist = f.metrics.slashReach * f.bodyScale + enemy.halfW + 18;
 
-      // Trigger speed-boost ultimate when available and chasing or brawling
-      if (f.asset.skills && f.asset.skills.ult && f.cooldowns.ult <= 0 && dist > 110 && Math.random() < 0.04) {
+      // 影子 AI 专属策略：隐身绕背、三段瞬身连段、4 身位围巾大招
+      if (f.role === 'shadow') {
+        if (f.stealthTimer > 0) {
+          // 隐身期间主动绕到敌人身后发动背刺！
+          const behindX = enemy.x - enemy.facing * 42;
+          const toBehind = behindX - f.x;
+          if (Math.abs(toBehind) > 22) {
+            if (toBehind < 0) inp.left = true; else inp.right = true;
+          } else {
+            f.facing = enemy.x >= f.x ? 1 : -1;
+            inp.sword = true;
+          }
+          return inp;
+        }
+        if (f.blinkCharges > 0 && dist < 190 && Math.random() < 0.25) {
+          f.facing = dir;
+          inp.orb = true;
+          return inp;
+        }
+        if (f.cooldowns.ult <= 0 && dist < (f.stats.domainRange || 205) - 10 && Math.random() < 0.09) {
+          f.facing = dir;
+          inp.ult = true;
+          return inp;
+        }
+        if (f.cooldowns.banana <= 0 && dist > 110 && Math.random() < 0.03) {
+          inp.banana = true;
+          return inp;
+        }
+      }
+
+      // 藤蔓 AI 专属策略：对面举盾立刻 L 破盾、4 身位抓捕吸血、残血开茧/狂化巨藤
+      if (f.role === 'vine') {
+        if (enemy.state === 'shield' && f.cooldowns.orb <= 0 && dist < (f.stats.pierceRange || 155) + 12) {
+          f.facing = dir;
+          inp.orb = true;
+          return inp;
+        }
+        if (f.cocoonTimer > 0 && f.cocoonTimer < 1.2 && dist < 110 && Math.random() < 0.08) {
+          inp.ult = true; // 近身时偶发二段赌命反噬
+          return inp;
+        }
+        if (f.cooldowns.ult2 <= 0 && f.giantTimer <= 0 && f.hp < f.maxHp * 0.75 && Math.random() < 0.025) {
+          inp.ult2 = true;
+          return inp;
+        }
+        if (f.cooldowns.ult <= 0 && f.giantTimer <= 0 && f.hp < f.maxHp * 0.55 && dist < 140 && Math.random() < 0.03) {
+          inp.ult = true;
+          return inp;
+        }
+        if (f.cooldowns.banana <= 0 && f.giantTimer <= 0 && dist < (f.stats.bindRange || 205) && dist > 65 && Math.random() < 0.04) {
+          f.facing = dir;
+          inp.banana = true;
+          return inp;
+        }
+      }
+
+      // 无敌剑大招触发
+      if (f.role === 'trieye' && f.cooldowns.ult <= 0 && dist > 110 && Math.random() < 0.04) {
         inp.ult = true;
       }
 
@@ -1160,18 +2000,18 @@
         f.aiTimer = thinkRate + Math.random() * 0.18;
         const r = Math.random();
         if (dist < meleeDist + 16) {
-          if (enemy.state === 'slash' && r < 0.48) f.aiIntent = 'shield';
-          else if (r < 0.65) f.aiIntent = 'slash';
-          else if (r < 0.85) f.aiIntent = 'retreat';
+          if (enemy.state === 'slash' && r < 0.45) f.aiIntent = 'shield';
+          else if (r < 0.68) f.aiIntent = 'slash';
+          else if (r < 0.86) f.aiIntent = 'retreat';
           else f.aiIntent = 'fly_attack';
         } else if (dist < 290) {
-          if (r < 0.36) f.aiIntent = 'approach';
-          else if (r < 0.62) f.aiIntent = 'banana';
-          else if (r < 0.85) f.aiIntent = 'orb';
-          else f.aiIntent = 'fly_attack';
+          if (r < 0.40) f.aiIntent = 'approach';
+          else if (r < 0.64 && f.role !== 'vine') f.aiIntent = 'banana';
+          else if (r < 0.84 && f.role !== 'vine') f.aiIntent = 'orb';
+          else f.aiIntent = 'approach';
         } else {
-          if (r < 0.45) f.aiIntent = 'approach';
-          else if (r < 0.78) f.aiIntent = 'orb';
+          if (r < 0.52) f.aiIntent = 'approach';
+          else if (r < 0.78 && f.role !== 'vine' && f.role !== 'shadow') f.aiIntent = 'orb';
           else f.aiIntent = 'fly_attack';
         }
       }
@@ -1179,11 +2019,11 @@
       switch (f.aiIntent) {
         case 'approach':
           if (dir < 0) inp.left = true; else inp.right = true;
-          if (dist < meleeDist && Math.random() < 0.15) inp.sword = true;
+          if (dist < meleeDist && Math.random() < 0.18) inp.sword = true;
           break;
         case 'retreat':
           if (dir < 0) inp.right = true; else inp.left = true;
-          if (f.cooldowns.banana <= 0 && Math.random() < 0.12) inp.banana = true;
+          if (f.cooldowns.banana <= 0 && f.role !== 'vine' && Math.random() < 0.10) inp.banana = true;
           break;
         case 'slash':
           if (dir < 0) inp.left = true; else inp.right = true;
@@ -1203,13 +2043,13 @@
           inp.down = true;
           break;
         case 'fly_attack':
-          if (f.flyEnergy > 25) {
+          if (f.flyEnergy > 25 && f.giantTimer <= 0) {
             inp.up = true;
             if (f.onGround) inp.upPressed = true;
           }
           if (dir < 0) inp.left = true; else inp.right = true;
           if (dist < meleeDist + 18 && Math.random() < 0.14) inp.sword = true;
-          else if (dist > 160 && f.cooldowns.orb <= 0 && Math.random() < 0.08) inp.orb = true;
+          else if (dist > 160 && f.cooldowns.orb <= 0 && f.role !== 'vine' && Math.random() < 0.08) inp.orb = true;
           break;
       }
       return inp;
@@ -1615,16 +2455,26 @@
         ctx.textAlign = isLeft ? 'left' : 'right';
         ctx.fillText('飞/飘气力', isLeft ? fx + fw + 6 : fx - 6, fy + 7);
 
-        // 实时状态小标签（变小 / 加速 / 大招冷却）
+        // 实时状态小标签（变小 / 加速 / 隐身 / 瞬身 / 巨藤 / 赌命 / 大招冷却）
         const tags = [];
         if (f.shrinkTimer > 0) tags.push(`变小 ${f.shrinkTimer.toFixed(1)}s`);
         if (f.speedBoostTimer > 0) tags.push(`加速 ${f.speedBoostTimer.toFixed(1)}s`);
-        else if (f.asset.skills && f.asset.skills.ult) {
-          tags.push(f.cooldowns.ult > 0 ? `大招冷却 ${f.cooldowns.ult.toFixed(1)}s` : '大招(;)就绪');
+        if (f.stealthTimer > 0 && (systemState.gameMode === '1p' && f.id === 0)) tags.push(`阴影 ${f.stealthTimer.toFixed(1)}s`);
+        if (f.blinkCharges > 0) tags.push(`瞬身剩${f.blinkCharges}段`);
+        if (f.cocoonTimer > 0) tags.push(`裹茧 ${f.cocoonTimer.toFixed(1)}s`);
+        if (f.cocoonPactTimer > 0) tags.push(`赌命 ${f.cocoonPactTimer.toFixed(1)}s!`);
+        if (f.giantTimer > 0) tags.push(`巨藤 ${f.giantTimer.toFixed(1)}s`);
+        if (f.asset.skills && f.asset.skills.ult && f.speedBoostTimer <= 0 && f.cocoonTimer <= 0) {
+          const u1 = f.asset.skills.ult.label;
+          tags.push(f.cooldowns.ult > 0 ? `${u1} ${f.cooldowns.ult.toFixed(1)}s` : `${u1}(;)就绪`);
+        }
+        if (f.asset.skills && f.asset.skills.ult2 && f.giantTimer <= 0) {
+          const u2 = f.asset.skills.ult2.label;
+          tags.push(f.cooldowns.ult2 > 0 ? `${u2} ${f.cooldowns.ult2.toFixed(1)}s` : `${u2}(')就绪`);
         }
         if (tags.length > 0) {
           ctx.font = 'bold 11.5px "PingFang SC", sans-serif';
-          ctx.fillStyle = f.speedBoostTimer > 0 ? '#c94a38' : '#2e6b8a';
+          ctx.fillStyle = (f.speedBoostTimer > 0 || f.cocoonPactTimer > 0) ? '#c94a38' : (f.giantTimer > 0 ? '#2c7a36' : '#2e6b8a');
           ctx.textAlign = isLeft ? 'left' : 'right';
           ctx.fillText(tags.join(' · '), isLeft ? bx : bx + barW, fy + 23);
         }
@@ -1672,6 +2522,24 @@
       drawStage();
       arenaState.bananaPeels.forEach(drawBananaPeel);
 
+      // 影子二技能：横向灰紫高速残影轨迹（草图 2 格左图）
+      arenaState.afterimages.forEach((a, idx) => {
+        const alpha = Math.max(0, a.life / a.maxLife) * 0.55;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const s = S.boilSeed(2100 + idx * 19, arenaState.time);
+        for (let k = 0; k < 5; k++) {
+          const yy = a.y - 22 - k * 14;
+          S.sketchLine(ctx, a.x - a.facing * 52, yy, a.x + a.facing * 24, yy + 2, 3.0, k % 2 === 0 ? '#55505e' : '#7b4ca8', s + k, 1.8);
+        }
+        ctx.restore();
+      });
+
+      // 藤蔓一/二技能：地底藤蔓蔓延抓捕与破盾地刺
+      arenaState.groundVines.forEach((gv) => {
+        S.drawGroundVineEffect(ctx, gv, GROUND_Y, arenaState.time);
+      });
+
       const env = {
         time: arenaState.time,
         groundY: GROUND_Y,
@@ -1683,16 +2551,36 @@
       drawOrder.forEach((f) => {
         f.asset.draw(ctx, f, env);
         S.drawFrozenOverlay(ctx, f, arenaState.time);
+        S.drawVineBoundOverlay(ctx, f, arenaState.time);
       });
 
       arenaState.energyOrbs.forEach(drawEnergyOrb);
 
+      // 影子大招：暗影空间全屏覆盖与四面八方紫影穿刺演出！
+      if (arenaState.domainOverlay && arenaState.domainOverlay.active) {
+        const dom = arenaState.domainOverlay;
+        S.drawShadowDomain(ctx, dom, W, H, arenaState.time);
+        // 在暗影空间正中心绘制被困住的对手剪影
+        const victim = arenaState.fighters[dom.victimId];
+        if (victim) {
+          ctx.save();
+          const savedX = victim.x, savedY = victim.y, savedState = victim.state;
+          victim.x = dom.targetX + (Math.random() - 0.5) * 6;
+          victim.y = dom.targetY + victim.height * 0.45 + (Math.random() - 0.5) * 5;
+          victim.state = 'hurt';
+          victim.asset.draw(ctx, victim, env);
+          victim.x = savedX; victim.y = savedY; victim.state = savedState;
+          ctx.restore();
+        }
+      }
+
       arenaState.particles.forEach((p) => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-        if (p.style === 'diamond') S.drawDiamond(ctx, p.x, p.y, p.size);
+        const col = p.color || '#1e1c1a';
+        if (p.style === 'diamond') S.drawDiamond(ctx, p.x, p.y, p.size, col, '#fffdf5');
         else {
-          ctx.fillStyle = '#1e1c1a';
+          ctx.fillStyle = col;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
           ctx.fill();
@@ -1747,6 +2635,7 @@
     const padSkillK = document.getElementById('padSkillK');
     const padSkillL = document.getElementById('padSkillL');
     const padSkillUlt = document.getElementById('padSkillUlt');
+    const padSkillUlt2 = document.getElementById('padSkillUlt2');
     const gamepadPill = document.getElementById('gamepadPill');
     const storyCaption = document.getElementById('storyCaption');
 
@@ -1852,9 +2741,18 @@
           padSkillUlt.style.display = 'none';
         }
       }
+      if (padSkillUlt2) {
+        if (sk.ult2) {
+          padSkillUlt2.style.display = '';
+          padSkillUlt2.textContent = `${sk.ult2.icon} ${sk.ult2.label}(')`;
+        } else {
+          padSkillUlt2.style.display = 'none';
+        }
+      }
       if (p1SkillsHint) {
         const ultHint = sk.ult ? ` · <kbd>;</kbd> ${sk.ult.label}` : '';
-        p1SkillsHint.innerHTML = `<kbd>J</kbd> ${sk.j.label} · <kbd>K</kbd> ${sk.k.label} · <kbd>L</kbd> ${sk.l.label}${ultHint}`;
+        const ult2Hint = sk.ult2 ? ` · <kbd>'</kbd> ${sk.ult2.label}` : '';
+        p1SkillsHint.innerHTML = `<kbd>J</kbd> ${sk.j.label} · <kbd>K</kbd> ${sk.k.label} · <kbd>L</kbd> ${sk.l.label}${ultHint}${ult2Hint}`;
       }
     }
 
@@ -1957,6 +2855,8 @@
         arenaState.hitstop = Math.max(0, arenaState.hitstop - dt);
       } else if (arenaState.story.active) {
         StorySystem.update(dt);
+      } else if (CombatSystem.updateDomainOverlay(dt)) {
+        VfxSystem.update(dt);
       } else {
         if (arenaState.matchState === 'ko') arenaState.koTimer += dt;
         const inp0 = InputSystem.readPlayer(0);
@@ -1967,6 +2867,7 @@
         CombatSystem.updateFighter(arenaState.fighters[0], arenaState.fighters[1], inp0, dt);
         CombatSystem.updateFighter(arenaState.fighters[1], arenaState.fighters[0], inp1, dt);
         CombatSystem.separateFighters();
+        CombatSystem.updateGroundVines(dt);
         CombatSystem.updateProjectiles(dt);
         VfxSystem.update(dt);
       }

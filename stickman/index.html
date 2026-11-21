@@ -258,6 +258,7 @@
   .pad-btn.skill-shield { background: #edf5ea; }
   .pad-btn.skill-fly { background: #f2ecfa; }
   .pad-btn.skill-ult { background: #ffe4d6; border-color: #b83c2c; color: #8c2216; }
+  .pad-btn.skill-ult2 { background: #dff2da; border-color: #2c7a36; color: #1b5422; }
 
   /* 前台角色参数设置弹窗（手绘纸面风格） */
   .settings-backdrop {
@@ -433,7 +434,8 @@
           <kbd>1</kbd>/<kbd>N</kbd> 普攻 ·
           <kbd>2</kbd>/<kbd>M</kbd> 技能K ·
           <kbd>3</kbd>/<kbd>,</kbd> 远程L ·
-          <kbd>4</kbd>/<kbd>/</kbd> 大招 ·
+          <kbd>4</kbd>/<kbd>/</kbd> 大招一 ·
+          <kbd>5</kbd>/<kbd>.</kbd> 大招二 ·
           <kbd>↓</kbd> 圆盾格挡
         </div>
         <div>
@@ -443,7 +445,8 @@
           <kbd>X</kbd>/<kbd>□</kbd>/<kbd>RB</kbd> 普攻J ·
           <kbd>B</kbd>/<kbd>○</kbd> 技能K ·
           <kbd>Y</kbd>/<kbd>△</kbd>/<kbd>RT</kbd> 远程L ·
-          <kbd>Select</kbd>/<kbd>R3</kbd> 大招 ·
+          <kbd>Select</kbd>/<kbd>L3</kbd> 大招一 ·
+          <kbd>R3</kbd> 大招二 ·
           <kbd>LB</kbd>/<kbd>LT</kbd>/下 举盾 ·
           <kbd>Start</kbd> 重来
         </div>
@@ -463,6 +466,7 @@
         <button class="pad-btn skill-banana" id="padSkillK" data-action="banana">🍌 香蕉皮</button>
         <button class="pad-btn skill-orb" id="padSkillL" data-action="orb">✦ 星光波</button>
         <button class="pad-btn skill-ult" id="padSkillUlt" data-action="ult" style="display:none;">🚀 速度加快</button>
+        <button class="pad-btn skill-ult2" id="padSkillUlt2" data-action="ult2" style="display:none;">🌳 巨藤狂化</button>
       </div>
     </div>
   </div>

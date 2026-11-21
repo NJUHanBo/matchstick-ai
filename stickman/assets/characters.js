@@ -709,6 +709,472 @@
   }
 
   // =========================================================
+  // 新角色动画资产：影子（紫色长围巾、藏进阴影、三段瞬身、围巾暗影空间）
+  // =========================================================
+  function drawShadowStickman(ctx, f, env) {
+    const s = S.boilSeed(1100 + f.id * 97, env.time);
+    const dir = f.facing;
+    const tNow = env.time;
+
+    // 隐身状态处理（草图 1 格左图：贴地紫色阴影圆斑）
+    if (f.stealthTimer > 0 && f.state !== 'ko') {
+      const isLocalHuman1P = (env.gameMode === '1p' && f.id === 0);
+      if (isLocalHuman1P) {
+        // 单人打电脑时，1P 自己可见半透明贴地紫影圆斑，方便走位绕背
+        S.drawShadowPuddle(ctx, f.x, env.groundY, 0.72, s);
+        ctx.save();
+        ctx.font = 'bold 12px "PingFang SC", sans-serif';
+        ctx.fillStyle = '#6b3e99';
+        ctx.textAlign = 'center';
+        ctx.fillText(`阴影中 ${f.stealthTimer.toFixed(1)}s`, f.x, env.groundY - 22);
+        ctx.restore();
+      } else if (f.stealthEnterFlash > 0) {
+        // 2P 同屏或电脑操作：仅在钻入阴影的瞬间闪一下紫影斑，随后彻底不可见
+        S.drawShadowPuddle(ctx, f.x, env.groundY, Math.min(0.65, f.stealthEnterFlash * 2.4), s);
+      }
+      return;
+    }
+
+    // Ground shadow (略带紫色暗影感)
+    const hAbove = Math.max(0, env.groundY - f.y);
+    const shScale = Math.max(0.35, 1 - hAbove / 380);
+    ctx.save();
+    ctx.fillStyle = 'rgba(78, 42, 115, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(f.x, env.groundY + 3, 25 * shScale, 5.8 * shScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(f.x, f.y);
+
+    if (f.state === 'ko') {
+      for (let i = 0; i < 3; i++) {
+        S.sketchLine(ctx, -dir * (38 + i * 11), -22 - i * 4, -dir * (18 + i * 11), -8 - i * 4, 2.2, '#4e2a73', s + 80 + i, 0.7);
+      }
+      const headX = dir * 24;
+      const hipX = -dir * 18;
+      S.sketchLine(ctx, hipX, -9, headX - dir * 13, -12, 3.2, '#1e1c1a', s + 1, 0.9);
+      S.sketchLine(ctx, hipX, -9, hipX - dir * 20, -3, 3.0, '#1e1c1a', s + 2, 0.9);
+      S.sketchLine(ctx, hipX, -9, hipX - dir * 14, -19, 3.0, '#1e1c1a', s + 3, 0.9);
+      S.drawShadowScarf(ctx, headX - dir * 11, -13, dir, 0, tNow, s + 25, 0);
+      S.sketchCircle(ctx, headX, -14, 14, 3.0, '#1e1c1a', '#f6f2e8', s + 5, 0.9);
+      S.sketchLine(ctx, headX - 4, -16, headX + 4, -12, 2, '#1e1c1a', s + 11, 0.3);
+      S.sketchLine(ctx, headX + 4, -16, headX - 4, -12, 2, '#1e1c1a', s + 12, 0.3);
+      ctx.restore();
+      return;
+    }
+
+    if (f.state === 'slip') {
+      ctx.translate(0, -48);
+      ctx.rotate(f.slipRot);
+      ctx.translate(0, 48);
+    }
+
+    const isInvulnBlink = f.state === 'blinkDash' || f.invuln > 0;
+    if (isInvulnBlink) {
+      ctx.globalAlpha = 0.85;
+    }
+
+    const bob = f.state === 'idle' ? Math.sin(tNow * 5.5 + f.id * 2) * 2.4
+      : f.state === 'fly' ? Math.sin(tNow * 7 + f.id) * 5.5
+      : f.state === 'run' ? Math.abs(Math.sin(f.walkPhase)) * -4 : 0;
+    const crouch = f.state === 'shield' ? 11 : f.state === 'blinkDash' ? 8 : 0;
+    const hipX = 0;
+    const hipY = -34 + bob + crouch;
+    const neckX = f.state === 'run' ? dir * 8
+      : f.state === 'blinkDash' ? dir * 15
+      : f.state === 'slash' ? dir * 10
+      : f.state === 'scarfGrab' ? dir * 9 : 0;
+    const neckY = -68 + bob + crouch;
+    const headX = neckX;
+    const headY = neckY - 16;
+
+    let lFootX = -12, lFootY = 0, rFootX = 12, rFootY = 0;
+    if (f.state === 'run' || f.state === 'walkoff') {
+      const sw = Math.sin(f.walkPhase);
+      lFootX = sw * 20; lFootY = Math.min(0, -Math.cos(f.walkPhase) * 9);
+      rFootX = -sw * 20; rFootY = Math.min(0, Math.cos(f.walkPhase) * 9);
+    } else if (f.state === 'blinkDash') {
+      lFootX = -22 * dir; rFootX = 18 * dir; lFootY = -5;
+    } else if (!f.onGround) {
+      lFootX = -10 - dir * 4; lFootY = -6 + bob * 0.5;
+      rFootX = 10 - dir * 2; rFootY = -12 + bob * 0.5;
+    } else if (f.state === 'shield') {
+      lFootX = -18; rFootX = 18;
+    } else if (f.state === 'slash') {
+      lFootX = -16 * dir; rFootX = 20 * dir;
+    }
+
+    let backHandX = neckX - dir * 18, backHandY = neckY + 20;
+    let frontHandX = neckX + dir * 20, frontHandY = neckY + 18;
+    if (f.state === 'run') {
+      const sw = Math.sin(f.walkPhase);
+      frontHandX = neckX + dir * 20; frontHandY = neckY + 12 + sw * 6;
+      backHandX = neckX - dir * 22; backHandY = neckY + 16 - sw * 6;
+    } else if (f.state === 'slash' || f.state === 'blinkDash') {
+      frontHandX = neckX + dir * 32; frontHandY = neckY + 6;
+      backHandX = neckX - dir * 24; backHandY = neckY + 12;
+    } else if (f.state === 'scarfGrab') {
+      frontHandX = neckX + dir * 28; frontHandY = neckY + 2;
+      backHandX = neckX - dir * 16; backHandY = neckY + 18;
+    } else if (f.state === 'shield') {
+      frontHandX = neckX + dir * 18; frontHandY = neckY + 14;
+      backHandX = neckX - dir * 14; backHandY = neckY + 12;
+    }
+
+    // Shield dome
+    if (f.state === 'shield') {
+      ctx.save();
+      ctx.strokeStyle = '#4e2a73';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.arc(neckX + dir * 4, neckY + 16, 46, -Math.PI * 0.75, Math.PI * 0.75);
+      ctx.stroke();
+      S.sketchCircle(ctx, neckX + dir * 2, neckY + 16, 42, 2.4, 'rgba(78,42,115,0.72)', 'rgba(218, 200, 245, 0.30)', s + 60, 2.2);
+      ctx.restore();
+    }
+
+    // Purple crescent slash trail (还原草图 1 格右边的紫色弧斩！)
+    if (f.state === 'slash' && f.stateTimer < 0.22 && f.stateTimer > 0.03) {
+      const big = f.lastBackstabGlow > 0;
+      const rad = big ? 76 : 62;
+      ctx.save();
+      ctx.strokeStyle = '#6f3fa6';
+      ctx.lineWidth = big ? 6.0 : 4.2;
+      ctx.beginPath();
+      if (dir > 0) ctx.arc(neckX + 12, neckY + 8, rad, -1.15, 0.9);
+      else ctx.arc(neckX - 12, neckY + 8, rad, Math.PI - 0.9, Math.PI + 1.15);
+      ctx.stroke();
+      ctx.strokeStyle = '#b48ce6';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      if (dir > 0) ctx.arc(neckX + 12, neckY + 8, rad + 8, -0.95, 0.7);
+      else ctx.arc(neckX - 12, neckY + 8, rad + 8, Math.PI - 0.7, Math.PI + 0.95);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Blink cross-hatch purple slash burst (还原草图 2 格右边的紫色交叉乱斩！)
+    if (f.state === 'blinkDash') {
+      ctx.save();
+      const bx = neckX + dir * 30;
+      const by = neckY + 10;
+      for (let i = 0; i < 6; i++) {
+        const yOff = -22 + i * 9;
+        S.sketchLine(ctx, bx - 24, by + yOff, bx + 26, by + yOff - 5, 2.8, i % 2 === 0 ? '#6f3fa6' : '#9c6ed4', s + 100 + i, 1.8);
+      }
+      for (let i = 0; i < 4; i++) {
+        const xOff = -14 + i * 10;
+        S.sketchLine(ctx, bx + xOff, by - 26, bx + xOff + 4, by + 26, 2.4, '#4e2a73', s + 110 + i, 1.5);
+      }
+      // Invulnerability ring aura
+      S.sketchEllipse(ctx, neckX, neckY + 14, 34, 48, 2.0, 'rgba(130, 82, 188, 0.65)', null, s + 120, 1.8);
+      ctx.restore();
+    }
+
+    // Scarf Grab portal + extending purple scarf (还原草图大招左图：紫围巾伸出 + 紫色空间门!)
+    let grabExt = 0;
+    if (f.state === 'scarfGrab') {
+      const p = 1 - f.stateTimer / 0.34;
+      const reach = p < 0.55 ? (p / 0.55) : Math.max(0, 1 - (p - 0.55) / 0.45);
+      grabExt = reach * (f.stats.domainRange || 200);
+      // Tall purple portal rift behind shadow/target
+      S.sketchEllipse(ctx, -dir * 24, -52, 14, 46, 2.8, '#5b308a', 'rgba(116, 68, 168, 0.48)', s + 130, 1.8);
+    }
+
+    const strokeCol = (f.state === 'hurt' && Math.floor(tNow * 24) % 2 === 0) ? '#b83c2c' : '#1e1c1a';
+
+    // Flowing purple scarf drawn behind neck (or extending forward during ult!)
+    if (grabExt <= 4) {
+      S.drawShadowScarf(ctx, neckX, neckY, dir, f.vx, tNow, s + 30, 0);
+    }
+
+    // Stickman body
+    S.sketchLine(ctx, hipX, hipY, lFootX, lFootY, 3.1, strokeCol, s + 1, 0.9);
+    S.sketchLine(ctx, hipX, hipY, rFootX, rFootY, 3.1, strokeCol, s + 2, 0.9);
+    S.sketchLine(ctx, hipX, hipY, neckX, neckY, 3.3, strokeCol, s + 3, 0.9);
+    S.sketchLine(ctx, neckX, neckY + 6, backHandX, backHandY, 3.0, strokeCol, s + 4, 0.9);
+    S.sketchLine(ctx, neckX, neckY + 6, frontHandX, frontHandY, 3.0, strokeCol, s + 5, 0.9);
+
+    // Subtle shadow blade in front hand during slash
+    if (f.state === 'slash' || f.state === 'blinkDash') {
+      S.sketchLine(ctx, frontHandX, frontHandY, frontHandX + dir * 30, frontHandY - 10, 4.0, '#6b3e99', s + 18, 0.9);
+    }
+
+    // Extending grab scarf drawn on top of arm
+    if (grabExt > 4) {
+      S.drawShadowScarf(ctx, neckX, neckY, dir, f.vx, tNow, s + 30, grabExt);
+    }
+
+    // Minimalist cool stickman head (对照草图左上：简洁空白圆头配紫围巾)
+    S.sketchCircle(ctx, headX, headY, 15, 3.0, strokeCol, '#f6f2e8', s + 10, 0.9);
+    if (f.state === 'hurt' || f.state === 'slip') {
+      S.sketchCircle(ctx, headX + dir * 3, headY + 2, 4, 2.0, strokeCol, null, s + 14, 0.4);
+    }
+
+    if (f.state === 'fly') {
+      S.sketchLine(ctx, -14, 10, 14, 10, 1.8, 'rgba(92,48,140,0.55)', s + 44, 1.2);
+      S.sketchLine(ctx, -9, 17, 9, 17, 1.5, 'rgba(92,48,140,0.40)', s + 45, 1.2);
+    }
+
+    drawPlayerTag(ctx, f, env, headX, headY - 26);
+    ctx.restore();
+  }
+
+  // =========================================================
+  // 新角色动画资产：藤蔓（背后四条绿藤、地底缠绕吸血、跺脚破盾、茧/巨藤双大招）
+  // =========================================================
+  function drawVineStickman(ctx, f, env) {
+    const s = S.boilSeed(1400 + f.id * 103, env.time);
+    const dir = f.facing;
+    const tNow = env.time;
+    const bodyScale = f.bodyScale || 1.0;
+    const isGiant = f.giantTimer > 0;
+    const isCocoon = f.cocoonTimer > 0;
+    const isPact = f.cocoonPactTimer > 0;
+
+    // Ground shadow
+    const hAbove = Math.max(0, env.groundY - f.y);
+    const shScale = Math.max(0.35, 1 - hAbove / 380) * bodyScale;
+    ctx.save();
+    ctx.fillStyle = isGiant ? 'rgba(40, 102, 38, 0.22)' : 'rgba(30,28,26,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(f.x, env.groundY + 3, 25 * shScale, 6 * shScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 大招一：裹成螺旋绿色藤蔓茧（还原草图左下 1大）
+    if (isCocoon && f.state !== 'ko') {
+      S.drawVineCocoon(ctx, f.x, f.y, f.height, f.cocoonTimer, tNow, s + 20);
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      drawPlayerTag(ctx, f, env, 0, -f.height - 40);
+      ctx.restore();
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(f.x, f.y);
+
+    // KO pose
+    if (f.state === 'ko') {
+      for (let i = 0; i < 3; i++) {
+        S.sketchLine(ctx, -dir * (38 + i * 11), -22 - i * 4, -dir * (18 + i * 11), -8 - i * 4, 2.2, '#2f7d32', s + 80 + i, 0.7);
+      }
+      const headX = dir * 24;
+      const hipX = -dir * 18;
+      S.sketchLine(ctx, hipX, -9, headX - dir * 13, -12, 3.2, '#1e1c1a', s + 1, 0.9);
+      S.sketchLine(ctx, hipX, -9, hipX - dir * 20, -3, 3.0, '#1e1c1a', s + 2, 0.9);
+      S.sketchLine(ctx, hipX, -9, hipX - dir * 14, -19, 3.0, '#1e1c1a', s + 3, 0.9);
+      S.sketchCircle(ctx, headX, -14, 14, 3.0, '#1e1c1a', '#f6f2e8', s + 5, 0.9);
+      S.sketchLine(ctx, headX - 4, -16, headX + 4, -12, 2, '#1e1c1a', s + 11, 0.3);
+      S.sketchLine(ctx, headX + 4, -16, headX - 4, -12, 2, '#1e1c1a', s + 12, 0.3);
+      ctx.restore();
+      return;
+    }
+
+    // 大招二：巨藤狂化（还原草图右下 2大 — 全身浓密绿色螺旋藤蔓卷曲而成的巨人！）
+    if (isGiant) {
+      ctx.scale(bodyScale, bodyScale);
+      if (f.state === 'slip') {
+        ctx.translate(0, -48);
+        ctx.rotate(f.slipRot);
+        ctx.translate(0, 48);
+      }
+      const bob = f.state === 'run' ? Math.abs(Math.sin(f.walkPhase)) * -3.5 : Math.sin(tNow * 2.8) * 2.2;
+      const crouch = f.state === 'shield' ? 9 : 0;
+      const hipY = -36 + bob + crouch;
+      const neckY = -72 + bob + crouch;
+      const headY = neckY - 17;
+      const sw = f.state === 'run' ? Math.sin(f.walkPhase) * 14 : 0;
+
+      // Heavy coiled vine legs, torso, arms, head (草图绿卷巨人！)
+      S.drawCoiledVineLimb(ctx, -6, hipY, -14 + sw, -4, 9.5, s + 1);
+      S.drawCoiledVineLimb(ctx, 6, hipY, 14 - sw, -4, 9.5, s + 20);
+      S.drawCoiledVineLimb(ctx, 0, hipY - 2, 0, neckY + 4, 13.5, s + 40);
+
+      let frontHandX = dir * 30, frontHandY = neckY + 18;
+      let backHandX = -dir * 26, backHandY = neckY + 20;
+      if (f.state === 'slash') {
+        const t = 1 - f.stateTimer / (f.slashAnimDur || 0.45);
+        if (t < 0.35) {
+          frontHandX = dir * 10; frontHandY = neckY - 22;
+        } else {
+          const st = Math.min(1, (t - 0.35) / 0.45);
+          frontHandX = dir * (36 + Math.sin(st * Math.PI) * 18);
+          frontHandY = neckY + 4 + st * 32;
+        }
+      }
+      S.drawCoiledVineLimb(ctx, -dir * 10, neckY + 8, backHandX, backHandY, 8.5, s + 60);
+      S.drawCoiledVineLimb(ctx, dir * 10, neckY + 8, frontHandX, frontHandY, 9.5, s + 80);
+
+      // Coiled leafy vine head
+      S.sketchCircle(ctx, 0, headY, 16, 3.2, '#246627', 'rgba(92, 166, 52, 0.48)', s + 100, 1.8);
+      S.sketchCircle(ctx, 0, headY, 11, 2.4, '#8bc23c', null, s + 105, 1.5);
+      // Fierce glowing eyes
+      S.sketchCircle(ctx, dir * 5 - 3, headY - 1, 2.3, 1.8, '#1b3d1d', '#fff8c4', s + 110, 0.3);
+      S.sketchCircle(ctx, dir * 5 + 4, headY - 1, 2.3, 1.8, '#1b3d1d', '#fff8c4', s + 111, 0.3);
+
+      // Heavy giant vine slam arc
+      if (f.state === 'slash' && f.stateTimer < (f.slashAnimDur || 0.45) * 0.65 && f.stateTimer > 0.05) {
+        ctx.save();
+        ctx.strokeStyle = '#2f7d32';
+        ctx.lineWidth = 6.0;
+        ctx.beginPath();
+        if (dir > 0) ctx.arc(12, neckY + 18, 64, -1.1, 0.85);
+        else ctx.arc(-12, neckY + 18, 64, Math.PI - 0.85, Math.PI + 1.1);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (f.state === 'shield') {
+        S.sketchCircle(ctx, dir * 4, neckY + 18, 48, 3.0, '#246627', 'rgba(130, 198, 68, 0.28)', s + 120, 2.4);
+      }
+
+      drawPlayerTag(ctx, f, env, 0, headY - 26);
+      ctx.restore();
+      return;
+    }
+
+    // 常规藤蔓形态（含蹲地插手引导、跺脚破盾、二段赌命光环）
+    ctx.scale(bodyScale, bodyScale);
+    if (f.state === 'slip') {
+      ctx.translate(0, -48);
+      ctx.rotate(f.slipRot);
+      ctx.translate(0, 48);
+    }
+
+    // 二段赌命契约危险光环（不打中就会被藤蔓吸干致死！）
+    if (isPact) {
+      ctx.save();
+      const pulse = 36 + Math.sin(tNow * 22) * 5;
+      S.sketchEllipse(ctx, 0, -52, pulse, 54, 2.8, '#b83c2c', 'rgba(184, 60, 44, 0.12)', s + 140, 2.2);
+      S.sketchEllipse(ctx, 0, -52, pulse - 6, 48, 2.0, '#3a8c32', null, s + 141, 1.8);
+      ctx.font = 'bold 13px "PingFang SC", sans-serif';
+      ctx.fillStyle = '#b83c2c';
+      ctx.textAlign = 'center';
+      ctx.fillText(`赌命反噬 ${f.cocoonPactTimer.toFixed(1)}s!`, 0, -118);
+      ctx.restore();
+    }
+
+    const bob = f.state === 'idle' ? Math.sin(tNow * 4.8 + f.id * 2) * 2.4
+      : f.state === 'fly' ? Math.sin(tNow * 7 + f.id) * 5.5
+      : f.state === 'run' ? Math.abs(Math.sin(f.walkPhase)) * -4 : 0;
+    const isChannel = f.state === 'vineChannel';
+    const isStomp = f.state === 'vineStomp';
+    const crouch = f.state === 'shield' ? 11 : isChannel ? 24 : 0;
+    const hipX = 0;
+    const hipY = -34 + bob + crouch;
+    const neckX = f.state === 'run' ? dir * 6
+      : isChannel ? dir * 12
+      : f.state === 'slash' ? dir * 8 : 0;
+    const neckY = -68 + bob + crouch;
+    const headX = neckX;
+    const headY = neckY - 16;
+
+    let lFootX = -12, lFootY = 0, rFootX = 12, rFootY = 0;
+    if (f.state === 'run' || f.state === 'walkoff') {
+      const sw = Math.sin(f.walkPhase);
+      lFootX = sw * 19; lFootY = Math.min(0, -Math.cos(f.walkPhase) * 9);
+      rFootX = -sw * 19; rFootY = Math.min(0, Math.cos(f.walkPhase) * 9);
+    } else if (isChannel) {
+      // 蹲地插手姿势（还原草图 1 格）
+      lFootX = -14 * dir; rFootX = 10 * dir;
+    } else if (isStomp) {
+      // 抬脚重重跺地（还原草图 2 格）
+      lFootX = -10 * dir;
+      rFootX = 16 * dir;
+      rFootY = f.stateTimer > 0.16 ? -16 : 2;
+    } else if (!f.onGround) {
+      lFootX = -11 - dir * 4; lFootY = -6 + bob * 0.5;
+      rFootX = 11 - dir * 2; rFootY = -12 + bob * 0.5;
+    } else if (f.state === 'shield') {
+      lFootX = -18; rFootX = 18;
+    }
+
+    let backHandX = neckX - dir * 18, backHandY = neckY + 18;
+    let frontHandX = neckX + dir * 20, frontHandY = neckY + 16;
+    if (isChannel) {
+      // 双手插进地面！
+      frontHandX = neckX + dir * 14; frontHandY = 0;
+      backHandX = neckX + dir * 4; backHandY = -2;
+    } else if (f.state === 'slash') {
+      frontHandX = neckX + dir * 28; frontHandY = neckY + 8;
+    } else if (f.state === 'shield') {
+      frontHandX = neckX + dir * 18; frontHandY = neckY + 14;
+      backHandX = neckX - dir * 14; backHandY = neckY + 12;
+    }
+
+    // 背后四条绿色藤蔓（引导时钻进地下，平时在身后卷曲摆动！）
+    if (!isChannel) {
+      S.drawVineTendrils(ctx, neckX - dir * 3, neckY + 4, dir, tNow, s + 30, 1.0, f.state);
+    } else {
+      // 引导时四条藤蔓从背后向下扎入地面
+      for (let i = 0; i < 4; i++) {
+        S.sketchLine(ctx, neckX - dir * 2, neckY + 8 + i * 2, neckX + dir * (10 + i * 5), 2, 3.0, i % 2 === 0 ? '#2f7d32' : '#85bd38', s + 35 + i, 1.5);
+      }
+    }
+
+    // 跺脚脚底钻出的绿藤团（还原草图 2 格左小人脚边绿藤）
+    if (isStomp) {
+      S.sketchCircle(ctx, rFootX, -6, 13, 2.6, '#2f7d32', 'rgba(104, 178, 52, 0.45)', s + 42, 1.8);
+    }
+
+    // 普攻抽击的绿色藤蔓鞭弧
+    if (f.state === 'slash' && f.stateTimer < 0.22 && f.stateTimer > 0.04) {
+      ctx.save();
+      ctx.strokeStyle = '#2f7d32';
+      ctx.lineWidth = 4.2;
+      ctx.beginPath();
+      if (dir > 0) ctx.arc(neckX + 12, neckY + 8, 66, -1.05, 0.85);
+      else ctx.arc(neckX - 12, neckY + 8, 66, Math.PI - 0.85, Math.PI + 1.05);
+      ctx.stroke();
+      ctx.strokeStyle = '#9ec938';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      if (dir > 0) ctx.arc(neckX + 12, neckY + 8, 72, -0.85, 0.65);
+      else ctx.arc(neckX - 12, neckY + 8, 72, Math.PI - 0.65, Math.PI + 0.85);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Shield dome
+    if (f.state === 'shield') {
+      ctx.save();
+      ctx.strokeStyle = '#2f7d32';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.arc(neckX + dir * 4, neckY + 16, 46, -Math.PI * 0.75, Math.PI * 0.75);
+      ctx.stroke();
+      S.sketchCircle(ctx, neckX + dir * 2, neckY + 16, 42, 2.4, 'rgba(47,125,50,0.72)', 'rgba(218, 245, 210, 0.35)', s + 60, 2.2);
+      ctx.restore();
+    }
+
+    const strokeCol = (f.state === 'hurt' && Math.floor(tNow * 24) % 2 === 0) ? '#b83c2c' : '#1e1c1a';
+
+    // Stickman body
+    S.sketchLine(ctx, hipX, hipY, lFootX, lFootY, 3.1, strokeCol, s + 1, 0.9);
+    S.sketchLine(ctx, hipX, hipY, rFootX, rFootY, 3.1, strokeCol, s + 2, 0.9);
+    S.sketchLine(ctx, hipX, hipY, neckX, neckY, 3.3, strokeCol, s + 3, 0.9);
+    S.sketchLine(ctx, neckX, neckY + 6, backHandX, backHandY, 3.0, strokeCol, s + 4, 0.9);
+    S.sketchLine(ctx, neckX, neckY + 6, frontHandX, frontHandY, 3.0, strokeCol, s + 5, 0.9);
+
+    S.sketchCircle(ctx, headX, headY, 15, 3.0, strokeCol, '#f6f2e8', s + 10, 0.9);
+    if (f.state === 'hurt' || f.state === 'slip') {
+      S.sketchCircle(ctx, headX + dir * 3, headY + 2, 4, 2.0, strokeCol, null, s + 14, 0.4);
+    }
+
+    if (f.state === 'fly') {
+      S.sketchLine(ctx, -14, 10, 14, 10, 1.8, 'rgba(47,125,50,0.55)', s + 44, 1.2);
+      S.sketchLine(ctx, -9, 17, 9, 17, 1.5, 'rgba(47,125,50,0.40)', s + 45, 1.2);
+    }
+
+    drawPlayerTag(ctx, f, env, headX, headY - 26);
+    ctx.restore();
+  }
+
+  // =========================================================
   // 注册默认角色池（含各角色基础属性、J / K / L / ; 技能与可调参数清单）
   // =========================================================
   const CLASSIC_SKILLS = {
@@ -838,6 +1304,133 @@
       calloutOffsetY: 262
     },
     draw: drawTriEyeKing
+  });
+
+  register({
+    id: 'shadow',
+    name: '影子',
+    scale: 1.0,
+    skills: {
+      j: { id: 'slash', label: '影刃斩', icon: '🗡' },
+      k: { id: 'shadowHide', label: '藏进阴影', icon: '🌑' },
+      l: { id: 'shadowBlink', label: '三段瞬身', icon: '⚡' },
+      ult: { id: 'shadowDomain', label: '暗影空间', icon: '🧣' },
+      ult2: null
+    },
+    baseStats: {
+      maxHp: 50,              // 常规血量的一半（极脆刺客）
+      moveSpeed: 285,
+      slashCooldown: 0.34,
+      slashDamage: 12,
+      kCooldown: 7.5,
+      stealthDuration: 5.0,   // K 藏进阴影 5 秒
+      backstabMult: 2.0,      // 背后现身攻击双倍伤害
+      lCooldown: 6.5,
+      blinkBaseDamage: 6,     // L 瞬身第一段伤害（默认依次 6 -> 12 -> 24）
+      blinkScaleMult: 2.0,    // 每次瞬身相对上次递增倍率
+      blinkWindow: 2.6,       // 连段窗口时长
+      ultCooldown: 10.5,
+      domainRange: 205,       // ; 围巾抓取距离（约 4 个身位）
+      domainDamage: 36        // 拉入暗影空间万影穿刺总伤害
+    },
+    tunables: [
+      { key: 'maxHp', label: '最大血量（默认常规一半）', min: 30, max: 180, step: 5, unit: '' },
+      { key: 'moveSpeed', label: '移动速度', min: 150, max: 460, step: 5, unit: '' },
+      { key: 'slashCooldown', label: '普攻冷却（越小越快）', min: 0.16, max: 1.2, step: 0.02, unit: '秒' },
+      { key: 'slashDamage', label: '普攻基础伤害 (J)', min: 4, max: 35, step: 1, unit: '' },
+      { key: 'stealthDuration', label: '藏进阴影时长 (K)', min: 2.0, max: 10.0, step: 0.5, unit: '秒' },
+      { key: 'backstabMult', label: '背刺伤害倍率', min: 1.5, max: 4.0, step: 0.25, unit: '倍' },
+      { key: 'kCooldown', label: '藏进阴影冷却 (K)', min: 2.0, max: 15.0, step: 0.5, unit: '秒' },
+      { key: 'blinkBaseDamage', label: '瞬身一段基础伤害 (L)', min: 2, max: 20, step: 1, unit: '' },
+      { key: 'blinkScaleMult', label: '瞬身逐段伤害倍率', min: 1.2, max: 3.0, step: 0.1, unit: '倍' },
+      { key: 'lCooldown', label: '三段瞬身冷却 (L)', min: 2.0, max: 14.0, step: 0.5, unit: '秒' },
+      { key: 'domainRange', label: '围巾抓取距离 (; 4身位≈205)', min: 120, max: 320, step: 5, unit: 'px' },
+      { key: 'domainDamage', label: '暗影空间穿刺总伤害 (;)', min: 16, max: 80, step: 2, unit: '' },
+      { key: 'ultCooldown', label: '暗影空间冷却 (;)', min: 4.0, max: 20.0, step: 0.5, unit: '秒' }
+    ],
+    metrics: {
+      height: 100,
+      halfW: 24,
+      slashReach: 56,
+      slashRangeX: 60,
+      slashRangeY: 64,
+      orbOffsetX: 42,
+      orbOffsetY: 52,
+      bananaOffsetX: 26,
+      bananaOffsetY: 54,
+      calloutOffsetY: 118
+    },
+    draw: drawShadowStickman
+  });
+
+  register({
+    id: 'vine',
+    name: '藤蔓',
+    scale: 1.0,
+    skills: {
+      j: { id: 'slash', label: '藤蔓抽击', icon: '🌿' },
+      k: { id: 'vineBind', label: '地底缠绕', icon: '🌱' },
+      l: { id: 'vinePierce', label: '跺脚破盾', icon: '⚡' },
+      ult: { id: 'vineCocoon', label: '藤蔓茧', icon: '🟢' },
+      ult2: { id: 'vineGiant', label: '巨藤狂化', icon: '🌳' }
+    },
+    baseStats: {
+      maxHp: 100,
+      moveSpeed: 245,
+      slashCooldown: 0.40,
+      slashDamage: 13,
+      kCooldown: 6.5,
+      bindRange: 205,         // K 抓捕范围（约 4 身位）
+      bindDuration: 4.0,      // 缠绕控制时长 4 秒
+      drainPctPerSec: 3,      // 每秒吸取对手最大血量百分比（草图 3%，设定 2% 可自由调）
+      lCooldown: 3.0,
+      pierceRange: 155,       // L 跺脚破盾距离（约 3 身位）
+      pierceDamage: 22,       // 仅对举盾敌人有效并造成破盾伤害
+      ultCooldown: 10.0,      // ; 大招一「藤蔓茧」冷却
+      cocoonDuration: 3.0,    // 裹茧时长 3 秒
+      cocoonHeal: 8,          // 裹茧期间每次受击回血
+      pactDuration: 3.5,      // 再按 ; 进入赌命反噬窗口，未命中直接吸干致死
+      pactBonusDamage: 26,    // 赌命命中附加高额爆发伤害
+      pactHeal: 20,           // 赌命命中回血
+      ult2Cooldown: 15.0,     // ' 大招二「巨藤狂化」冷却
+      giantDuration: 10.0,    // 巨藤形态持续 10 秒
+      giantScale: 2.25,       // 巨藤体型倍率
+      giantBonusHp: 100,      // 变身获得巨额临时厚血
+      giantSlashDamage: 34,   // 巨藤极高攻击力
+      giantSpeedMult: 0.45,   // 移动极慢
+      giantAtkCdMult: 3.0     // 攻速极慢（对手砍3下自己砍1下）
+    },
+    tunables: [
+      { key: 'maxHp', label: '基础最大血量', min: 60, max: 250, step: 10, unit: '' },
+      { key: 'moveSpeed', label: '常规移动速度', min: 120, max: 380, step: 5, unit: '' },
+      { key: 'slashDamage', label: '常规普攻伤害 (J)', min: 5, max: 35, step: 1, unit: '' },
+      { key: 'bindRange', label: '地底抓捕距离 (K 4身位≈205)', min: 120, max: 320, step: 5, unit: 'px' },
+      { key: 'bindDuration', label: '地底缠绕时长 (K)', min: 1.5, max: 7.0, step: 0.5, unit: '秒' },
+      { key: 'drainPctPerSec', label: '每秒吸血比例 (K)', min: 1, max: 10, step: 0.5, unit: '%' },
+      { key: 'pierceRange', label: '跺脚破盾距离 (L 3身位≈155)', min: 90, max: 260, step: 5, unit: 'px' },
+      { key: 'pierceDamage', label: '破盾地刺伤害 (L)', min: 8, max: 50, step: 2, unit: '' },
+      { key: 'cocoonDuration', label: '藤蔓茧时长 (;)', min: 1.5, max: 6.0, step: 0.5, unit: '秒' },
+      { key: 'cocoonHeal', label: '茧内受击回血量 (;)', min: 2, max: 25, step: 1, unit: '' },
+      { key: 'pactDuration', label: '二段赌命窗口时长', min: 1.5, max: 6.0, step: 0.5, unit: '秒' },
+      { key: 'pactBonusDamage', label: '赌命命中额外伤害', min: 10, max: 60, step: 2, unit: '' },
+      { key: 'giantDuration', label: '巨藤狂化时长 (\')', min: 4.0, max: 18.0, step: 1.0, unit: '秒' },
+      { key: 'giantBonusHp', label: '巨藤额外厚血 (\')', min: 40, max: 240, step: 10, unit: '' },
+      { key: 'giantSlashDamage', label: '巨藤重击伤害 (\')', min: 16, max: 70, step: 2, unit: '' },
+      { key: 'giantAtkCdMult', label: '巨藤攻速变慢倍数', min: 1.5, max: 4.5, step: 0.25, unit: '倍' }
+    ],
+    metrics: {
+      height: 100,
+      halfW: 24,
+      slashReach: 62,
+      slashRangeX: 64,
+      slashRangeY: 66,
+      orbOffsetX: 42,
+      orbOffsetY: 52,
+      bananaOffsetX: 26,
+      bananaOffsetY: 54,
+      calloutOffsetY: 120
+    },
+    draw: drawVineStickman
   });
 
   PaperArena.CharacterAssets = { register, get, list };
