@@ -611,26 +611,28 @@
     // Front thin stick arm reaching to sword hilt
     S.sketchLine(ctx, dir * 48, shoulderY + 24, frontHandX, frontHandY, 2.8, strokeCol, s + 71, 0.8);
 
-    // Giant slash arc trail
+    // Giant slash arc trail (grows massively when K-skill extends the blade!)
+    const bladeMult = f.swordScale || 1.0;
     if (f.state === 'slash' && f.stateTimer < 0.21 && f.stateTimer > 0.04) {
+      const arcR = 128 * (0.35 + 0.65 * bladeMult);
       ctx.save();
-      ctx.strokeStyle = '#1e1c1a';
-      ctx.lineWidth = 4.2;
+      ctx.strokeStyle = bladeMult > 1.1 ? '#b8861d' : '#1e1c1a';
+      ctx.lineWidth = bladeMult > 1.1 ? 5.0 : 4.2;
       ctx.beginPath();
-      if (dir > 0) ctx.arc(28, shoulderY + 46, 128, -1.05, 0.85);
-      else ctx.arc(-28, shoulderY + 46, 128, Math.PI - 0.85, Math.PI + 1.05);
+      if (dir > 0) ctx.arc(28, shoulderY + 46, arcR, -1.05, 0.85);
+      else ctx.arc(-28, shoulderY + 46, arcR, Math.PI - 0.85, Math.PI + 1.05);
       ctx.stroke();
       ctx.strokeStyle = '#8b939e';
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2.4;
       ctx.beginPath();
-      if (dir > 0) ctx.arc(28, shoulderY + 46, 140, -0.9, 0.72);
-      else ctx.arc(-28, shoulderY + 46, 140, Math.PI - 0.72, Math.PI + 0.9);
+      if (dir > 0) ctx.arc(28, shoulderY + 46, arcR + 14, -0.9, 0.72);
+      else ctx.arc(-28, shoulderY + 46, arcR + 14, Math.PI - 0.72, Math.PI + 0.9);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Giant Serrated Silver Sword!
-    S.drawSerratedSilverSword(ctx, frontHandX, frontHandY, swordAngle, 1.0, s + 75, strokeCol);
+    // Giant Serrated Silver Sword (scales dynamically with K skill!)
+    S.drawSerratedSilverSword(ctx, frontHandX, frontHandY, swordAngle, 1.0, s + 75, strokeCol, bladeMult);
 
     // ---- 7. Three Floating Four-Pointed Stars / Diamonds (三颗悬浮四角星芒) ----
     const starBob1 = Math.sin(tNow * 3.2) * 5;
@@ -667,12 +669,19 @@
   }
 
   // =========================================================
-  // 注册默认角色池
+  // 注册默认角色池（含各角色专属 J / K / L 技能配置）
   // =========================================================
+  const CLASSIC_SKILLS = {
+    j: { id: 'slash', label: '挥剑', icon: '⚔' },
+    k: { id: 'banana', label: '香蕉皮', icon: '🍌' },
+    l: { id: 'orb', label: '星光波', icon: '✦' }
+  };
+
   register({
     id: 'angry',
     name: '怒气大剑客',
     scale: 1.0,
+    skills: CLASSIC_SKILLS,
     metrics: {
       height: 100,
       halfW: 24,
@@ -692,6 +701,7 @@
     id: 'ren',
     name: '「人」字剑客',
     scale: 1.0,
+    skills: CLASSIC_SKILLS,
     metrics: {
       height: 100,
       halfW: 24,
@@ -709,8 +719,13 @@
 
   register({
     id: 'trieye',
-    name: '三眼银剑王',
+    name: '无敌剑',
     scale: 2.35,
+    skills: {
+      j: { id: 'slash', label: '普通攻击', icon: '⚔' },
+      k: { id: 'swordExtend', label: '剑变长', icon: '🗡' },
+      l: { id: 'freezeLight', label: '定身光', icon: '✨' }
+    },
     metrics: {
       height: 238,
       halfW: 54,

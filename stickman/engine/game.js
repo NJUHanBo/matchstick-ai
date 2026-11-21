@@ -96,6 +96,9 @@
       shieldTime: 0,
       invuln: 0,
       cooldowns: { slash: 0, banana: 0, orb: 0 },
+      swordExtendTimer: 0,
+      swordScale: 1.0,
+      frozenTimer: 0,
       walkPhase: 0,
       slipRot: 0,
       aiTimer: 0.35,
@@ -221,6 +224,45 @@
           osc.connect(gain).connect(ac.destination);
           osc.start(now + i * 0.09); osc.stop(now + i * 0.09 + 0.3);
         });
+      },
+      swordExtend() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator(), gain = ac.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(920, now + 0.22);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(gain).connect(ac.destination);
+        osc.start(now); osc.stop(now + 0.26);
+      },
+      freezeLight() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [980, 1480].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + idx * 0.02);
+          osc.frequency.exponentialRampToValueAtTime(f * 1.35, now + 0.16);
+          gain.gain.setValueAtTime(0.08, now + idx * 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.02); osc.stop(now + 0.19);
+        });
+      },
+      frozen() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [1320, 1760, 2093].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.04);
+          gain.gain.setValueAtTime(0.09, now + idx * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.28);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.04); osc.stop(now + idx * 0.04 + 0.30);
+        });
       }
     };
 
@@ -233,6 +275,9 @@
     bus.on('combat:slip', play.slip);
     bus.on('combat:orbCast', play.orb);
     bus.on('combat:jump', play.jump);
+    bus.on('combat:swordExtend', play.swordExtend);
+    bus.on('combat:freezeLight', play.freezeLight);
+    bus.on('combat:frozen', play.frozen);
     bus.on('match:ko', play.ko);
 
     return { ensure };
@@ -422,6 +467,8 @@
       if (attacker) rumble(attacker.id, 70, 0.2, 0.15);
     });
     bus.on('combat:slip', ({ victim }) => rumble(victim.id, 180, 0.45, 0.6));
+    bus.on('combat:swordExtend', ({ fighter }) => rumble(fighter.id, 90, 0.25, 0.3));
+    bus.on('combat:frozen', ({ victim }) => rumble(victim.id, 150, 0.3, 0.55));
     bus.on('match:ko', ({ winner, loser }) => {
       if (loser) rumble(loser.id, 280, 0.8, 0.6);
       if (winner) rumble(winner.id, 160, 0.35, 0.35);
@@ -487,6 +534,20 @@
     });
     bus.on('combat:fly', ({ fighter, word }) => {
       spawnCallout(word, fighter.x - fighter.facing * 36, fighter.y - fighter.metrics.calloutOffsetY, fighter.x, fighter.y - fighter.height * 0.85, 0.75);
+    });
+    bus.on('combat:swordExtend', ({ fighter }) => {
+      spawnSparkles(fighter.x + fighter.facing * 95, fighter.y - 140, 12, 'diamond');
+      spawnCallout('剑变长!', fighter.x - fighter.facing * 26, fighter.y - fighter.metrics.calloutOffsetY, fighter.x, fighter.y - fighter.height * 0.86, 0.85);
+      shake(3.5, 0.12);
+    });
+    bus.on('combat:freezeLight', ({ x, y }) => {
+      spawnSparkles(x, y, 9, 'diamond');
+    });
+    bus.on('combat:frozen', ({ victim }) => {
+      spawnSparkles(victim.x, victim.y - victim.height * 0.5, 12, 'diamond');
+      spawnCallout('静止!', victim.x, victim.y - victim.metrics.calloutOffsetY, victim.x, victim.y - victim.height * 0.75, 0.95);
+      arenaState.hitstop = Math.max(arenaState.hitstop, 0.045);
+      shake(4, 0.12);
     });
     bus.on('match:ko', ({ winner }) => {
       if (winner) {
@@ -565,6 +626,7 @@
       const ox = f.x + f.facing * f.metrics.orbOffsetX;
       const oy = f.y - f.metrics.orbOffsetY;
       arenaState.energyOrbs.push({
+        kind: 'orb',
         owner: f.id,
         x: ox,
         y: oy,
@@ -575,6 +637,50 @@
         rot: 0
       });
       bus.emit('combat:orbCast', { fighter: f, x: ox - f.facing * 6, y: oy });
+    }
+
+    // 无敌剑 K 技能：把剑变长（持续 4.5 秒，攻击距离与伤害显著提升）
+    function startSwordExtend(f) {
+      if (f.cooldowns.banana > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
+      f.swordExtendTimer = 4.5;
+      f.cooldowns.banana = 5.5;
+      bus.emit('combat:swordExtend', { fighter: f });
+    }
+
+    // 无敌剑 L 技能：发射一道光，击中让敌人静止 1 秒
+    function startFreezeLight(f) {
+      if (f.cooldowns.orb > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
+      f.state = 'orb';
+      f.stateTimer = 0.28;
+      f.cooldowns.orb = 2.4;
+      const ox = f.x + f.facing * f.metrics.orbOffsetX;
+      const oy = f.y - f.metrics.orbOffsetY;
+      arenaState.energyOrbs.push({
+        kind: 'freezeLight',
+        owner: f.id,
+        x: ox,
+        y: oy,
+        vx: f.facing * 560,
+        vy: 0,
+        r: 18,
+        life: 1.9,
+        rot: 0
+      });
+      bus.emit('combat:freezeLight', { fighter: f, x: ox, y: oy });
+    }
+
+    function useSkillK(f) {
+      const skillId = f.asset.skills && f.asset.skills.k ? f.asset.skills.k.id : 'banana';
+      if (skillId === 'swordExtend') startSwordExtend(f);
+      else startBanana(f);
+    }
+
+    function useSkillL(f) {
+      const skillId = f.asset.skills && f.asset.skills.l ? f.asset.skills.l.id : 'orb';
+      if (skillId === 'freezeLight') startFreezeLight(f);
+      else startOrb(f);
     }
 
     function triggerKO(winner, loser) {
@@ -636,11 +742,41 @@
       bus.emit('combat:slip', { victim, peelX: peel.x });
     }
 
+    function triggerFrozen(attacker, victim) {
+      if (victim.state === 'ko' || arenaState.matchState === 'ko') return false;
+      if (victim.state === 'shield') {
+        bus.emit('combat:block', { attacker, defender: victim });
+        return 'blocked';
+      }
+      victim.hp = Math.max(1, victim.hp - 6);
+      victim.frozenTimer = 1.0;
+      victim.vx = 0;
+      victim.vy = 0;
+      victim.flying = false;
+      bus.emit('combat:frozen', { attacker, victim });
+      return 'frozen';
+    }
+
     function updateFighter(f, enemy, inp, dt) {
       f.cooldowns.slash = Math.max(0, f.cooldowns.slash - dt);
       f.cooldowns.banana = Math.max(0, f.cooldowns.banana - dt);
       f.cooldowns.orb = Math.max(0, f.cooldowns.orb - dt);
       f.invuln = Math.max(0, f.invuln - dt);
+
+      // 剑变长状态计时与平滑插值
+      if (f.swordExtendTimer > 0) {
+        f.swordExtendTimer = Math.max(0, f.swordExtendTimer - dt);
+      }
+      const targetSwordScale = f.swordExtendTimer > 0 ? 1.85 : 1.0;
+      f.swordScale += (targetSwordScale - f.swordScale) * Math.min(1, dt * 12);
+
+      // 被定身光击中：原地完全静止 1 秒
+      if (f.frozenTimer > 0) {
+        f.frozenTimer = Math.max(0, f.frozenTimer - dt);
+        f.vx = 0;
+        f.vy = 0;
+        return;
+      }
 
       if (f.state === 'ko') {
         f.vy += 1250 * dt;
@@ -676,14 +812,16 @@
           f.slipRot += dt * 11 * (f.vx >= 0 ? 1 : -1);
         }
         if (f.state === 'slash' && !f.slashHitDone && f.stateTimer < 0.21 && f.stateTimer > 0.08) {
-          const reachX = f.x + f.facing * f.metrics.slashReach;
-          const hitW = f.metrics.slashRangeX + enemy.halfW * 0.6;
+          const extMult = f.swordScale > 1.1 ? (1 + (f.swordScale - 1) * 0.92) : 1.0;
+          const reachX = f.x + f.facing * (f.metrics.slashReach * extMult);
+          const hitW = f.metrics.slashRangeX * extMult + enemy.halfW * 0.6;
           const slashBottom = f.y + 8;
-          const slashTop = f.y - f.metrics.slashRangeY * 1.45;
+          const slashTop = f.y - f.metrics.slashRangeY * extMult * 1.45;
           const overlapY = enemy.y >= slashTop && (enemy.y - enemy.height) <= slashBottom;
           if (Math.abs(enemy.x - reachX) < hitW && overlapY) {
             f.slashHitDone = true;
-            damageFighter(f, enemy, 14, f.facing * 240, -175);
+            const dmg = f.swordExtendTimer > 0 ? 19 : 14;
+            damageFighter(f, enemy, dmg, f.facing * (f.swordExtendTimer > 0 ? 300 : 240), -185);
           }
         }
         if (f.stateTimer <= 0) {
@@ -697,9 +835,9 @@
         if (inp.sword) {
           startSlash(f);
         } else if (inp.banana) {
-          startBanana(f);
+          useSkillK(f);
         } else if (inp.orb) {
-          startOrb(f);
+          useSkillL(f);
         } else if (inp.down) {
           f.state = 'shield';
           f.shieldTime += dt;
@@ -860,6 +998,9 @@
             o.vx = -o.vx * 1.15;
             o.life = 2.0;
             bus.emit('combat:parry', { defender: target, x: o.x, y: o.y });
+          } else if (o.kind === 'freezeLight') {
+            triggerFrozen(attacker, target);
+            orbs.splice(i, 1);
           } else {
             damageFighter(attacker, target, 12, Math.sign(o.vx) * 200, -135);
             orbs.splice(i, 1);
@@ -897,7 +1038,8 @@
       const dx = enemy.x - f.x;
       const dist = Math.abs(dx);
       const dir = dx >= 0 ? 1 : -1;
-      const meleeDist = f.metrics.slashReach + enemy.halfW + 18;
+      const extMult = f.swordScale > 1.1 ? (1 + (f.swordScale - 1) * 0.92) : 1.0;
+      const meleeDist = f.metrics.slashReach * extMult + enemy.halfW + 18;
 
       const incomingOrb = arenaState.energyOrbs.find(
         (o) => o.owner !== f.id && Math.abs(o.x - f.x) < 160 && Math.sign(o.vx) === Math.sign(f.x - o.x)
@@ -1258,6 +1400,10 @@
 
     function drawEnergyOrb(o, idx) {
       const s = S.boilSeed(1100 + idx * 23, arenaState.time);
+      if (o.kind === 'freezeLight') {
+        S.drawFreezeLight(ctx, o, s);
+        return;
+      }
       ctx.save();
       ctx.translate(o.x, o.y);
       S.sketchCircle(ctx, 0, 0, o.r, 2.8, '#1e1c1a', '#fffef7', s, 1.3);
@@ -1376,7 +1522,10 @@
       };
       // Draw taller characters behind smaller ones when close so small stickman stays clearly readable
       const drawOrder = arenaState.fighters.slice().sort((a, b) => b.height - a.height);
-      drawOrder.forEach((f) => f.asset.draw(ctx, f, env));
+      drawOrder.forEach((f) => {
+        f.asset.draw(ctx, f, env);
+        S.drawFrozenOverlay(ctx, f, arenaState.time);
+      });
 
       arenaState.energyOrbs.forEach(drawEnergyOrb);
 
@@ -1434,6 +1583,10 @@
     const btnSound = document.getElementById('btnSound');
     const btnRestart = document.getElementById('btnRestart');
     const p2Guide = document.getElementById('p2Guide');
+    const p1SkillsHint = document.getElementById('p1SkillsHint');
+    const padSword = document.getElementById('padSword');
+    const padSkillK = document.getElementById('padSkillK');
+    const padSkillL = document.getElementById('padSkillL');
     const gamepadPill = document.getElementById('gamepadPill');
     const storyCaption = document.getElementById('storyCaption');
 
@@ -1466,6 +1619,16 @@
       btnSound.textContent = systemState.soundEnabled ? '🔊 音效开' : '🔇 音效关';
       selP1.value = systemState.selectedRoles[0];
       selP2.value = systemState.selectedRoles[1];
+
+      // 根据 1P 所选角色资产，自动同步技能按钮与键位提示（UI 不存真值）
+      const p1Asset = Assets.get(systemState.selectedRoles[0]);
+      const sk = p1Asset.skills;
+      if (padSword) padSword.textContent = `${sk.j.icon} ${sk.j.label}`;
+      if (padSkillK) padSkillK.textContent = `${sk.k.icon} ${sk.k.label}`;
+      if (padSkillL) padSkillL.textContent = `${sk.l.icon} ${sk.l.label}`;
+      if (p1SkillsHint) {
+        p1SkillsHint.innerHTML = `<kbd>J</kbd> ${sk.j.label} · <kbd>K</kbd> ${sk.k.label} · <kbd>L</kbd> ${sk.l.label}`;
+      }
     }
 
     bus.on('system:modeChanged', syncAll);

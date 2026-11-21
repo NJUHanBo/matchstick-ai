@@ -324,27 +324,25 @@
           <strong>1P（左）：</strong>
           <kbd>A</kbd><kbd>D</kbd> 移动 ·
           <kbd>W</kbd> 跳/按住飞飘 ·
-          <kbd>J</kbd> 挥剑 ·
-          <kbd>K</kbd> 香蕉皮 ·
-          <kbd>L</kbd> 星光波 ·
+          <span id="p1SkillsHint"><kbd>J</kbd> 挥剑 · <kbd>K</kbd> 香蕉皮 · <kbd>L</kbd> 星光波</span> ·
           <kbd>S</kbd> 圆盾格挡
         </div>
         <div id="p2Guide" style="display:none;">
           <strong>2P（右）：</strong>
           <kbd>←</kbd><kbd>→</kbd> 移动 ·
           <kbd>↑</kbd> 跳/按住飞飘 ·
-          <kbd>1</kbd>/<kbd>N</kbd> 挥剑 ·
-          <kbd>2</kbd>/<kbd>M</kbd> 香蕉皮 ·
-          <kbd>3</kbd>/<kbd>,</kbd> 星光波 ·
+          <kbd>1</kbd>/<kbd>N</kbd> 普攻 ·
+          <kbd>2</kbd>/<kbd>M</kbd> 技能K ·
+          <kbd>3</kbd>/<kbd>,</kbd> 远程L ·
           <kbd>↓</kbd> 圆盾格挡
         </div>
         <div>
           <strong>手柄（支持 1P/2P）：</strong>
           左摇杆/十字键 移动 ·
           <kbd>A</kbd>/<kbd>×</kbd>或上 跳/飞飘 ·
-          <kbd>X</kbd>/<kbd>□</kbd>/<kbd>RB</kbd> 挥剑 ·
-          <kbd>B</kbd>/<kbd>○</kbd> 香蕉皮 ·
-          <kbd>Y</kbd>/<kbd>△</kbd>/<kbd>RT</kbd> 星光波 ·
+          <kbd>X</kbd>/<kbd>□</kbd>/<kbd>RB</kbd> 普攻J ·
+          <kbd>B</kbd>/<kbd>○</kbd> 技能K ·
+          <kbd>Y</kbd>/<kbd>△</kbd>/<kbd>RT</kbd> 远程L ·
           <kbd>LB</kbd>/<kbd>LT</kbd>/下 举盾 ·
           <kbd>Start</kbd> 重来
         </div>
@@ -360,9 +358,9 @@
         <button class="pad-btn skill-shield" data-action="down">🛡 举盾</button>
       </div>
       <div class="pad-group">
-        <button class="pad-btn skill-sword" data-action="sword">⚔ 挥剑</button>
-        <button class="pad-btn skill-banana" data-action="banana">🍌 香蕉皮</button>
-        <button class="pad-btn skill-orb" data-action="orb">✦ 星光波</button>
+        <button class="pad-btn skill-sword" id="padSword" data-action="sword">⚔ 挥剑</button>
+        <button class="pad-btn skill-banana" id="padSkillK" data-action="banana">🍌 香蕉皮</button>
+        <button class="pad-btn skill-orb" id="padSkillL" data-action="orb">✦ 星光波</button>
       </div>
     </div>
   </div>

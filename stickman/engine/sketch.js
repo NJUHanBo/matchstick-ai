@@ -204,17 +204,22 @@
   }
 
   /**
-   * 巨型锯齿银剑（三眼银剑王原画武器：尖头剑柄底、宽护手、双侧锯齿鳍、修长银刃）
+   * 巨型锯齿银剑（无敌剑原画武器：尖头剑柄底、宽护手、双侧锯齿鳍、修长银刃）
+   * @param {number} bladeLenMult 剑刃伸长倍率（默认 1.0，K 技能变长时可达 1.85）
    */
-  function drawSerratedSilverSword(ctx, hx, hy, angle, scale = 1, seed = 60, inkColor = '#2b2d30') {
+  function drawSerratedSilverSword(ctx, hx, hy, angle, scale = 1, seed = 60, inkColor = '#2b2d30', bladeLenMult = 1.0) {
     ctx.save();
     ctx.translate(hx, hy);
     ctx.rotate(angle);
     ctx.scale(scale, scale);
 
-    const silverGrad = ctx.createLinearGradient(-16, -155, 16, 20);
-    silverGrad.addColorStop(0, '#f5f7fa');
-    silverGrad.addColorStop(0.45, '#d7dde5');
+    const tipY = -158 * bladeLenMult;
+    const midY = -88 * bladeLenMult;
+    const finScale = 1 + (bladeLenMult - 1) * 0.65;
+
+    const silverGrad = ctx.createLinearGradient(-16, tipY, 16, 20);
+    silverGrad.addColorStop(0, bladeLenMult > 1.05 ? '#ffffff' : '#f5f7fa');
+    silverGrad.addColorStop(0.45, bladeLenMult > 1.05 ? '#e2ecf8' : '#d7dde5');
     silverGrad.addColorStop(1, '#b6bec9');
 
     ctx.lineCap = 'round';
@@ -239,40 +244,50 @@
     sketchLine(ctx, -23, -1, 23, -1, 3.8, inkColor, seed + 2, 0.7);
     sketchLine(ctx, -21, -2.5, 21, -2.5, 1.4, '#eef2f6', seed + 3, 0.4);
 
-    // Jagged dragon-fin spikes along BOTH sides of lower-middle blade
+    // Jagged dragon-fin spikes along BOTH sides of blade (scales with extension)
     ctx.fillStyle = silverGrad;
     ctx.strokeStyle = inkColor;
     ctx.lineWidth = 2.4;
 
-    // Left fin spikes (4 teeth climbing up)
     ctx.beginPath();
-    ctx.moveTo(-6, -8);
-    ctx.lineTo(-19 + jitter(seed + 4, 0.8), -18);
-    ctx.lineTo(-7, -23);
-    ctx.lineTo(-21 + jitter(seed + 5, 0.8), -36);
-    ctx.lineTo(-7, -42);
-    ctx.lineTo(-19 + jitter(seed + 6, 0.8), -56);
-    ctx.lineTo(-6, -61);
-    ctx.lineTo(-14 + jitter(seed + 7, 0.8), -74);
-    ctx.lineTo(-5, -78);
+    ctx.moveTo(-6, -8 * finScale);
+    ctx.lineTo(-19 + jitter(seed + 4, 0.8), -18 * finScale);
+    ctx.lineTo(-7, -23 * finScale);
+    ctx.lineTo(-21 + jitter(seed + 5, 0.8), -36 * finScale);
+    ctx.lineTo(-7, -42 * finScale);
+    ctx.lineTo(-19 + jitter(seed + 6, 0.8), -56 * finScale);
+    ctx.lineTo(-6, -61 * finScale);
+    ctx.lineTo(-14 + jitter(seed + 7, 0.8), -74 * finScale);
+    ctx.lineTo(-5, -78 * finScale);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Right fin spikes (4 teeth climbing up)
     ctx.beginPath();
-    ctx.moveTo(6, -6);
-    ctx.lineTo(22 + jitter(seed + 8, 0.8), -15);
-    ctx.lineTo(8, -22);
-    ctx.lineTo(25 + jitter(seed + 9, 0.8), -33);
-    ctx.lineTo(8, -41);
-    ctx.lineTo(24 + jitter(seed + 10, 0.8), -52);
-    ctx.lineTo(7, -60);
-    ctx.lineTo(18 + jitter(seed + 11, 0.8), -71);
-    ctx.lineTo(5, -78);
+    ctx.moveTo(6, -6 * finScale);
+    ctx.lineTo(22 + jitter(seed + 8, 0.8), -15 * finScale);
+    ctx.lineTo(8, -22 * finScale);
+    ctx.lineTo(25 + jitter(seed + 9, 0.8), -33 * finScale);
+    ctx.lineTo(8, -41 * finScale);
+    ctx.lineTo(24 + jitter(seed + 10, 0.8), -52 * finScale);
+    ctx.lineTo(7, -60 * finScale);
+    ctx.lineTo(18 + jitter(seed + 11, 0.8), -71 * finScale);
+    ctx.lineTo(5, -78 * finScale);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    // Extended metallic aura glow when sword is elongated
+    if (bladeLenMult > 1.08) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(225, 198, 95, 0.55)';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(0, tipY - 6);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Main long tapering silver blade
     ctx.fillStyle = silverGrad;
@@ -280,17 +295,78 @@
     ctx.lineWidth = 2.8;
     ctx.beginPath();
     ctx.moveTo(-6.5, -2);
-    ctx.lineTo(-4.8 + jitter(seed + 12, 0.6), -88);
-    ctx.lineTo(0, -158 + jitter(seed + 13, 0.9));
-    ctx.lineTo(4.8 + jitter(seed + 14, 0.6), -88);
+    ctx.lineTo(-4.8 + jitter(seed + 12, 0.6), midY);
+    ctx.lineTo(0, tipY + jitter(seed + 13, 0.9));
+    ctx.lineTo(4.8 + jitter(seed + 14, 0.6), midY);
     ctx.lineTo(6.5, -2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
     // Metallic center highlight line
-    sketchLine(ctx, 0, -12, 0, -138, 1.5, 'rgba(255,255,255,0.85)', seed + 15, 0.5);
+    sketchLine(ctx, 0, -12, 0, tipY + 18, 1.7, 'rgba(255,255,255,0.92)', seed + 15, 0.5);
 
+    ctx.restore();
+  }
+
+  /**
+   * 定身光束/光弹（无敌剑远程技能 L：发射一道光，击中让敌人静止 1 秒）
+   */
+  function drawFreezeLight(ctx, o, seed) {
+    const dir = Math.sign(o.vx) || 1;
+    ctx.save();
+    ctx.translate(o.x, o.y);
+
+    // Outer radiant light beam glow
+    const grad = ctx.createLinearGradient(-dir * 52, 0, dir * 24, 0);
+    grad.addColorStop(0, 'rgba(255, 240, 170, 0)');
+    grad.addColorStop(0.55, 'rgba(255, 242, 178, 0.55)');
+    grad.addColorStop(1, 'rgba(255, 252, 232, 0.95)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(-dir * 12, 0, 44, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hand-drawn light rays streaking backward
+    sketchLine(ctx, dir * 18, 0, -dir * 48, 0, 4.2, '#e6b83a', seed + 1, 1.2);
+    sketchLine(ctx, dir * 12, -7, -dir * 34, -10, 2.0, '#1e1c1a', seed + 2, 1.0);
+    sketchLine(ctx, dir * 12, 7, -dir * 34, 10, 2.0, '#1e1c1a', seed + 3, 1.0);
+
+    // Leading bright 4-point star head
+    drawFourPointStar(ctx, dir * 10, 0, 15, 19, '#1e1c1a', '#fffef0', 2.4, seed + 4);
+    drawFourPointStar(ctx, dir * 10, 0, 7, 10, '#d69f22', '#ffffff', 1.6, seed + 5);
+
+    ctx.restore();
+  }
+
+  /**
+   * 敌人被定身（静止 1 秒）时的手绘光环笼罩效果
+   */
+  function drawFrozenOverlay(ctx, f, time) {
+    if (f.frozenTimer <= 0) return;
+    const s = boilSeed(1700 + f.id * 41, time);
+    const cy = f.y - f.height * 0.52;
+    const rx = Math.max(32, f.halfW + 12);
+    const ry = f.height * 0.56;
+
+    ctx.save();
+    // Soft golden-white freeze halo
+    ctx.fillStyle = 'rgba(255, 246, 195, 0.34)';
+    ctx.beginPath();
+    ctx.ellipse(f.x, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Concentric sketchy freeze rings
+    sketchEllipse(ctx, f.x, cy, rx, ry, 2.4, '#c9922c', null, s + 1, 1.2);
+    sketchEllipse(ctx, f.x, cy, rx * 0.82, ry * 0.22, 2.0, '#1e1c1a', null, s + 2, 0.9);
+    drawFourPointStar(ctx, f.x - rx * 0.78, cy - ry * 0.55, 8, 11, '#1e1c1a', '#fffef0', 1.8, s + 3);
+    drawFourPointStar(ctx, f.x + rx * 0.78, cy + ry * 0.35, 7, 10, '#1e1c1a', '#fffef0', 1.8, s + 4);
+
+    // Tiny countdown label ("静止 0.8s")
+    ctx.font = 'bold 13px "PingFang SC", sans-serif';
+    ctx.fillStyle = '#9c6c12';
+    ctx.textAlign = 'center';
+    ctx.fillText(`静止 ${f.frozenTimer.toFixed(1)}s`, f.x, f.y - f.height - 16);
     ctx.restore();
   }
 
@@ -306,6 +382,8 @@
     drawDiamond,
     drawFourPointStar,
     drawBroadSword,
-    drawSerratedSilverSword
+    drawSerratedSilverSword,
+    drawFreezeLight,
+    drawFrozenOverlay
   };
 })(window);
