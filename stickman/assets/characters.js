@@ -298,11 +298,13 @@
     const s = S.boilSeed(800 + f.id * 113, env.time);
     const dir = f.facing;
     const tNow = env.time;
+    const bodyScale = f.bodyScale || 1.0;
+    const isBoosted = f.speedBoostTimer > 0;
     const strokeCol = (f.state === 'hurt' && Math.floor(tNow * 24) % 2 === 0) ? '#b83c2c' : '#1e1c1a';
 
-    // Wide ground shadow beneath floating disc
+    // Wide ground shadow beneath floating disc (scales with shrink!)
     const hAbove = Math.max(0, env.groundY - f.y);
-    const shScale = Math.max(0.4, 1 - hAbove / 420);
+    const shScale = Math.max(0.4, 1 - hAbove / 420) * bodyScale;
     ctx.save();
     ctx.fillStyle = 'rgba(30,28,26,0.13)';
     ctx.beginPath();
@@ -312,6 +314,7 @@
 
     ctx.save();
     ctx.translate(f.x, f.y);
+    ctx.scale(bodyScale, bodyScale);
 
     // KO pose: tilted hover disc & giant armored body collapsed on ground
     if (f.state === 'ko') {
@@ -322,14 +325,11 @@
       ctx.save();
       ctx.translate(dir * 12, -24);
       ctx.rotate(dir * 1.48);
-      // Collapsed torso & head
       ctx.fillStyle = '#f6f2e8';
       ctx.strokeStyle = '#1e1c1a';
       ctx.lineWidth = 3;
-      ctx.strokeRect(-19, -76, 38, 44);
       ctx.fillRect(-19, -76, 38, 44);
       ctx.strokeRect(-19, -76, 38, 44);
-      // Three X eyes
       [-9, 0, 9].forEach((ex, i) => {
         S.sketchLine(ctx, ex - 3, -58, ex + 3, -50, 2.0, '#1e1c1a', s + 10 + i, 0.3);
         S.sketchLine(ctx, ex + 3, -58, ex - 3, -50, 2.0, '#1e1c1a', s + 15 + i, 0.3);
@@ -349,17 +349,57 @@
 
     const hoverBob = f.state === 'fly'
       ? Math.sin(tNow * 6.5 + f.id) * 8
-      : Math.sin(tNow * 3.8 + f.id * 2) * 4;
+      : Math.sin(tNow * (isBoosted ? 9 : 3.8) + f.id * 2) * (isBoosted ? 5.5 : 4);
     const crouch = f.state === 'shield' ? 16 : 0;
-    const tilt = Math.max(-0.14, Math.min(0.14, f.vx * 0.00042));
+    const tilt = Math.max(-0.18, Math.min(0.18, f.vx * 0.00045));
+
+    // ---- 0. Speed-Boost Ultimate Visuals (草图底部双喷射器 UU + 速度线 ===) ----
+    if (isBoosted) {
+      const flicker = Math.sin(tNow * 38) * 4;
+      // Trailing horizontal speed lines behind the hover disc
+      ctx.save();
+      ctx.strokeStyle = 'rgba(30,28,26,0.72)';
+      ctx.lineWidth = 2.6;
+      S.sketchLine(ctx, -dir * 68, -26, -dir * (128 + flicker), -24, 2.8, '#1e1c1a', s + 120, 1.0);
+      S.sketchLine(ctx, -dir * 62, -12, -dir * (114 - flicker), -10, 2.4, '#c94a38', s + 121, 1.0);
+      S.sketchLine(ctx, -dir * 52, -40, -dir * (98 + flicker), -42, 2.0, '#1e1c1a', s + 122, 1.0);
+      ctx.restore();
+    }
 
     // ---- 1. Concentric Floating Oval Hover Disc (底座三层同心圆盘) ----
     ctx.save();
     ctx.translate(0, -18 + hoverBob * 0.55 + crouch * 0.3);
     ctx.rotate(tilt);
+
+    // Twin U-shaped thruster pods under disc (草图双喷口 UU，加速大招时喷出火焰!)
+    [-22, 22].forEach((tx, idx) => {
+      ctx.save();
+      ctx.translate(tx, 14);
+      ctx.fillStyle = isBoosted ? '#fff1c2' : '#f6f2e8';
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(-12, -2);
+      ctx.lineTo(-10, 14 + (isBoosted ? 5 + Math.sin(tNow * 40 + idx) * 4 : 0));
+      ctx.quadraticCurveTo(0, 22 + (isBoosted ? 8 : 0), 10, 14 + (isBoosted ? 5 + Math.cos(tNow * 40 + idx) * 4 : 0));
+      ctx.lineTo(12, -2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Inner U thruster core
+      ctx.strokeStyle = isBoosted ? '#c94a38' : strokeCol;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-6, 0);
+      ctx.lineTo(-5, 9 + (isBoosted ? 4 : 0));
+      ctx.quadraticCurveTo(0, 14 + (isBoosted ? 6 : 0), 5, 9 + (isBoosted ? 4 : 0));
+      ctx.lineTo(6, 0);
+      ctx.stroke();
+      ctx.restore();
+    });
+
     S.sketchEllipse(ctx, 0, 0, 62, 18, 3.2, strokeCol, '#f6f2e8', s + 1, 1.3);
     S.sketchEllipse(ctx, 0, -1, 44, 12.5, 2.8, strokeCol, '#f6f2e8', s + 2, 1.1);
-    // Inner rounded pebble/pad
     ctx.fillStyle = '#f6f2e8';
     ctx.strokeStyle = strokeCol;
     ctx.lineWidth = 2.6;
@@ -669,19 +709,44 @@
   }
 
   // =========================================================
-  // 注册默认角色池（含各角色专属 J / K / L 技能配置）
+  // 注册默认角色池（含各角色基础属性、J / K / L / ; 技能与可调参数清单）
   // =========================================================
   const CLASSIC_SKILLS = {
     j: { id: 'slash', label: '挥剑', icon: '⚔' },
     k: { id: 'banana', label: '香蕉皮', icon: '🍌' },
-    l: { id: 'orb', label: '星光波', icon: '✦' }
+    l: { id: 'orb', label: '星光波', icon: '✦' },
+    ult: null
   };
+
+  const CLASSIC_BASE_STATS = {
+    maxHp: 100,
+    moveSpeed: 255,
+    slashCooldown: 0.38,
+    slashDamage: 14,
+    kCooldown: 1.65,
+    slipDuration: 0.85,
+    lCooldown: 1.25,
+    orbDamage: 12
+  };
+
+  const CLASSIC_TUNABLES = [
+    { key: 'maxHp', label: '最大血量', min: 50, max: 300, step: 10, unit: '' },
+    { key: 'moveSpeed', label: '移动速度', min: 100, max: 450, step: 5, unit: '' },
+    { key: 'slashCooldown', label: '普攻冷却（越小越快）', min: 0.15, max: 1.5, step: 0.05, unit: '秒' },
+    { key: 'slashDamage', label: '普攻伤害', min: 4, max: 40, step: 1, unit: '' },
+    { key: 'kCooldown', label: '香蕉皮冷却 (K)', min: 0.5, max: 6.0, step: 0.1, unit: '秒' },
+    { key: 'slipDuration', label: '滑倒硬直时长', min: 0.3, max: 2.5, step: 0.05, unit: '秒' },
+    { key: 'lCooldown', label: '星光波冷却 (L)', min: 0.4, max: 5.0, step: 0.1, unit: '秒' },
+    { key: 'orbDamage', label: '星光波伤害', min: 4, max: 35, step: 1, unit: '' }
+  ];
 
   register({
     id: 'angry',
     name: '怒气大剑客',
     scale: 1.0,
     skills: CLASSIC_SKILLS,
+    baseStats: Object.assign({}, CLASSIC_BASE_STATS),
+    tunables: CLASSIC_TUNABLES,
     metrics: {
       height: 100,
       halfW: 24,
@@ -702,6 +767,8 @@
     name: '「人」字剑客',
     scale: 1.0,
     skills: CLASSIC_SKILLS,
+    baseStats: Object.assign({}, CLASSIC_BASE_STATS),
+    tunables: CLASSIC_TUNABLES,
     metrics: {
       height: 100,
       halfW: 24,
@@ -723,9 +790,41 @@
     scale: 2.35,
     skills: {
       j: { id: 'slash', label: '普通攻击', icon: '⚔' },
-      k: { id: 'swordExtend', label: '剑变长', icon: '🗡' },
-      l: { id: 'freezeLight', label: '定身光', icon: '✨' }
+      k: { id: 'shrink', label: '身体变小', icon: '🔽' },
+      l: { id: 'freezeLight', label: '定身光', icon: '✨' },
+      ult: { id: 'speedBoost', label: '速度加快', icon: '🚀' }
     },
+    baseStats: {
+      maxHp: 140,             // 比普通小人高 40%
+      moveSpeed: 165,         // 原始速度慢
+      slashCooldown: 0.72,    // 原始攻速慢
+      slashDamage: 18,
+      kCooldown: 7.0,
+      shrinkScale: 0.48,      // K 变小倍率（从大到小）
+      shrinkDuration: 4.5,    // 变小持续时间
+      lCooldown: 3.2,
+      freezeDuration: 1.5,    // L 硬控 1.5 秒
+      freezeDamage: 6,
+      ultCooldown: 9.0,       // ; 大招冷却
+      ultDuration: 5.0,       // ; 加速大招持续时间
+      ultSpeedMult: 2.15,     // 移速加快倍率
+      ultAtkSpeedMult: 1.65   // 攻速加快倍率
+    },
+    tunables: [
+      { key: 'maxHp', label: '最大血量', min: 80, max: 350, step: 10, unit: '' },
+      { key: 'moveSpeed', label: '原始移动速度', min: 80, max: 360, step: 5, unit: '' },
+      { key: 'slashCooldown', label: '原始普攻冷却（越小越快）', min: 0.2, max: 1.6, step: 0.04, unit: '秒' },
+      { key: 'slashDamage', label: '普攻伤害 (J)', min: 6, max: 45, step: 1, unit: '' },
+      { key: 'shrinkScale', label: '变小体型倍率 (K)', min: 0.3, max: 0.85, step: 0.02, unit: '倍' },
+      { key: 'shrinkDuration', label: '变小持续时间 (K)', min: 1.5, max: 12.0, step: 0.5, unit: '秒' },
+      { key: 'kCooldown', label: '变小技能冷却 (K)', min: 1.5, max: 15.0, step: 0.5, unit: '秒' },
+      { key: 'freezeDuration', label: '定身光硬控时长 (L)', min: 0.5, max: 4.0, step: 0.1, unit: '秒' },
+      { key: 'lCooldown', label: '定身光冷却 (L)', min: 1.0, max: 10.0, step: 0.2, unit: '秒' },
+      { key: 'ultSpeedMult', label: '大招移速倍率 (;)', min: 1.2, max: 3.5, step: 0.05, unit: '倍' },
+      { key: 'ultAtkSpeedMult', label: '大招攻速倍率 (;)', min: 1.1, max: 3.0, step: 0.05, unit: '倍' },
+      { key: 'ultDuration', label: '大招持续时间 (;)', min: 2.0, max: 12.0, step: 0.5, unit: '秒' },
+      { key: 'ultCooldown', label: '大招冷却 (;)', min: 3.0, max: 20.0, step: 0.5, unit: '秒' }
+    ],
     metrics: {
       height: 238,
       halfW: 54,

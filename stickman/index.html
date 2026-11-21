@@ -257,6 +257,104 @@
   .pad-btn.skill-orb { background: #e8f3fa; }
   .pad-btn.skill-shield { background: #edf5ea; }
   .pad-btn.skill-fly { background: #f2ecfa; }
+  .pad-btn.skill-ult { background: #ffe4d6; border-color: #b83c2c; color: #8c2216; }
+
+  /* 前台角色参数设置弹窗（手绘纸面风格） */
+  .settings-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 28, 26, 0.42);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 999;
+  }
+
+  .settings-backdrop.open { display: flex; }
+
+  .settings-modal {
+    width: min(620px, 100%);
+    max-height: 86vh;
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 8px 12px 9px 11px / 11px 8px 12px 9px;
+    box-shadow: 7px 8px 0 rgba(30,28,26,0.32);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 2px dashed rgba(30,28,26,0.28);
+  }
+
+  .settings-header h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 16px 6px;
+  }
+
+  .settings-body {
+    padding: 8px 16px 14px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px 14px;
+  }
+
+  .param-row {
+    background: #fffdf8;
+    border: 1.8px solid rgba(30,28,26,0.55);
+    border-radius: 7px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .param-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  .param-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--accent);
+    font-weight: 800;
+  }
+
+  .param-row input[type="range"] {
+    width: 100%;
+    accent-color: var(--ink);
+    cursor: pointer;
+  }
+
+  .settings-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 2px dashed rgba(30,28,26,0.28);
+    background: var(--paper-dark);
+  }
 
   .story-caption {
     position: absolute;
@@ -307,6 +405,7 @@
         </span>
         <button class="sketch-btn" id="btnTime" title="切换太阳 / 月亮">☀ 自动日夜</button>
         <button class="sketch-btn accent" id="btnStory">▶ 播原画六格</button>
+        <button class="sketch-btn" id="btnSettings">⚙ 设置</button>
         <button class="sketch-btn" id="btnSound">🔊 音效开</button>
         <button class="sketch-btn" id="btnRestart">↻ 重来</button>
         <span class="gamepad-pill" id="gamepadPill" title="插上或蓝牙连接手柄后，按手柄任意键即可激活">🎮 手柄未连接</span>
@@ -334,6 +433,7 @@
           <kbd>1</kbd>/<kbd>N</kbd> 普攻 ·
           <kbd>2</kbd>/<kbd>M</kbd> 技能K ·
           <kbd>3</kbd>/<kbd>,</kbd> 远程L ·
+          <kbd>4</kbd>/<kbd>/</kbd> 大招 ·
           <kbd>↓</kbd> 圆盾格挡
         </div>
         <div>
@@ -343,6 +443,7 @@
           <kbd>X</kbd>/<kbd>□</kbd>/<kbd>RB</kbd> 普攻J ·
           <kbd>B</kbd>/<kbd>○</kbd> 技能K ·
           <kbd>Y</kbd>/<kbd>△</kbd>/<kbd>RT</kbd> 远程L ·
+          <kbd>Select</kbd>/<kbd>R3</kbd> 大招 ·
           <kbd>LB</kbd>/<kbd>LT</kbd>/下 举盾 ·
           <kbd>Start</kbd> 重来
         </div>
@@ -361,6 +462,26 @@
         <button class="pad-btn skill-sword" id="padSword" data-action="sword">⚔ 挥剑</button>
         <button class="pad-btn skill-banana" id="padSkillK" data-action="banana">🍌 香蕉皮</button>
         <button class="pad-btn skill-orb" id="padSkillL" data-action="orb">✦ 星光波</button>
+        <button class="pad-btn skill-ult" id="padSkillUlt" data-action="ult" style="display:none;">🚀 速度加快</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 角色与技能参数前台设置面板（UI 不存真值，直接读写 systemState.tuning） -->
+  <div class="settings-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h2 id="settingsTitle">⚙ 角色与技能参数设置</h2>
+        <button class="sketch-btn" id="btnCloseSettings">✕ 关闭</button>
+      </div>
+      <div class="settings-tabs" id="settingsTabs"></div>
+      <div class="settings-body" id="settingsBody"></div>
+      <div class="settings-footer">
+        <span style="font-size:12px; color:var(--ink-soft);">修改自动保存至浏览器本地</span>
+        <div style="display:flex; gap:8px;">
+          <button class="sketch-btn" id="btnResetRoleParams">恢复当前角色默认</button>
+          <button class="sketch-btn active" id="btnApplyRestart">应用并重开</button>
+        </div>
       </div>
     </div>
   </div>

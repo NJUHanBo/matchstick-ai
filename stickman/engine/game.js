@@ -31,6 +31,24 @@
   // =========================================================
   const bus = PaperArena.createEventBus();
 
+  // 第 5 层：玩家变量（localStorage 持久化的角色/技能调参）
+  const TUNING_STORAGE_KEY = 'paperArena_tuning_v1';
+  function loadTuning() {
+    try {
+      const raw = global.localStorage && global.localStorage.getItem(TUNING_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      return {};
+    }
+  }
+  function saveTuning(tuning) {
+    try {
+      if (global.localStorage) {
+        global.localStorage.setItem(TUNING_STORAGE_KEY, JSON.stringify(tuning));
+      }
+    } catch (_) {}
+  }
+
   // 第 4 层：系统属性（切局/重开保留）
   const systemState = {
     gameMode: '1p',           // '1p' | '2p'
@@ -38,8 +56,17 @@
     timeMode: 'auto',         // 'auto' | 'day' | 'night'
     soundEnabled: true,
     selectedRoles: ['angry', 'ren'],
-    gamepadCount: 0
+    gamepadCount: 0,
+    settingsOpen: false,
+    settingsTab: 'trieye',
+    tuning: loadTuning()
   };
+
+  function getEffectiveStats(roleId) {
+    const asset = Assets.get(roleId);
+    const overrides = (systemState.tuning && systemState.tuning[asset.id]) || {};
+    return Object.assign({}, asset.baseStats, overrides);
+  }
 
   // 第 3 层：地图/单局属性（每局重开时重建）
   let arenaState = createFreshArenaState();
@@ -68,14 +95,16 @@
     };
   }
 
-  // 第 2 层：角色实体工厂（自身属性 + 动画资产）
+  // 第 2 层：角色实体工厂（自身属性 + 动画资产 + 生效参数）
   function createFighter(id, roleId, startX, facing) {
     const asset = Assets.get(roleId);
+    const stats = getEffectiveStats(asset.id);
     return {
       id,
       role: asset.id,
       asset,
       metrics: asset.metrics,
+      stats,
       name: asset.name,
       height: asset.metrics.height,
       halfW: asset.metrics.halfW,
@@ -84,8 +113,8 @@
       vx: 0,
       vy: 0,
       facing,
-      hp: 100,
-      maxHp: 100,
+      hp: stats.maxHp,
+      maxHp: stats.maxHp,
       flyEnergy: 100,
       maxFlyEnergy: 100,
       onGround: true,
@@ -95,8 +124,10 @@
       slashHitDone: false,
       shieldTime: 0,
       invuln: 0,
-      cooldowns: { slash: 0, banana: 0, orb: 0 },
-      swordExtendTimer: 0,
+      cooldowns: { slash: 0, banana: 0, orb: 0, ult: 0 },
+      shrinkTimer: 0,
+      bodyScale: 1.0,
+      speedBoostTimer: 0,
       swordScale: 1.0,
       frozenTimer: 0,
       walkPhase: 0,
@@ -225,17 +256,31 @@
           osc.start(now + i * 0.09); osc.stop(now + i * 0.09 + 0.3);
         });
       },
-      swordExtend() {
+      shrink() {
         const ac = ensure(); if (!ac) return;
         const now = ac.currentTime;
         const osc = ac.createOscillator(), gain = ac.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(280, now);
-        osc.frequency.exponentialRampToValueAtTime(920, now + 0.22);
-        gain.gain.setValueAtTime(0.09, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(760, now);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 0.18);
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
         osc.connect(gain).connect(ac.destination);
-        osc.start(now); osc.stop(now + 0.26);
+        osc.start(now); osc.stop(now + 0.21);
+      },
+      speedBoost() {
+        const ac = ensure(); if (!ac) return;
+        const now = ac.currentTime;
+        [330, 495, 660, 990].forEach((f, idx) => {
+          const osc = ac.createOscillator(), gain = ac.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + idx * 0.04);
+          osc.frequency.exponentialRampToValueAtTime(f * 1.4, now + idx * 0.04 + 0.14);
+          gain.gain.setValueAtTime(0.07, now + idx * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.16);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(now + idx * 0.04); osc.stop(now + idx * 0.04 + 0.17);
+        });
       },
       freezeLight() {
         const ac = ensure(); if (!ac) return;
@@ -275,7 +320,8 @@
     bus.on('combat:slip', play.slip);
     bus.on('combat:orbCast', play.orb);
     bus.on('combat:jump', play.jump);
-    bus.on('combat:swordExtend', play.swordExtend);
+    bus.on('combat:shrink', play.shrink);
+    bus.on('combat:speedBoost', play.speedBoost);
     bus.on('combat:freezeLight', play.freezeLight);
     bus.on('combat:frozen', play.frozen);
     bus.on('match:ko', play.ko);
@@ -291,13 +337,13 @@
     const justPressed = new Set();
     const touchState = {
       left: false, right: false, up: false, down: false,
-      sword: false, banana: false, orb: false
+      sword: false, banana: false, orb: false, ult: false
     };
     const touchJustPressed = new Set();
 
     const gpPrev = [
-      { up: false, sword: false, banana: false, orb: false, start: false },
-      { up: false, sword: false, banana: false, orb: false, start: false }
+      { up: false, sword: false, banana: false, orb: false, ult: false, start: false },
+      { up: false, sword: false, banana: false, orb: false, ult: false, start: false }
     ];
     const activeGamepads = [null, null];
 
@@ -345,10 +391,10 @@
       const gp = activeGamepads[slotIdx];
       const prev = gpPrev[slotIdx];
       if (!gp) {
-        prev.up = prev.sword = prev.banana = prev.orb = prev.start = false;
+        prev.up = prev.sword = prev.banana = prev.orb = prev.ult = prev.start = false;
         return {
           left: false, right: false, up: false, upPressed: false,
-          down: false, sword: false, banana: false, orb: false, startPressed: false
+          down: false, sword: false, banana: false, orb: false, ult: false, startPressed: false
         };
       }
 
@@ -362,6 +408,7 @@
       const swordNow = btnPressed(gp, 2) || btnPressed(gp, 5);
       const bananaNow = btnPressed(gp, 1);
       const orbNow = btnPressed(gp, 3) || btnPressed(gp, 7);
+      const ultNow = btnPressed(gp, 8) || btnPressed(gp, 10) || btnPressed(gp, 11);
       const startNow = btnPressed(gp, 9);
 
       const res = {
@@ -371,15 +418,17 @@
         sword: swordNow && !prev.sword,
         banana: bananaNow && !prev.banana,
         orb: orbNow && !prev.orb,
+        ult: ultNow && !prev.ult,
         startPressed: startNow && !prev.start
       };
       prev.up = up;
       prev.sword = swordNow;
       prev.banana = bananaNow;
       prev.orb = orbNow;
+      prev.ult = ultNow;
       prev.start = startNow;
 
-      if (res.upPressed || res.sword || res.banana || res.orb || res.startPressed) {
+      if (res.upPressed || res.sword || res.banana || res.orb || res.ult || res.startPressed) {
         AudioSystem.ensure();
       }
       return res;
@@ -387,7 +436,7 @@
 
     function readPlayer(playerIdx) {
       const gp = readGamepadSlot(playerIdx);
-      if (gp.startPressed && !arenaState.story.active) {
+      if (gp.startPressed && !arenaState.story.active && !systemState.settingsOpen) {
         Commands.resetMatch();
       }
 
@@ -401,7 +450,8 @@
           down: keys.has('KeyS') || touchState.down || (singlePArrows && keys.has('ArrowDown')) || gp.down,
           sword: justPressed.has('KeyJ') || touchJustPressed.has('sword') || gp.sword,
           banana: justPressed.has('KeyK') || touchJustPressed.has('banana') || gp.banana,
-          orb: justPressed.has('KeyL') || touchJustPressed.has('orb') || gp.orb
+          orb: justPressed.has('KeyL') || touchJustPressed.has('orb') || gp.orb,
+          ult: justPressed.has('Semicolon') || touchJustPressed.has('ult') || gp.ult
         };
       }
       return {
@@ -412,7 +462,8 @@
         down: keys.has('ArrowDown') || gp.down,
         sword: justPressed.has('Digit1') || justPressed.has('Numpad1') || justPressed.has('KeyN') || gp.sword,
         banana: justPressed.has('Digit2') || justPressed.has('Numpad2') || justPressed.has('KeyM') || gp.banana,
-        orb: justPressed.has('Digit3') || justPressed.has('Numpad3') || justPressed.has('Comma') || gp.orb
+        orb: justPressed.has('Digit3') || justPressed.has('Numpad3') || justPressed.has('Comma') || gp.orb,
+        ult: justPressed.has('Digit4') || justPressed.has('Numpad4') || justPressed.has('Slash') || gp.ult
       };
     }
 
@@ -423,6 +474,10 @@
 
     function bindEvents() {
       global.addEventListener('keydown', (e) => {
+        if (systemState.settingsOpen) {
+          if (e.code === 'Escape') Commands.closeSettings();
+          return;
+        }
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
           e.preventDefault();
         }
@@ -467,7 +522,8 @@
       if (attacker) rumble(attacker.id, 70, 0.2, 0.15);
     });
     bus.on('combat:slip', ({ victim }) => rumble(victim.id, 180, 0.45, 0.6));
-    bus.on('combat:swordExtend', ({ fighter }) => rumble(fighter.id, 90, 0.25, 0.3));
+    bus.on('combat:shrink', ({ fighter }) => rumble(fighter.id, 80, 0.2, 0.3));
+    bus.on('combat:speedBoost', ({ fighter }) => rumble(fighter.id, 140, 0.5, 0.4));
     bus.on('combat:frozen', ({ victim }) => rumble(victim.id, 150, 0.3, 0.55));
     bus.on('match:ko', ({ winner, loser }) => {
       if (loser) rumble(loser.id, 280, 0.8, 0.6);
@@ -535,10 +591,14 @@
     bus.on('combat:fly', ({ fighter, word }) => {
       spawnCallout(word, fighter.x - fighter.facing * 36, fighter.y - fighter.metrics.calloutOffsetY, fighter.x, fighter.y - fighter.height * 0.85, 0.75);
     });
-    bus.on('combat:swordExtend', ({ fighter }) => {
-      spawnSparkles(fighter.x + fighter.facing * 95, fighter.y - 140, 12, 'diamond');
-      spawnCallout('剑变长!', fighter.x - fighter.facing * 26, fighter.y - fighter.metrics.calloutOffsetY, fighter.x, fighter.y - fighter.height * 0.86, 0.85);
-      shake(3.5, 0.12);
+    bus.on('combat:shrink', ({ fighter }) => {
+      spawnSparkles(fighter.x, fighter.y - fighter.height * 0.5, 10, 'dot');
+      spawnCallout('变小!', fighter.x - fighter.facing * 24, fighter.y - Math.max(120, fighter.height + 28), fighter.x, fighter.y - fighter.height * 0.6, 0.8);
+    });
+    bus.on('combat:speedBoost', ({ fighter }) => {
+      spawnSparkles(fighter.x, fighter.y - 26, 14, 'diamond');
+      spawnCallout('速度加快!', fighter.x - fighter.facing * 24, fighter.y - Math.max(130, fighter.height + 34), fighter.x, fighter.y - fighter.height * 0.78, 0.95);
+      shake(4.5, 0.14);
     });
     bus.on('combat:freezeLight', ({ x, y }) => {
       spawnSparkles(x, y, 9, 'diamond');
@@ -584,11 +644,13 @@
     function startSlash(f) {
       if (f.cooldowns.slash > 0) return;
       if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
+      const atkMult = f.speedBoostTimer > 0 ? (f.stats.ultAtkSpeedMult || 1.65) : 1.0;
+      const baseCd = f.stats.slashCooldown || 0.38;
       f.state = 'slash';
-      f.stateTimer = 0.28;
+      f.stateTimer = Math.max(0.18, Math.min(0.32, 0.28 / Math.sqrt(atkMult)));
       f.slashHitDone = false;
-      f.cooldowns.slash = 0.38;
-      f.vx += f.facing * 95;
+      f.cooldowns.slash = baseCd / atkMult;
+      f.vx += f.facing * (f.speedBoostTimer > 0 ? 135 : 95);
       bus.emit('combat:slash', { fighter: f });
     }
 
@@ -602,11 +664,12 @@
       }
       f.state = 'throw';
       f.stateTimer = 0.22;
-      f.cooldowns.banana = 1.65;
+      f.cooldowns.banana = f.stats.kCooldown || 1.65;
       arenaState.bananaPeels.push({
         owner: f.id,
-        x: f.x + f.facing * f.metrics.bananaOffsetX,
-        y: f.y - f.metrics.bananaOffsetY,
+        slipDuration: f.stats.slipDuration || 0.85,
+        x: f.x + f.facing * f.metrics.bananaOffsetX * f.bodyScale,
+        y: f.y - f.metrics.bananaOffsetY * f.bodyScale,
         vx: f.facing * 290,
         vy: -240,
         landed: false,
@@ -622,12 +685,13 @@
       if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
       f.state = 'orb';
       f.stateTimer = 0.30;
-      f.cooldowns.orb = 1.25;
-      const ox = f.x + f.facing * f.metrics.orbOffsetX;
-      const oy = f.y - f.metrics.orbOffsetY;
+      f.cooldowns.orb = f.stats.lCooldown || 1.25;
+      const ox = f.x + f.facing * f.metrics.orbOffsetX * f.bodyScale;
+      const oy = f.y - Math.max(46, f.metrics.orbOffsetY * f.bodyScale);
       arenaState.energyOrbs.push({
         kind: 'orb',
         owner: f.id,
+        damage: f.stats.orbDamage || 12,
         x: ox,
         y: oy,
         vx: f.facing * 430,
@@ -639,27 +703,29 @@
       bus.emit('combat:orbCast', { fighter: f, x: ox - f.facing * 6, y: oy });
     }
 
-    // 无敌剑 K 技能：把剑变长（持续 4.5 秒，攻击距离与伤害显著提升）
-    function startSwordExtend(f) {
+    // 无敌剑 K 技能：让身体变小（从大到小，体积与受击框同步缩小）
+    function startShrink(f) {
       if (f.cooldowns.banana > 0) return;
       if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
-      f.swordExtendTimer = 4.5;
-      f.cooldowns.banana = 5.5;
-      bus.emit('combat:swordExtend', { fighter: f });
+      f.shrinkTimer = f.stats.shrinkDuration || 4.5;
+      f.cooldowns.banana = f.stats.kCooldown || 7.0;
+      bus.emit('combat:shrink', { fighter: f });
     }
 
-    // 无敌剑 L 技能：发射一道光，击中让敌人静止 1 秒
+    // 无敌剑 L 技能：发射一道光，击中让敌人硬控静止（默认 1.5 秒）
     function startFreezeLight(f) {
       if (f.cooldowns.orb > 0) return;
       if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
       f.state = 'orb';
       f.stateTimer = 0.28;
-      f.cooldowns.orb = 2.4;
-      const ox = f.x + f.facing * f.metrics.orbOffsetX;
-      const oy = f.y - f.metrics.orbOffsetY;
+      f.cooldowns.orb = f.stats.lCooldown || 3.2;
+      const ox = f.x + f.facing * f.metrics.orbOffsetX * f.bodyScale;
+      const oy = f.y - Math.max(46, f.metrics.orbOffsetY * f.bodyScale);
       arenaState.energyOrbs.push({
         kind: 'freezeLight',
         owner: f.id,
+        freezeDuration: f.stats.freezeDuration || 1.5,
+        damage: f.stats.freezeDamage || 6,
         x: ox,
         y: oy,
         vx: f.facing * 560,
@@ -671,9 +737,18 @@
       bus.emit('combat:freezeLight', { fighter: f, x: ox, y: oy });
     }
 
+    // 无敌剑大招（; 键）：速度加快（双喷射器点火，移速与攻速显著加快）
+    function startSpeedBoost(f) {
+      if (f.cooldowns.ult > 0) return;
+      if (['slip', 'hurt', 'ko', 'walkoff'].includes(f.state)) return;
+      f.speedBoostTimer = f.stats.ultDuration || 5.0;
+      f.cooldowns.ult = f.stats.ultCooldown || 9.0;
+      bus.emit('combat:speedBoost', { fighter: f });
+    }
+
     function useSkillK(f) {
       const skillId = f.asset.skills && f.asset.skills.k ? f.asset.skills.k.id : 'banana';
-      if (skillId === 'swordExtend') startSwordExtend(f);
+      if (skillId === 'shrink') startShrink(f);
       else startBanana(f);
     }
 
@@ -681,6 +756,12 @@
       const skillId = f.asset.skills && f.asset.skills.l ? f.asset.skills.l.id : 'orb';
       if (skillId === 'freezeLight') startFreezeLight(f);
       else startOrb(f);
+    }
+
+    function useSkillUlt(f) {
+      const ult = f.asset.skills && f.asset.skills.ult;
+      if (!ult) return;
+      if (ult.id === 'speedBoost') startSpeedBoost(f);
     }
 
     function triggerKO(winner, loser) {
@@ -732,7 +813,7 @@
     function triggerSlip(victim, peel) {
       if (victim.state === 'ko' || arenaState.matchState === 'ko') return;
       victim.state = 'slip';
-      victim.stateTimer = 0.85;
+      victim.stateTimer = peel.slipDuration || 0.85;
       victim.slipRot = 0;
       victim.onGround = false;
       victim.flying = false;
@@ -742,18 +823,18 @@
       bus.emit('combat:slip', { victim, peelX: peel.x });
     }
 
-    function triggerFrozen(attacker, victim) {
+    function triggerFrozen(attacker, victim, duration = 1.5, dmg = 6) {
       if (victim.state === 'ko' || arenaState.matchState === 'ko') return false;
       if (victim.state === 'shield') {
         bus.emit('combat:block', { attacker, defender: victim });
         return 'blocked';
       }
-      victim.hp = Math.max(1, victim.hp - 6);
-      victim.frozenTimer = 1.0;
+      victim.hp = Math.max(1, victim.hp - dmg);
+      victim.frozenTimer = duration;
       victim.vx = 0;
       victim.vy = 0;
       victim.flying = false;
-      bus.emit('combat:frozen', { attacker, victim });
+      bus.emit('combat:frozen', { attacker, victim, duration });
       return 'frozen';
     }
 
@@ -761,16 +842,19 @@
       f.cooldowns.slash = Math.max(0, f.cooldowns.slash - dt);
       f.cooldowns.banana = Math.max(0, f.cooldowns.banana - dt);
       f.cooldowns.orb = Math.max(0, f.cooldowns.orb - dt);
+      f.cooldowns.ult = Math.max(0, f.cooldowns.ult - dt);
       f.invuln = Math.max(0, f.invuln - dt);
 
-      // 剑变长状态计时与平滑插值
-      if (f.swordExtendTimer > 0) {
-        f.swordExtendTimer = Math.max(0, f.swordExtendTimer - dt);
-      }
-      const targetSwordScale = f.swordExtendTimer > 0 ? 1.85 : 1.0;
-      f.swordScale += (targetSwordScale - f.swordScale) * Math.min(1, dt * 12);
+      // 身体变小（K）与加速大招（;）计时及实时体积更新
+      if (f.shrinkTimer > 0) f.shrinkTimer = Math.max(0, f.shrinkTimer - dt);
+      if (f.speedBoostTimer > 0) f.speedBoostTimer = Math.max(0, f.speedBoostTimer - dt);
 
-      // 被定身光击中：原地完全静止 1 秒
+      const targetBodyScale = f.shrinkTimer > 0 ? (f.stats.shrinkScale || 0.48) : 1.0;
+      f.bodyScale += (targetBodyScale - f.bodyScale) * Math.min(1, dt * 11);
+      f.height = f.metrics.height * f.bodyScale;
+      f.halfW = f.metrics.halfW * f.bodyScale;
+
+      // 被定身光击中：原地完全静止
       if (f.frozenTimer > 0) {
         f.frozenTimer = Math.max(0, f.frozenTimer - dt);
         f.vx = 0;
@@ -811,17 +895,16 @@
         if (f.state === 'slip') {
           f.slipRot += dt * 11 * (f.vx >= 0 ? 1 : -1);
         }
-        if (f.state === 'slash' && !f.slashHitDone && f.stateTimer < 0.21 && f.stateTimer > 0.08) {
-          const extMult = f.swordScale > 1.1 ? (1 + (f.swordScale - 1) * 0.92) : 1.0;
-          const reachX = f.x + f.facing * (f.metrics.slashReach * extMult);
-          const hitW = f.metrics.slashRangeX * extMult + enemy.halfW * 0.6;
+        if (f.state === 'slash' && !f.slashHitDone && f.stateTimer < 0.21 && f.stateTimer > 0.06) {
+          const reachX = f.x + f.facing * (f.metrics.slashReach * f.bodyScale);
+          const hitW = f.metrics.slashRangeX * f.bodyScale + enemy.halfW * 0.6;
           const slashBottom = f.y + 8;
-          const slashTop = f.y - f.metrics.slashRangeY * extMult * 1.45;
+          const slashTop = f.y - f.metrics.slashRangeY * f.bodyScale * 1.45;
           const overlapY = enemy.y >= slashTop && (enemy.y - enemy.height) <= slashBottom;
           if (Math.abs(enemy.x - reachX) < hitW && overlapY) {
             f.slashHitDone = true;
-            const dmg = f.swordExtendTimer > 0 ? 19 : 14;
-            damageFighter(f, enemy, dmg, f.facing * (f.swordExtendTimer > 0 ? 300 : 240), -185);
+            const dmg = f.stats.slashDamage || 14;
+            damageFighter(f, enemy, dmg, f.facing * 240, -175);
           }
         }
         if (f.stateTimer <= 0) {
@@ -832,6 +915,9 @@
 
       const locked = ['slash', 'throw', 'orb', 'hurt', 'slip'].includes(f.state);
       if (!locked) {
+        if (inp.ult) {
+          useSkillUlt(f);
+        }
         if (inp.sword) {
           startSlash(f);
         } else if (inp.banana) {
@@ -845,7 +931,10 @@
           f.flying = false;
         } else {
           f.shieldTime = 0;
-          const moveSpeed = f.flying ? 275 : 255;
+          const baseSpd = f.stats.moveSpeed || 255;
+          const boostMult = f.speedBoostTimer > 0 ? (f.stats.ultSpeedMult || 2.15) : 1.0;
+          const shrinkAgility = f.shrinkTimer > 0 ? 1.18 : 1.0;
+          const moveSpeed = baseSpd * boostMult * shrinkAgility * (f.flying ? 1.08 : 1.0);
           let moveDir = 0;
           if (inp.left) moveDir -= 1;
           if (inp.right) moveDir += 1;
@@ -854,7 +943,7 @@
             f.vx = moveDir * moveSpeed;
             if (f.onGround) {
               f.state = 'run';
-              f.walkPhase += dt * 12;
+              f.walkPhase += dt * (12 * boostMult);
             }
           } else {
             f.vx *= Math.pow(0.001, dt);
@@ -999,10 +1088,10 @@
             o.life = 2.0;
             bus.emit('combat:parry', { defender: target, x: o.x, y: o.y });
           } else if (o.kind === 'freezeLight') {
-            triggerFrozen(attacker, target);
+            triggerFrozen(attacker, target, o.freezeDuration || 1.5, o.damage || 6);
             orbs.splice(i, 1);
           } else {
-            damageFighter(attacker, target, 12, Math.sign(o.vx) * 200, -135);
+            damageFighter(attacker, target, o.damage || 12, Math.sign(o.vx) * 200, -135);
             orbs.splice(i, 1);
           }
         }
@@ -1032,14 +1121,18 @@
   // =========================================================
   const AISystem = (() => {
     function compute(f, enemy, dt) {
-      const inp = { left: false, right: false, up: false, upPressed: false, down: false, sword: false, banana: false, orb: false };
+      const inp = { left: false, right: false, up: false, upPressed: false, down: false, sword: false, banana: false, orb: false, ult: false };
       if (arenaState.matchState !== 'fighting') return inp;
 
       const dx = enemy.x - f.x;
       const dist = Math.abs(dx);
       const dir = dx >= 0 ? 1 : -1;
-      const extMult = f.swordScale > 1.1 ? (1 + (f.swordScale - 1) * 0.92) : 1.0;
-      const meleeDist = f.metrics.slashReach * extMult + enemy.halfW + 18;
+      const meleeDist = f.metrics.slashReach * f.bodyScale + enemy.halfW + 18;
+
+      // Trigger speed-boost ultimate when available and chasing or brawling
+      if (f.asset.skills && f.asset.skills.ult && f.cooldowns.ult <= 0 && dist > 110 && Math.random() < 0.04) {
+        inp.ult = true;
+      }
 
       const incomingOrb = arenaState.energyOrbs.find(
         (o) => o.owner !== f.id && Math.abs(o.x - f.x) < 160 && Math.sign(o.vx) === Math.sign(f.x - o.x)
@@ -1284,6 +1377,52 @@
     toggleStory() {
       if (arenaState.story.active) StorySystem.stop();
       else StorySystem.start();
+    },
+    openSettings(tabRoleId) {
+      systemState.settingsOpen = true;
+      if (tabRoleId) systemState.settingsTab = tabRoleId;
+      else if (Assets.get(systemState.selectedRoles[0])) systemState.settingsTab = systemState.selectedRoles[0];
+      bus.emit('system:settingsChanged', { open: true, tab: systemState.settingsTab });
+    },
+    closeSettings() {
+      systemState.settingsOpen = false;
+      bus.emit('system:settingsChanged', { open: false, tab: systemState.settingsTab });
+    },
+    setSettingsTab(roleId) {
+      systemState.settingsTab = Assets.get(roleId).id;
+      bus.emit('system:settingsChanged', { open: systemState.settingsOpen, tab: systemState.settingsTab });
+    },
+    setCharParam(roleId, key, val) {
+      const id = Assets.get(roleId).id;
+      if (!systemState.tuning[id]) systemState.tuning[id] = {};
+      systemState.tuning[id][key] = val;
+      saveTuning(systemState.tuning);
+      // 同步刷新场上对应角色的实时参数（maxHp 同步等比或更新上限）
+      arenaState.fighters.forEach((f) => {
+        if (f.role === id) {
+          const oldMax = f.maxHp;
+          f.stats = getEffectiveStats(id);
+          if (key === 'maxHp') {
+            const ratio = oldMax > 0 ? f.hp / oldMax : 1;
+            f.maxHp = f.stats.maxHp;
+            f.hp = Math.max(1, Math.round(f.maxHp * ratio));
+          }
+        }
+      });
+      bus.emit('system:configChanged', { roleId: id, key, val });
+    },
+    resetCharParams(roleId) {
+      const id = Assets.get(roleId).id;
+      delete systemState.tuning[id];
+      saveTuning(systemState.tuning);
+      arenaState.fighters.forEach((f) => {
+        if (f.role === id) {
+          f.stats = getEffectiveStats(id);
+          f.maxHp = f.stats.maxHp;
+          f.hp = Math.min(f.hp, f.maxHp);
+        }
+      });
+      bus.emit('system:configChanged', { roleId: id, reset: true });
     }
   };
 
@@ -1441,6 +1580,11 @@
         const who = isLeft ? `1P · ${f.name}` : `${systemState.gameMode === '2p' ? '2P' : '电脑'} · ${f.name}`;
         ctx.fillText(who, isLeft ? bx : bx + barW, topY - 6);
 
+        ctx.font = 'bold 12px ui-monospace, SFMono-Regular, Menlo, monospace';
+        ctx.fillStyle = '#4e4942';
+        ctx.textAlign = isLeft ? 'right' : 'left';
+        ctx.fillText(`${Math.ceil(f.hp)}/${f.maxHp}`, isLeft ? bx + barW : bx, topY - 6);
+
         ctx.fillStyle = '#fffdf8';
         ctx.fillRect(bx, topY, barW, barH);
         const hpRatio = Math.max(0, f.hp / f.maxHp);
@@ -1470,6 +1614,20 @@
         ctx.fillStyle = '#4e4942';
         ctx.textAlign = isLeft ? 'left' : 'right';
         ctx.fillText('飞/飘气力', isLeft ? fx + fw + 6 : fx - 6, fy + 7);
+
+        // 实时状态小标签（变小 / 加速 / 大招冷却）
+        const tags = [];
+        if (f.shrinkTimer > 0) tags.push(`变小 ${f.shrinkTimer.toFixed(1)}s`);
+        if (f.speedBoostTimer > 0) tags.push(`加速 ${f.speedBoostTimer.toFixed(1)}s`);
+        else if (f.asset.skills && f.asset.skills.ult) {
+          tags.push(f.cooldowns.ult > 0 ? `大招冷却 ${f.cooldowns.ult.toFixed(1)}s` : '大招(;)就绪');
+        }
+        if (tags.length > 0) {
+          ctx.font = 'bold 11.5px "PingFang SC", sans-serif';
+          ctx.fillStyle = f.speedBoostTimer > 0 ? '#c94a38' : '#2e6b8a';
+          ctx.textAlign = isLeft ? 'left' : 'right';
+          ctx.fillText(tags.join(' · '), isLeft ? bx : bx + barW, fy + 23);
+        }
         ctx.restore();
       });
 
@@ -1580,6 +1738,7 @@
     const lblP2 = document.getElementById('lblP2');
     const btnTime = document.getElementById('btnTime');
     const btnStory = document.getElementById('btnStory');
+    const btnSettings = document.getElementById('btnSettings');
     const btnSound = document.getElementById('btnSound');
     const btnRestart = document.getElementById('btnRestart');
     const p2Guide = document.getElementById('p2Guide');
@@ -1587,8 +1746,16 @@
     const padSword = document.getElementById('padSword');
     const padSkillK = document.getElementById('padSkillK');
     const padSkillL = document.getElementById('padSkillL');
+    const padSkillUlt = document.getElementById('padSkillUlt');
     const gamepadPill = document.getElementById('gamepadPill');
     const storyCaption = document.getElementById('storyCaption');
+
+    const settingsBackdrop = document.getElementById('settingsBackdrop');
+    const settingsTabs = document.getElementById('settingsTabs');
+    const settingsBody = document.getElementById('settingsBody');
+    const btnCloseSettings = document.getElementById('btnCloseSettings');
+    const btnResetRoleParams = document.getElementById('btnResetRoleParams');
+    const btnApplyRestart = document.getElementById('btnApplyRestart');
 
     const diffLabels = ['电脑：轻松', '电脑：普通', '电脑：高手'];
     const timeLabels = { auto: '☀ 自动日夜', day: '☀ 太阳', night: '🌙 月亮' };
@@ -1604,6 +1771,57 @@
           sel.appendChild(opt);
         });
         sel.value = systemState.selectedRoles[idx];
+      });
+    }
+
+    function renderSettingsModal() {
+      settingsBackdrop.classList.toggle('open', systemState.settingsOpen);
+      if (!systemState.settingsOpen) return;
+
+      const chars = Assets.list();
+      settingsTabs.innerHTML = '';
+      chars.forEach((c) => {
+        const b = document.createElement('button');
+        b.className = 'sketch-btn' + (c.id === systemState.settingsTab ? ' active' : '');
+        b.textContent = c.name;
+        b.addEventListener('click', () => Commands.setSettingsTab(c.id));
+        settingsTabs.appendChild(b);
+      });
+
+      const activeAsset = Assets.get(systemState.settingsTab);
+      const stats = getEffectiveStats(activeAsset.id);
+      settingsBody.innerHTML = '';
+      (activeAsset.tunables || []).forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'param-row';
+        const val = stats[item.key];
+        const fmt = (v) => (Number.isInteger(item.step) ? String(Math.round(v)) : Number(v).toFixed(2).replace(/0$/, '')) + (item.unit || '');
+
+        const top = document.createElement('div');
+        top.className = 'param-row-top';
+        const lbl = document.createElement('span');
+        lbl.textContent = item.label;
+        const valSpan = document.createElement('span');
+        valSpan.className = 'param-val';
+        valSpan.textContent = fmt(val);
+        top.appendChild(lbl);
+        top.appendChild(valSpan);
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = String(item.min);
+        slider.max = String(item.max);
+        slider.step = String(item.step);
+        slider.value = String(val);
+        slider.addEventListener('input', () => {
+          const nv = parseFloat(slider.value);
+          valSpan.textContent = fmt(nv);
+          Commands.setCharParam(activeAsset.id, item.key, nv);
+        });
+
+        row.appendChild(top);
+        row.appendChild(slider);
+        settingsBody.appendChild(row);
       });
     }
 
@@ -1626,8 +1844,17 @@
       if (padSword) padSword.textContent = `${sk.j.icon} ${sk.j.label}`;
       if (padSkillK) padSkillK.textContent = `${sk.k.icon} ${sk.k.label}`;
       if (padSkillL) padSkillL.textContent = `${sk.l.icon} ${sk.l.label}`;
+      if (padSkillUlt) {
+        if (sk.ult) {
+          padSkillUlt.style.display = '';
+          padSkillUlt.textContent = `${sk.ult.icon} ${sk.ult.label}(;)`;
+        } else {
+          padSkillUlt.style.display = 'none';
+        }
+      }
       if (p1SkillsHint) {
-        p1SkillsHint.innerHTML = `<kbd>J</kbd> ${sk.j.label} · <kbd>K</kbd> ${sk.k.label} · <kbd>L</kbd> ${sk.l.label}`;
+        const ultHint = sk.ult ? ` · <kbd>;</kbd> ${sk.ult.label}` : '';
+        p1SkillsHint.innerHTML = `<kbd>J</kbd> ${sk.j.label} · <kbd>K</kbd> ${sk.k.label} · <kbd>L</kbd> ${sk.l.label}${ultHint}`;
       }
     }
 
@@ -1636,6 +1863,10 @@
     bus.on('system:rosterChanged', syncAll);
     bus.on('system:timeModeChanged', syncAll);
     bus.on('system:soundChanged', syncAll);
+    bus.on('system:settingsChanged', renderSettingsModal);
+    bus.on('system:configChanged', ({ reset }) => {
+      if (reset) renderSettingsModal();
+    });
 
     bus.on('system:gamepadChanged', ({ count }) => {
       if (count === 0) {
@@ -1676,6 +1907,16 @@
       selP2.addEventListener('change', () => { selP2.blur(); AudioSystem.ensure(); Commands.setRole(1, selP2.value); });
       btnTime.addEventListener('click', () => { btnTime.blur(); AudioSystem.ensure(); Commands.cycleTimeMode(); });
       btnStory.addEventListener('click', () => { btnStory.blur(); AudioSystem.ensure(); Commands.toggleStory(); });
+      btnSettings.addEventListener('click', () => { btnSettings.blur(); AudioSystem.ensure(); Commands.openSettings(); });
+      btnCloseSettings.addEventListener('click', () => Commands.closeSettings());
+      settingsBackdrop.addEventListener('click', (e) => {
+        if (e.target === settingsBackdrop) Commands.closeSettings();
+      });
+      btnResetRoleParams.addEventListener('click', () => Commands.resetCharParams(systemState.settingsTab));
+      btnApplyRestart.addEventListener('click', () => {
+        Commands.closeSettings();
+        Commands.resetMatch();
+      });
       btnSound.addEventListener('click', () => { btnSound.blur(); Commands.toggleSound(); });
       btnRestart.addEventListener('click', () => {
         btnRestart.blur();
@@ -1702,30 +1943,33 @@
   function frame(now) {
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
-    arenaState.time += dt;
 
     InputSystem.pollGamepads();
 
-    const targetNight = isCurrentlyNight() ? 1 : 0;
-    arenaState.skyNightFactor += (targetNight - arenaState.skyNightFactor) * Math.min(1, dt * 3.5);
-    if (arenaState.shakeTime > 0) arenaState.shakeTime = Math.max(0, arenaState.shakeTime - dt);
+    if (!systemState.settingsOpen) {
+      arenaState.time += dt;
 
-    if (arenaState.hitstop > 0) {
-      arenaState.hitstop = Math.max(0, arenaState.hitstop - dt);
-    } else if (arenaState.story.active) {
-      StorySystem.update(dt);
-    } else {
-      if (arenaState.matchState === 'ko') arenaState.koTimer += dt;
-      const inp0 = InputSystem.readPlayer(0);
-      const inp1 = systemState.gameMode === '2p'
-        ? InputSystem.readPlayer(1)
-        : AISystem.compute(arenaState.fighters[1], arenaState.fighters[0], dt);
+      const targetNight = isCurrentlyNight() ? 1 : 0;
+      arenaState.skyNightFactor += (targetNight - arenaState.skyNightFactor) * Math.min(1, dt * 3.5);
+      if (arenaState.shakeTime > 0) arenaState.shakeTime = Math.max(0, arenaState.shakeTime - dt);
 
-      CombatSystem.updateFighter(arenaState.fighters[0], arenaState.fighters[1], inp0, dt);
-      CombatSystem.updateFighter(arenaState.fighters[1], arenaState.fighters[0], inp1, dt);
-      CombatSystem.separateFighters();
-      CombatSystem.updateProjectiles(dt);
-      VfxSystem.update(dt);
+      if (arenaState.hitstop > 0) {
+        arenaState.hitstop = Math.max(0, arenaState.hitstop - dt);
+      } else if (arenaState.story.active) {
+        StorySystem.update(dt);
+      } else {
+        if (arenaState.matchState === 'ko') arenaState.koTimer += dt;
+        const inp0 = InputSystem.readPlayer(0);
+        const inp1 = systemState.gameMode === '2p'
+          ? InputSystem.readPlayer(1)
+          : AISystem.compute(arenaState.fighters[1], arenaState.fighters[0], dt);
+
+        CombatSystem.updateFighter(arenaState.fighters[0], arenaState.fighters[1], inp0, dt);
+        CombatSystem.updateFighter(arenaState.fighters[1], arenaState.fighters[0], inp1, dt);
+        CombatSystem.separateFighters();
+        CombatSystem.updateProjectiles(dt);
+        VfxSystem.update(dt);
+      }
     }
 
     InputSystem.clearFrameEdges();

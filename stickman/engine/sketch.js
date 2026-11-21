@@ -327,10 +327,20 @@
     ctx.ellipse(-dir * 12, 0, 44, 15, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hand-drawn light rays streaking backward
-    sketchLine(ctx, dir * 18, 0, -dir * 48, 0, 4.2, '#e6b83a', seed + 1, 1.2);
-    sketchLine(ctx, dir * 12, -7, -dir * 34, -10, 2.0, '#1e1c1a', seed + 2, 1.0);
-    sketchLine(ctx, dir * 12, 7, -dir * 34, 10, 2.0, '#1e1c1a', seed + 3, 1.0);
+    // Hand-drawn expanding wave arcs ")))" from sketch + streaking rays
+    for (let i = 0; i < 3; i++) {
+      const wx = -dir * (14 + i * 15);
+      const wr = 11 + i * 4.5;
+      ctx.save();
+      ctx.strokeStyle = i === 0 ? '#1e1c1a' : 'rgba(30,28,26,0.72)';
+      ctx.lineWidth = 2.4 - i * 0.3;
+      ctx.beginPath();
+      if (dir > 0) ctx.arc(wx - wr * 0.4, 0, wr, -0.78, 0.78);
+      else ctx.arc(wx + wr * 0.4, 0, wr, Math.PI - 0.78, Math.PI + 0.78);
+      ctx.stroke();
+      ctx.restore();
+    }
+    sketchLine(ctx, dir * 18, 0, -dir * 48, 0, 3.6, '#e6b83a', seed + 1, 1.2);
 
     // Leading bright 4-point star head
     drawFourPointStar(ctx, dir * 10, 0, 15, 19, '#1e1c1a', '#fffef0', 2.4, seed + 4);
