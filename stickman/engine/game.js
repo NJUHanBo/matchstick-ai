@@ -1669,8 +1669,7 @@
           useSkillUlt(f);
         } else if (inp.ult2) {
           useSkillUlt2(f);
-        }
-        if (inp.sword) {
+        } else if (inp.sword) {
           startSlash(f, enemy);
         } else if (inp.banana) {
           useSkillK(f, enemy);
