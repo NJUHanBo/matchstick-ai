@@ -1669,15 +1669,16 @@
       populateRosterSelects();
       syncAll();
 
-      btnMode1P.addEventListener('click', () => { AudioSystem.ensure(); Commands.setGameMode('1p'); });
-      btnMode2P.addEventListener('click', () => { AudioSystem.ensure(); Commands.setGameMode('2p'); });
-      btnDiff.addEventListener('click', () => { AudioSystem.ensure(); Commands.cycleDifficulty(); });
-      selP1.addEventListener('change', () => { AudioSystem.ensure(); Commands.setRole(0, selP1.value); });
-      selP2.addEventListener('change', () => { AudioSystem.ensure(); Commands.setRole(1, selP2.value); });
-      btnTime.addEventListener('click', () => { AudioSystem.ensure(); Commands.cycleTimeMode(); });
-      btnStory.addEventListener('click', () => { AudioSystem.ensure(); Commands.toggleStory(); });
-      btnSound.addEventListener('click', () => Commands.toggleSound());
+      btnMode1P.addEventListener('click', () => { btnMode1P.blur(); AudioSystem.ensure(); Commands.setGameMode('1p'); });
+      btnMode2P.addEventListener('click', () => { btnMode2P.blur(); AudioSystem.ensure(); Commands.setGameMode('2p'); });
+      btnDiff.addEventListener('click', () => { btnDiff.blur(); AudioSystem.ensure(); Commands.cycleDifficulty(); });
+      selP1.addEventListener('change', () => { selP1.blur(); AudioSystem.ensure(); Commands.setRole(0, selP1.value); });
+      selP2.addEventListener('change', () => { selP2.blur(); AudioSystem.ensure(); Commands.setRole(1, selP2.value); });
+      btnTime.addEventListener('click', () => { btnTime.blur(); AudioSystem.ensure(); Commands.cycleTimeMode(); });
+      btnStory.addEventListener('click', () => { btnStory.blur(); AudioSystem.ensure(); Commands.toggleStory(); });
+      btnSound.addEventListener('click', () => { btnSound.blur(); Commands.toggleSound(); });
       btnRestart.addEventListener('click', () => {
+        btnRestart.blur();
         AudioSystem.ensure();
         if (arenaState.story.active) StorySystem.stop();
         else Commands.resetMatch();
