@@ -31,8 +31,11 @@
   // =========================================================
   const bus = PaperArena.createEventBus();
 
-  // 第 5 层：玩家变量（localStorage 持久化的角色/技能调参）
+  // 第 5 层：玩家变量（localStorage 持久化的角色调参与挑战模式排行榜）
   const TUNING_STORAGE_KEY = 'paperArena_tuning_v1';
+  const LEADERBOARD_STORAGE_KEY = 'kikiArena_leaderboard_v1';
+  const CHALLENGE_BASE_ORDER = ['ren', 'angry', 'shadow', 'vine', 'trieye'];
+
   function loadTuning() {
     try {
       const raw = global.localStorage && global.localStorage.getItem(TUNING_STORAGE_KEY);
@@ -49,9 +52,44 @@
     } catch (_) {}
   }
 
+  function loadLeaderboard() {
+    try {
+      const raw = global.localStorage && global.localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  function saveLeaderboard(list) {
+    try {
+      if (global.localStorage) {
+        global.localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(list));
+      }
+    } catch (_) {}
+  }
+
+  function buildChallengeRoster() {
+    const allIds = Assets.list().map((c) => c.id);
+    const ordered = CHALLENGE_BASE_ORDER.filter((id) => allIds.includes(id));
+    allIds.forEach((id) => {
+      if (!ordered.includes(id)) ordered.push(id);
+    });
+    return ordered;
+  }
+
+  function formatTimer(ms) {
+    const totalTenths = Math.floor(Math.max(0, ms) / 100);
+    const tenths = totalTenths % 10;
+    const totalSec = Math.floor(totalTenths / 10);
+    const sec = totalSec % 60;
+    const min = Math.floor(totalSec / 60);
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${tenths}`;
+  }
+
   // 第 4 层：系统属性（切局/重开保留）
   const systemState = {
-    gameMode: '1p',           // '1p' | '2p'
+    gameMode: 'challenge',    // 'challenge' | '2p'
     aiDifficulty: 1,          // 0 轻松 | 1 普通 | 2 高手
     timeMode: 'auto',         // 'auto' | 'day' | 'night'
     soundEnabled: true,
@@ -59,13 +97,39 @@
     gamepadCount: 0,
     settingsOpen: false,
     settingsTab: 'trieye',
-    tuning: loadTuning()
+    tuning: loadTuning(),
+    leaderboardOpen: false,
+    leaderboardFilter: 'all', // 'all' | 'nodamage'
+    leaderboard: loadLeaderboard(),
+    pendingRecord: null,
+    lastSavedRecordId: null
   };
 
   function getEffectiveStats(roleId) {
     const asset = Assets.get(roleId);
     const overrides = (systemState.tuning && systemState.tuning[asset.id]) || {};
     return Object.assign({}, asset.baseStats, overrides);
+  }
+
+  // 第 3.5 层：挑战模式跨关进度（重开挑战时重置）
+  let challengeState = createFreshChallengeState();
+
+  function createFreshChallengeState() {
+    return {
+      roster: buildChallengeRoster(),
+      stageIndex: 0,
+      elapsedMs: 0,
+      damageTaken: 0,
+      status: 'fighting', // 'fighting' | 'stageClear' | 'victory' | 'failed'
+      transitionTimer: 0,
+      victoryPopupOpened: false
+    };
+  }
+
+  function recordPlayerDamage(victim, amount) {
+    if (systemState.gameMode !== 'challenge' || arenaState.story.active) return;
+    if (!victim || victim.id !== 0 || amount <= 0) return;
+    challengeState.damageTaken += amount;
   }
 
   // 第 3 层：地图/单局属性（每局重开时重建）
@@ -612,12 +676,12 @@
 
     function readPlayer(playerIdx) {
       const gp = readGamepadSlot(playerIdx);
-      if (gp.startPressed && !arenaState.story.active && !systemState.settingsOpen) {
+      if (gp.startPressed && !arenaState.story.active && !systemState.settingsOpen && !systemState.leaderboardOpen) {
         Commands.resetMatch();
       }
 
       if (playerIdx === 0) {
-        const singlePArrows = systemState.gameMode === '1p';
+        const singlePArrows = systemState.gameMode !== '2p';
         return {
           left: keys.has('KeyA') || touchState.left || (singlePArrows && keys.has('ArrowLeft')) || gp.left,
           right: keys.has('KeyD') || touchState.right || (singlePArrows && keys.has('ArrowRight')) || gp.right,
@@ -656,6 +720,12 @@
           if (e.code === 'Escape') Commands.closeSettings();
           return;
         }
+        if (systemState.leaderboardOpen) {
+          if (e.code === 'Escape') Commands.closeLeaderboard();
+          return;
+        }
+        const activeTag = document.activeElement && document.activeElement.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
           e.preventDefault();
         }
@@ -796,7 +866,7 @@
     // 影子广播特效
     bus.on('combat:shadowHide', ({ fighter }) => {
       spawnSparkles(fighter.x, GROUND_Y - 12, 10, 'dot', '#6f3fa6');
-      if (systemState.gameMode === '1p' && fighter.id === 0) {
+      if (systemState.gameMode !== '2p' && fighter.id === 0) {
         spawnCallout('藏进阴影!', fighter.x, GROUND_Y - 105, fighter.x, GROUND_Y - 22, 0.75);
       }
     });
@@ -1314,6 +1384,33 @@
         winner.flying = false;
         winner.facing = winner.x >= loser.x ? 1 : -1;
       }
+
+      // 挑战模式关卡结算与通关判定
+      if (systemState.gameMode === 'challenge' && !arenaState.story.active) {
+        if (winner && winner.id === 0) {
+          if (challengeState.stageIndex < challengeState.roster.length - 1) {
+            challengeState.status = 'stageClear';
+            challengeState.transitionTimer = 1.85;
+            bus.emit('challenge:stageClear', { stageIndex: challengeState.stageIndex, total: challengeState.roster.length });
+          } else {
+            challengeState.status = 'victory';
+            challengeState.transitionTimer = 1.15;
+            challengeState.victoryPopupOpened = false;
+            systemState.pendingRecord = {
+              timeMs: Math.round(challengeState.elapsedMs),
+              roleId: winner.role,
+              roleName: winner.name,
+              difficulty: systemState.aiDifficulty,
+              noDamage: challengeState.damageTaken === 0
+            };
+            bus.emit('challenge:victory', { record: systemState.pendingRecord });
+          }
+        } else {
+          challengeState.status = 'failed';
+          bus.emit('challenge:failed', { stageIndex: challengeState.stageIndex, total: challengeState.roster.length });
+        }
+      }
+
       bus.emit('match:ko', { winner, loser });
     }
 
@@ -1331,7 +1428,9 @@
 
       if (defender.state === 'shield' && !opts.ignoreShield) {
         const reduced = Math.max(1, Math.round(amount * 0.15));
+        const prevHp = defender.hp;
         defender.hp = Math.max(1, defender.hp - reduced);
+        recordPlayerDamage(defender, prevHp - defender.hp);
         defender.vx += Math.sign(knockX) * 110;
         bus.emit('combat:block', { attacker, defender });
         return 'blocked';
@@ -1341,7 +1440,9 @@
         releaseVineBind(defender);
       }
 
+      const prevHp = defender.hp;
       defender.hp = Math.max(0, defender.hp - amount);
+      recordPlayerDamage(defender, prevHp - defender.hp);
       defender.vx = knockX;
       defender.vy = knockY;
       defender.onGround = false;
@@ -1373,7 +1474,9 @@
       victim.flying = false;
       victim.vy = -440;
       victim.vx = (victim.x >= peel.x ? 1 : -1) * 165;
+      const prevHp = victim.hp;
       victim.hp = Math.max(1, victim.hp - 7);
+      recordPlayerDamage(victim, prevHp - victim.hp);
       bus.emit('combat:slip', { victim, peelX: peel.x });
     }
 
@@ -1391,7 +1494,9 @@
         return 'blocked';
       }
       if (victim.vineChannelTimer > 0) releaseVineBind(victim);
+      const prevHp = victim.hp;
       victim.hp = Math.max(1, victim.hp - dmg);
+      recordPlayerDamage(victim, prevHp - victim.hp);
       victim.frozenTimer = duration;
       victim.vx = 0;
       victim.vy = 0;
@@ -1413,7 +1518,9 @@
         dom.ticksDone += 1;
         const perTick = Math.round(dom.totalDamage / tickTimes.length);
         if (victim) {
+          const prevHp = victim.hp;
           victim.hp = Math.max(dom.ticksDone === tickTimes.length ? 0 : 1, victim.hp - perTick);
+          recordPlayerDamage(victim, prevHp - victim.hp);
         }
         bus.emit('combat:shadowDomainHit', { attacker, victim, tick: dom.ticksDone });
       }
@@ -1486,6 +1593,7 @@
       if (f.cocoonPactTimer > 0) {
         f.cocoonPactTimer = Math.max(0, f.cocoonPactTimer - dt);
         if (f.cocoonPactTimer === 0 && f.state !== 'ko' && arenaState.matchState === 'fighting') {
+          recordPlayerDamage(f, f.hp);
           bus.emit('combat:vineDrainDeath', { fighter: f });
           triggerKO(enemy, f);
           return;
@@ -1573,7 +1681,9 @@
             f.vineDrainAccum -= 1.0;
             const pct = (f.stats.drainPctPerSec || 3) / 100;
             const drain = Math.max(1, Math.round(enemy.maxHp * pct));
+            const prevHp = enemy.hp;
             enemy.hp = Math.max(0, enemy.hp - drain);
+            recordPlayerDamage(enemy, prevHp - enemy.hp);
             f.hp = Math.min(f.maxHp, f.hp + drain);
             bus.emit('combat:vineDrainTick', { attacker: f, victim: enemy, amount: drain });
             if (enemy.hp <= 0) {
@@ -2176,25 +2286,49 @@
   // 8. System Commands（统一入口，维护真值并广播）
   // =========================================================
   const Commands = {
-    resetMatch() {
+    resetMatch(opts = {}) {
       const prevTime = arenaState.time;
       arenaState = createFreshArenaState();
       arenaState.time = prevTime;
+
+      let p2Role = systemState.selectedRoles[1];
+      if (systemState.gameMode === 'challenge') {
+        if (!opts.keepChallenge) {
+          challengeState = createFreshChallengeState();
+          systemState.pendingRecord = null;
+        }
+        p2Role = challengeState.roster[challengeState.stageIndex] || 'ren';
+      }
+
       arenaState.fighters = [
         createFighter(0, systemState.selectedRoles[0], 250, 1),
-        createFighter(1, systemState.selectedRoles[1], W - 250, -1)
+        createFighter(1, p2Role, W - 250, -1)
       ];
       bus.emit('match:reset', { fighters: arenaState.fighters });
     },
+    advanceChallengeStage() {
+      if (systemState.gameMode !== 'challenge') return;
+      if (challengeState.stageIndex < challengeState.roster.length - 1) {
+        challengeState.stageIndex += 1;
+        challengeState.status = 'fighting';
+        challengeState.transitionTimer = 0;
+        Commands.resetMatch({ keepChallenge: true });
+      }
+    },
     setGameMode(mode) {
       if (arenaState.story.active) StorySystem.stop();
-      systemState.gameMode = mode;
-      bus.emit('system:modeChanged', { mode });
+      systemState.gameMode = mode === '2p' ? '2p' : 'challenge';
+      systemState.leaderboardOpen = false;
+      bus.emit('system:leaderboardChanged', { open: false });
+      bus.emit('system:modeChanged', { mode: systemState.gameMode });
       Commands.resetMatch();
     },
     cycleDifficulty() {
       systemState.aiDifficulty = (systemState.aiDifficulty + 1) % 3;
       bus.emit('system:difficultyChanged', { aiDifficulty: systemState.aiDifficulty });
+      if (systemState.gameMode === 'challenge' && !arenaState.story.active) {
+        Commands.resetMatch();
+      }
     },
     setRole(slotIdx, roleId) {
       if (arenaState.story.active) StorySystem.stop();
@@ -2217,10 +2351,51 @@
       if (arenaState.story.active) StorySystem.stop();
       else StorySystem.start();
     },
+    openLeaderboard() {
+      systemState.settingsOpen = false;
+      systemState.leaderboardOpen = true;
+      bus.emit('system:settingsChanged', { open: false, tab: systemState.settingsTab });
+      bus.emit('system:leaderboardChanged', { open: true });
+    },
+    closeLeaderboard() {
+      systemState.leaderboardOpen = false;
+      bus.emit('system:leaderboardChanged', { open: false });
+    },
+    setLeaderboardFilter(filter) {
+      systemState.leaderboardFilter = filter === 'nodamage' ? 'nodamage' : 'all';
+      bus.emit('system:leaderboardChanged', { open: systemState.leaderboardOpen });
+    },
+    submitLeaderboardRecord(rawName) {
+      const pending = systemState.pendingRecord;
+      if (!pending) return null;
+      const cleanName = String(rawName || '').trim().slice(0, 16) || '无名侠客';
+      const now = new Date();
+      const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+      const entry = {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        name: cleanName,
+        timeMs: pending.timeMs,
+        roleId: pending.roleId,
+        roleName: pending.roleName,
+        difficulty: pending.difficulty,
+        noDamage: !!pending.noDamage,
+        date: dateStr
+      };
+      systemState.leaderboard.push(entry);
+      systemState.leaderboard.sort((a, b) => a.timeMs - b.timeMs);
+      if (systemState.leaderboard.length > 30) systemState.leaderboard.length = 30;
+      saveLeaderboard(systemState.leaderboard);
+      systemState.pendingRecord = null;
+      systemState.lastSavedRecordId = entry.id;
+      bus.emit('system:leaderboardChanged', { open: systemState.leaderboardOpen });
+      return entry;
+    },
     openSettings(tabRoleId) {
+      systemState.leaderboardOpen = false;
       systemState.settingsOpen = true;
       if (tabRoleId) systemState.settingsTab = tabRoleId;
       else if (Assets.get(systemState.selectedRoles[0])) systemState.settingsTab = systemState.selectedRoles[0];
+      bus.emit('system:leaderboardChanged', { open: false });
       bus.emit('system:settingsChanged', { open: true, tab: systemState.settingsTab });
     },
     closeSettings() {
@@ -2458,7 +2633,7 @@
         const tags = [];
         if (f.shrinkTimer > 0) tags.push(`变小 ${f.shrinkTimer.toFixed(1)}s`);
         if (f.speedBoostTimer > 0) tags.push(`加速 ${f.speedBoostTimer.toFixed(1)}s`);
-        if (f.stealthTimer > 0 && (systemState.gameMode === '1p' && f.id === 0)) tags.push(`阴影 ${f.stealthTimer.toFixed(1)}s`);
+        if (f.stealthTimer > 0 && (systemState.gameMode !== '2p' && f.id === 0)) tags.push(`阴影 ${f.stealthTimer.toFixed(1)}s`);
         if (f.blinkCharges > 0) tags.push(`瞬身剩${f.blinkCharges}段`);
         if (f.cocoonTimer > 0) tags.push(`裹茧 ${f.cocoonTimer.toFixed(1)}s`);
         if (f.cocoonPactTimer > 0) tags.push(`赌命 ${f.cocoonPactTimer.toFixed(1)}s!`);
@@ -2481,33 +2656,81 @@
       });
 
       ctx.save();
-      ctx.font = '900 22px "Kaiti SC", "PingFang SC", serif';
-      ctx.fillStyle = '#1e1c1a';
       ctx.textAlign = 'center';
-      ctx.fillText('VS', W * 0.5, topY + 15);
+      if (systemState.gameMode === 'challenge') {
+        const curStage = challengeState.stageIndex + 1;
+        const totalStages = challengeState.roster.length;
+        ctx.font = '800 13px "PingFang SC", sans-serif';
+        ctx.fillStyle = '#4e4942';
+        ctx.fillText(`第 ${curStage}/${totalStages} 关`, W * 0.5, topY - 4);
+
+        ctx.font = '900 20px ui-monospace, SFMono-Regular, Menlo, monospace';
+        ctx.fillStyle = '#1e1c1a';
+        ctx.fillText(formatTimer(challengeState.elapsedMs), W * 0.5, topY + 18);
+
+        if (challengeState.damageTaken === 0) {
+          ctx.font = 'bold 12px "PingFang SC", sans-serif';
+          ctx.fillStyle = '#b57b10';
+          ctx.fillText('✨ 无伤中', W * 0.5, topY + 36);
+        }
+      } else {
+        ctx.font = '900 22px "Kaiti SC", "PingFang SC", serif';
+        ctx.fillStyle = '#1e1c1a';
+        ctx.fillText('VS', W * 0.5, topY + 15);
+      }
       ctx.restore();
 
-      if (arenaState.matchState === 'ko' && arenaState.koTimer > 0.6) {
+      if (arenaState.matchState === 'ko' && arenaState.koTimer > 0.5) {
         ctx.save();
-        const boxW = 436, boxH = 104;
+        const boxW = 466, boxH = 108;
         const rx = (W - boxW) * 0.5, ry = 128;
-        ctx.fillStyle = 'rgba(246, 242, 232, 0.95)';
+        ctx.fillStyle = 'rgba(246, 242, 232, 0.96)';
         ctx.fillRect(rx, ry, boxW, boxH);
         S.sketchLine(ctx, rx, ry, rx + boxW, ry, 3, '#1e1c1a', 81, 1.3);
         S.sketchLine(ctx, rx + boxW, ry, rx + boxW, ry + boxH, 3, '#1e1c1a', 82, 1.3);
         S.sketchLine(ctx, rx + boxW, ry + boxH, rx, ry + boxH, 3, '#1e1c1a', 83, 1.3);
         S.sketchLine(ctx, rx, ry + boxH, rx, ry, 3, '#1e1c1a', 84, 1.3);
 
-        const winner = arenaState.fighters[arenaState.winnerId];
-        const winLabel = arenaState.winnerId === 0 ? '1P 胜出！' : (systemState.gameMode === '2p' ? '2P 胜出！' : '电脑胜出！');
-        ctx.fillStyle = '#1e1c1a';
-        ctx.font = '900 24px "Kaiti SC", "PingFang SC", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${winLabel}（${winner.name}）`, W * 0.5, ry + 48);
+        if (systemState.gameMode === 'challenge') {
+          const curStage = challengeState.stageIndex + 1;
+          const totalStages = challengeState.roster.length;
+          if (challengeState.status === 'stageClear') {
+            const nextId = challengeState.roster[challengeState.stageIndex + 1];
+            const nextName = Assets.get(nextId).name;
+            ctx.fillStyle = '#1e1c1a';
+            ctx.font = '900 23px "Kaiti SC", "PingFang SC", sans-serif';
+            ctx.fillText(`第 ${curStage}/${totalStages} 关 胜出！`, W * 0.5, ry + 46);
+            ctx.font = 'bold 14.5px "PingFang SC", sans-serif';
+            ctx.fillStyle = '#2e6b8a';
+            ctx.fillText(`下一位对手：${nextName}（即将开始…）`, W * 0.5, ry + 80);
+          } else if (challengeState.status === 'victory') {
+            ctx.fillStyle = '#b57b10';
+            ctx.font = '900 24px "Kaiti SC", "PingFang SC", sans-serif';
+            const honor = challengeState.damageTaken === 0 ? ' · ✨无伤通关!' : '';
+            ctx.fillText(`🏆 全部通关！${honor}`, W * 0.5, ry + 46);
+            ctx.font = 'bold 14.5px "PingFang SC", sans-serif';
+            ctx.fillStyle = '#1e1c1a';
+            ctx.fillText(`总用时 ${formatTimer(challengeState.elapsedMs)} · 正在打开排行榜留名…`, W * 0.5, ry + 80);
+          } else {
+            ctx.fillStyle = '#b83c2c';
+            ctx.font = '900 23px "Kaiti SC", "PingFang SC", sans-serif';
+            ctx.fillText(`止步第 ${curStage}/${totalStages} 关（用时 ${formatTimer(challengeState.elapsedMs)}）`, W * 0.5, ry + 46);
+            ctx.font = 'bold 14px "PingFang SC", sans-serif';
+            ctx.fillStyle = '#4e4942';
+            ctx.fillText('按 R / Start 键或点击「重来」从第 1 关重新挑战', W * 0.5, ry + 80);
+          }
+        } else {
+          const winner = arenaState.fighters[arenaState.winnerId];
+          const winLabel = arenaState.winnerId === 0 ? '1P 胜出！' : '2P 胜出！';
+          ctx.fillStyle = '#1e1c1a';
+          ctx.font = '900 24px "Kaiti SC", "PingFang SC", sans-serif';
+          ctx.fillText(`${winLabel}（${winner.name}）`, W * 0.5, ry + 48);
 
-        ctx.font = 'bold 14px "PingFang SC", sans-serif';
-        ctx.fillStyle = '#4e4942';
-        ctx.fillText('按 R / Start 键或点击「重来」再打一局', W * 0.5, ry + 80);
+          ctx.font = 'bold 14px "PingFang SC", sans-serif';
+          ctx.fillStyle = '#4e4942';
+          ctx.fillText('按 R / Start 键或点击「重来」再打一局', W * 0.5, ry + 80);
+        }
         ctx.restore();
       }
     }
@@ -2617,12 +2840,13 @@
   // 10. UISystem（只做展示和入口，订阅广播同步界面）
   // =========================================================
   const UISystem = (() => {
-    const btnMode1P = document.getElementById('btnMode1P');
+    const btnModeChallenge = document.getElementById('btnModeChallenge');
     const btnMode2P = document.getElementById('btnMode2P');
     const btnDiff = document.getElementById('btnDiff');
     const selP1 = document.getElementById('selP1');
     const selP2 = document.getElementById('selP2');
-    const lblP2 = document.getElementById('lblP2');
+    const wrapP2 = document.getElementById('wrapP2');
+    const btnLeaderboard = document.getElementById('btnLeaderboard');
     const btnTime = document.getElementById('btnTime');
     const btnStory = document.getElementById('btnStory');
     const btnSettings = document.getElementById('btnSettings');
@@ -2645,7 +2869,20 @@
     const btnResetRoleParams = document.getElementById('btnResetRoleParams');
     const btnApplyRestart = document.getElementById('btnApplyRestart');
 
+    const leaderboardBackdrop = document.getElementById('leaderboardBackdrop');
+    const btnCloseLeaderboard = document.getElementById('btnCloseLeaderboard');
+    const lbVictoryBox = document.getElementById('lbVictoryBox');
+    const lbVictoryHonor = document.getElementById('lbVictoryHonor');
+    const lbVictoryStats = document.getElementById('lbVictoryStats');
+    const lbNameInput = document.getElementById('lbNameInput');
+    const btnSaveRecord = document.getElementById('btnSaveRecord');
+    const btnLbAll = document.getElementById('btnLbAll');
+    const btnLbNoDmg = document.getElementById('btnLbNoDmg');
+    const lbList = document.getElementById('lbList');
+    const btnLbRestart = document.getElementById('btnLbRestart');
+
     const diffLabels = ['电脑：轻松', '电脑：普通', '电脑：高手'];
+    const diffShort = ['轻松', '普通', '高手'];
     const timeLabels = { auto: '☀ 自动日夜', day: '☀ 太阳', night: '🌙 月亮' };
 
     function populateRosterSelects() {
@@ -2713,13 +2950,80 @@
       });
     }
 
+    function renderLeaderboardModal() {
+      leaderboardBackdrop.classList.toggle('open', systemState.leaderboardOpen);
+      if (!systemState.leaderboardOpen) return;
+
+      const pending = systemState.pendingRecord;
+      lbVictoryBox.classList.toggle('visible', !!pending);
+      if (pending) {
+        lbVictoryHonor.style.display = pending.noDamage ? '' : 'none';
+        lbVictoryStats.innerHTML = `用时 <strong>${formatTimer(pending.timeMs)}</strong> · 角色：${pending.roleName} · 难度：${diffShort[pending.difficulty] || '普通'}`;
+        setTimeout(() => { if (systemState.leaderboardOpen && systemState.pendingRecord) lbNameInput.focus(); }, 40);
+      }
+
+      btnLbAll.classList.toggle('active', systemState.leaderboardFilter === 'all');
+      btnLbNoDmg.classList.toggle('active', systemState.leaderboardFilter === 'nodamage');
+
+      const records = systemState.leaderboardFilter === 'nodamage'
+        ? systemState.leaderboard.filter((r) => r.noDamage)
+        : systemState.leaderboard;
+
+      lbList.innerHTML = '';
+      if (records.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'lb-empty';
+        empty.textContent = systemState.leaderboardFilter === 'nodamage'
+          ? '还没有无伤通关记录！全程不掉一滴血击败全部 5 位角色即可获得无伤荣誉。'
+          : '还没有通关记录，快来挑战全部 5 位角色留下最快成绩！';
+        lbList.appendChild(empty);
+        return;
+      }
+
+      const medals = ['🥇', '🥈', '🥉'];
+      records.forEach((rec, i) => {
+        const row = document.createElement('div');
+        row.className = 'lb-row' + (i === 0 ? ' top1' : '') + (rec.id === systemState.lastSavedRecordId ? ' highlight' : '');
+
+        const rank = document.createElement('div');
+        rank.className = 'lb-rank';
+        rank.textContent = medals[i] || `#${i + 1}`;
+
+        const player = document.createElement('div');
+        player.className = 'lb-player';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = rec.name;
+        player.appendChild(nameSpan);
+        if (rec.noDamage) {
+          const badge = document.createElement('span');
+          badge.className = 'honor-badge';
+          badge.textContent = '✨ 无伤通关';
+          player.appendChild(badge);
+        }
+
+        const meta = document.createElement('div');
+        meta.className = 'lb-meta';
+        meta.textContent = `${rec.roleName} · ${diffShort[rec.difficulty] || '普通'} · ${rec.date || ''}`;
+
+        const time = document.createElement('div');
+        time.className = 'lb-time';
+        time.textContent = formatTimer(rec.timeMs);
+
+        row.appendChild(rank);
+        row.appendChild(player);
+        row.appendChild(meta);
+        row.appendChild(time);
+        lbList.appendChild(row);
+      });
+    }
+
     function syncAll() {
       const is2P = systemState.gameMode === '2p';
-      btnMode1P.classList.toggle('active', !is2P);
+      btnModeChallenge.classList.toggle('active', !is2P);
       btnMode2P.classList.toggle('active', is2P);
       btnDiff.style.display = is2P ? 'none' : '';
+      wrapP2.style.display = is2P ? '' : 'none';
       p2Guide.style.display = is2P ? '' : 'none';
-      lblP2.textContent = is2P ? '2P' : '电脑';
       btnDiff.textContent = diffLabels[systemState.aiDifficulty];
       btnTime.textContent = timeLabels[systemState.timeMode];
       btnSound.textContent = systemState.soundEnabled ? '🔊 音效开' : '🔇 音效关';
@@ -2761,6 +3065,7 @@
     bus.on('system:timeModeChanged', syncAll);
     bus.on('system:soundChanged', syncAll);
     bus.on('system:settingsChanged', renderSettingsModal);
+    bus.on('system:leaderboardChanged', renderLeaderboardModal);
     bus.on('system:configChanged', ({ reset }) => {
       if (reset) renderSettingsModal();
     });
@@ -2790,18 +3095,42 @@
     bus.on('story:stop', () => {
       storyCaption.classList.remove('visible');
       btnStory.classList.remove('active');
-      btnStory.textContent = '▶ 播原画六格';
+      btnStory.textContent = '▶ 原画六格';
     });
 
     function init() {
       populateRosterSelects();
       syncAll();
 
-      btnMode1P.addEventListener('click', () => { btnMode1P.blur(); AudioSystem.ensure(); Commands.setGameMode('1p'); });
+      btnModeChallenge.addEventListener('click', () => { btnModeChallenge.blur(); AudioSystem.ensure(); Commands.setGameMode('challenge'); });
       btnMode2P.addEventListener('click', () => { btnMode2P.blur(); AudioSystem.ensure(); Commands.setGameMode('2p'); });
       btnDiff.addEventListener('click', () => { btnDiff.blur(); AudioSystem.ensure(); Commands.cycleDifficulty(); });
       selP1.addEventListener('change', () => { selP1.blur(); AudioSystem.ensure(); Commands.setRole(0, selP1.value); });
       selP2.addEventListener('change', () => { selP2.blur(); AudioSystem.ensure(); Commands.setRole(1, selP2.value); });
+      btnLeaderboard.addEventListener('click', () => { btnLeaderboard.blur(); AudioSystem.ensure(); Commands.openLeaderboard(); });
+      btnCloseLeaderboard.addEventListener('click', () => Commands.closeLeaderboard());
+      leaderboardBackdrop.addEventListener('click', (e) => {
+        if (e.target === leaderboardBackdrop) Commands.closeLeaderboard();
+      });
+      btnLbAll.addEventListener('click', () => Commands.setLeaderboardFilter('all'));
+      btnLbNoDmg.addEventListener('click', () => Commands.setLeaderboardFilter('nodamage'));
+      const submitName = () => {
+        Commands.submitLeaderboardRecord(lbNameInput.value);
+        lbNameInput.value = '';
+      };
+      btnSaveRecord.addEventListener('click', submitName);
+      lbNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitName();
+        }
+      });
+      btnLbRestart.addEventListener('click', () => {
+        Commands.closeLeaderboard();
+        if (systemState.gameMode !== 'challenge') Commands.setGameMode('challenge');
+        else Commands.resetMatch();
+      });
+
       btnTime.addEventListener('click', () => { btnTime.blur(); AudioSystem.ensure(); Commands.cycleTimeMode(); });
       btnStory.addEventListener('click', () => { btnStory.blur(); AudioSystem.ensure(); Commands.toggleStory(); });
       btnSettings.addEventListener('click', () => { btnSettings.blur(); AudioSystem.ensure(); Commands.openSettings(); });
@@ -2843,7 +3172,7 @@
 
     InputSystem.pollGamepads();
 
-    if (!systemState.settingsOpen) {
+    if (!systemState.settingsOpen && !systemState.leaderboardOpen) {
       arenaState.time += dt;
 
       const targetNight = isCurrentlyNight() ? 1 : 0;
@@ -2855,9 +3184,32 @@
       } else if (arenaState.story.active) {
         StorySystem.update(dt);
       } else if (CombatSystem.updateDomainOverlay(dt)) {
+        if (systemState.gameMode === 'challenge' && challengeState.status === 'fighting') {
+          challengeState.elapsedMs += dt * 1000;
+        }
         VfxSystem.update(dt);
       } else {
-        if (arenaState.matchState === 'ko') arenaState.koTimer += dt;
+        if (arenaState.matchState === 'ko') {
+          arenaState.koTimer += dt;
+          // 挑战模式：自动切入下一关或弹出通关排行榜
+          if (systemState.gameMode === 'challenge') {
+            if (challengeState.status === 'stageClear') {
+              challengeState.transitionTimer -= dt;
+              if (challengeState.transitionTimer <= 0) {
+                Commands.advanceChallengeStage();
+              }
+            } else if (challengeState.status === 'victory' && !challengeState.victoryPopupOpened) {
+              challengeState.transitionTimer -= dt;
+              if (challengeState.transitionTimer <= 0) {
+                challengeState.victoryPopupOpened = true;
+                Commands.openLeaderboard();
+              }
+            }
+          }
+        } else if (systemState.gameMode === 'challenge' && challengeState.status === 'fighting') {
+          challengeState.elapsedMs += dt * 1000;
+        }
+
         const inp0 = InputSystem.readPlayer(0);
         const inp1 = systemState.gameMode === '2p'
           ? InputSystem.readPlayer(1)
@@ -2887,5 +3239,6 @@
   PaperArena.bus = bus;
   PaperArena.systemState = systemState;
   PaperArena.getArenaState = () => arenaState;
+  PaperArena.getChallengeState = () => challengeState;
   PaperArena.Commands = Commands;
 })(window);

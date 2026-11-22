@@ -718,7 +718,7 @@
 
     // 隐身状态处理（草图 1 格左图：贴地紫色阴影圆斑）
     if (f.stealthTimer > 0 && f.state !== 'ko') {
-      const isLocalHuman1P = (env.gameMode === '1p' && f.id === 0);
+      const isLocalHuman1P = (env.gameMode !== '2p' && f.id === 0);
       if (isLocalHuman1P) {
         // 单人打电脑时，1P 自己可见半透明贴地紫影圆斑，方便走位绕背
         S.drawShadowPuddle(ctx, f.x, env.groundY, 0.72, s);

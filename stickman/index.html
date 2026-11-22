@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>纸上小人大战 · 手绘火柴人对战</title>
+<title>奇奇妙妙屋大乱斗</title>
 <style>
   :root {
     --paper: #f6f2e8;
@@ -357,6 +357,138 @@
     background: var(--paper-dark);
   }
 
+  /* 排行榜与通关荣誉弹窗 */
+  .lb-victory-box {
+    margin: 12px 16px 4px;
+    padding: 12px 14px;
+    background: #fff9e6;
+    border: 2.5px solid var(--ink);
+    border-radius: 8px 6px 9px 7px / 7px 9px 6px 8px;
+    box-shadow: 3px 3px 0 rgba(30,28,26,0.18);
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .lb-victory-box.visible { display: flex; }
+
+  .lb-victory-title {
+    font-size: 16px;
+    font-weight: 900;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .lb-victory-stats {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .lb-victory-stats strong {
+    color: var(--accent);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 16px;
+  }
+
+  .honor-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #8a5600;
+    background: #ffe89e;
+    border: 1.8px solid #b57b10;
+    border-radius: 999px;
+  }
+
+  .lb-submit-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .lb-name-input {
+    flex: 1;
+    min-width: 150px;
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    color: var(--ink);
+    background: #fffdf8;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .lb-list {
+    padding: 8px 16px 14px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    max-height: 46vh;
+  }
+
+  .lb-row {
+    display: grid;
+    grid-template-columns: 38px 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    background: #fffdf8;
+    border: 1.8px solid rgba(30,28,26,0.55);
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .lb-row.top1 { background: #fff9e3; border-color: #b57b10; }
+  .lb-row.highlight { box-shadow: 0 0 0 2px var(--accent); }
+
+  .lb-rank {
+    font-size: 15px;
+    font-weight: 900;
+    text-align: center;
+  }
+
+  .lb-player {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-weight: 800;
+  }
+
+  .lb-meta {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+
+  .lb-time {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 15px;
+    font-weight: 900;
+    color: var(--accent);
+  }
+
+  .lb-empty {
+    text-align: center;
+    padding: 26px 12px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+
   .story-caption {
     position: absolute;
     left: 50%;
@@ -389,23 +521,23 @@
   <div class="notebook">
     <div class="topbar">
       <div class="title-group">
-        <h1>纸上小人大战</h1>
-        <span class="subtitle">手绘角色对战 · 可插拔角色资产 + 广播分层引擎</span>
+        <h1>奇奇妙妙屋大乱斗</h1>
       </div>
       <div class="toolbar">
-        <button class="sketch-btn active" id="btnMode1P">单人打电脑</button>
-        <button class="sketch-btn" id="btnMode2P">双人对战</button>
+        <button class="sketch-btn active" id="btnModeChallenge">🏆 挑战模式</button>
+        <button class="sketch-btn" id="btnMode2P">⚔ 双人对战</button>
         <button class="sketch-btn" id="btnDiff" title="切换电脑难度">电脑：普通</button>
         <span class="char-select-wrap">
           <label for="selP1">1P</label>
           <select class="char-select" id="selP1" aria-label="1P 角色选择"></select>
         </span>
-        <span class="char-select-wrap">
-          <label for="selP2" id="lblP2">电脑</label>
-          <select class="char-select" id="selP2" aria-label="对手角色选择"></select>
+        <span class="char-select-wrap" id="wrapP2" style="display:none;">
+          <label for="selP2" id="lblP2">2P</label>
+          <select class="char-select" id="selP2" aria-label="2P 角色选择"></select>
         </span>
+        <button class="sketch-btn accent" id="btnLeaderboard">🏆 排行榜</button>
         <button class="sketch-btn" id="btnTime" title="切换太阳 / 月亮">☀ 自动日夜</button>
-        <button class="sketch-btn accent" id="btnStory">▶ 播原画六格</button>
+        <button class="sketch-btn" id="btnStory">▶ 原画六格</button>
         <button class="sketch-btn" id="btnSettings">⚙ 设置</button>
         <button class="sketch-btn" id="btnSound">🔊 音效开</button>
         <button class="sketch-btn" id="btnRestart">↻ 重来</button>
@@ -471,17 +603,16 @@
     </div>
   </div>
 
-  <!-- 角色与技能参数前台设置面板（UI 不存真值，直接读写 systemState.tuning） -->
   <div class="settings-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="settings-modal">
       <div class="settings-header">
-        <h2 id="settingsTitle">⚙ 角色与技能参数设置</h2>
+        <h2 id="settingsTitle">⚙ 角色与技能设置</h2>
         <button class="sketch-btn" id="btnCloseSettings">✕ 关闭</button>
       </div>
       <div class="settings-tabs" id="settingsTabs"></div>
       <div class="settings-body" id="settingsBody"></div>
       <div class="settings-footer">
-        <span style="font-size:12px; color:var(--ink-soft);">修改自动保存至浏览器本地</span>
+        <span style="font-size:12px; color:var(--ink-soft);">修改自动保存</span>
         <div style="display:flex; gap:8px;">
           <button class="sketch-btn" id="btnResetRoleParams">恢复当前角色默认</button>
           <button class="sketch-btn active" id="btnApplyRestart">应用并重开</button>
@@ -490,7 +621,37 @@
     </div>
   </div>
 
-  <!-- 分层模块：广播总线 -> 手绘原语 -> 可插拔角色动画资产 -> 分层主引擎 -->
+  <div class="settings-backdrop" id="leaderboardBackdrop" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h2 id="leaderboardTitle">🏆 挑战模式 · 竞速排行榜</h2>
+        <button class="sketch-btn" id="btnCloseLeaderboard">✕ 关闭</button>
+      </div>
+      <div class="lb-victory-box" id="lbVictoryBox">
+        <div class="lb-victory-title">
+          <span>🎉 挑战通关！全部角色已击败</span>
+          <span class="honor-badge" id="lbVictoryHonor" style="display:none;">✨ 无伤通关</span>
+        </div>
+        <div class="lb-victory-stats" id="lbVictoryStats"></div>
+        <div class="lb-submit-row">
+          <input class="lb-name-input" id="lbNameInput" type="text" maxlength="16" placeholder="输入你的大名留下战绩..." />
+          <button class="sketch-btn active" id="btnSaveRecord">记录上榜</button>
+        </div>
+      </div>
+      <div class="settings-tabs" id="lbFilterTabs">
+        <button class="sketch-btn active" id="btnLbAll">全部通关</button>
+        <button class="sketch-btn" id="btnLbNoDmg">✨ 无伤通关</button>
+      </div>
+      <div class="lb-list" id="lbList"></div>
+      <div class="settings-footer">
+        <span style="font-size:12px; color:var(--ink-soft);">按通关用时排序 · 连续击败全部 5 位角色计入榜单</span>
+        <div style="display:flex; gap:8px;">
+          <button class="sketch-btn active" id="btnLbRestart">↻ 重新挑战</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="./engine/bus.js"></script>
   <script src="./engine/sketch.js"></script>
   <script src="./assets/characters.js"></script>
